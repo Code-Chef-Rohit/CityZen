@@ -14,7 +14,7 @@ import { ZenAI } from '@/screens/ZenAI';
 import { Notifications, Profile } from '@/screens/Profile';
 import MerchantDashboard from '@/screens/MerchantDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 type Screen =
   | { name: 'home' }
@@ -69,6 +69,23 @@ function AppContent() {
       window.location.hash = ''; // clear hash
     }
   };
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center mb-4 text-orange-400 border border-orange-500/25">
+          <KeyRound className="w-8 h-8" />
+        </div>
+        <h1 className="text-xl font-extrabold text-white">Backend Not Connected</h1>
+        <p className="text-sm text-slate-400 mt-2 max-w-sm">
+          This app needs a Supabase project to sign users in and store data. Add
+          {' '}<code className="text-orange-300">VITE_SUPABASE_URL</code> and{' '}
+          <code className="text-orange-300">VITE_SUPABASE_ANON_KEY</code> under
+          Site configuration → Environment variables in Netlify, then redeploy.
+        </p>
+      </div>
+    );
+  }
 
   if (isRecovery) {
     return (
