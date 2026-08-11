@@ -124,6 +124,23 @@ export function Profile({ onBack }: { onBack: () => void }) {
   const [ward, setWard] = useState(profile?.ward ?? '');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name ?? '');
+      setPhone(profile.phone ?? '');
+      setWard(profile.ward ?? '');
+    }
+  }, [profile]);
+
+  const startEditing = () => {
+    if (profile) {
+      setFullName(profile.full_name ?? '');
+      setPhone(profile.phone ?? '');
+      setWard(profile.ward ?? '');
+    }
+    setEditing(true);
+  };
+
   const [changingPassword, setChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -190,6 +207,21 @@ export function Profile({ onBack }: { onBack: () => void }) {
 
   const handleSave = async () => {
     setSaving(true);
+    if (phone.trim()) {
+      const { data: existingPhone } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', phone.trim())
+        .neq('id', profile?.id)
+        .maybeSingle();
+
+      if (existingPhone) {
+        alert("This phone number is already registered to another user account.");
+        setSaving(false);
+        return;
+      }
+    }
+
     await supabase.from('profiles').update({
       full_name: fullName.trim(),
       phone: phone.trim(),
@@ -232,8 +264,8 @@ export function Profile({ onBack }: { onBack: () => void }) {
               </p>
             </div>
             <button
-              onClick={() => setEditing(true)}
-              className="px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg text-xs font-semibold hover:bg-white/25 transition-colors"
+              onClick={startEditing}
+              className="px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg text-xs font-semibold hover:bg-white/25 transition-colors cursor-pointer"
             >
               Edit
             </button>
@@ -467,6 +499,12 @@ export function Profile({ onBack }: { onBack: () => void }) {
                         </div>
                         <p className="text-[10px] text-slate-400">{c.location_text || 'MG Road'} · Category: {c.category}</p>
                         {c.description && <p className="text-[10px] text-slate-550 mt-1 italic">"{c.description}"</p>}
+                        {c.status === 'resolved' && c.resolution_proof && (
+                           <div className="mt-2 p-2 bg-emerald-500/10 text-emerald-700 rounded-lg border border-emerald-500/15 text-[10px]">
+                             <span className="font-bold block uppercase tracking-wider text-[8px] text-emerald-800">BMC Resolution Proof:</span>
+                             <p className="italic mt-0.5 text-emerald-650">"{c.resolution_proof}"</p>
+                           </div>
+                         )}
                       </div>
                     ))}
                   </div>

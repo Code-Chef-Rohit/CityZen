@@ -76,17 +76,26 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
 
 interface MapProps {
   onBack: () => void;
+  initialCategory?: MapCategory;
 }
 
-export function SmartMap({ onBack }: MapProps) {
+export function SmartMap({ onBack, initialCategory }: MapProps) {
   const [points, setPoints] = useState<MapPoint[]>([]);
-  const [activeCats, setActiveCats] = useState<Set<MapCategory>>(new Set(['hospital', 'police', 'pharmacy', 'fire', 'park', 'transit', 'parking', 'government']));
+  const [activeCats, setActiveCats] = useState<Set<MapCategory>>(
+    new Set(initialCategory ? [initialCategory] : ['hospital', 'police', 'pharmacy', 'fire', 'park', 'transit', 'parking', 'government'])
+  );
   const [selected, setSelected] = useState<MapPoint | null>(null);
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   
   const [searchRadius, setSearchRadius] = useState<number>(10);
   const [geoError, setGeoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setActiveCats(new Set([initialCategory]));
+    }
+  }, [initialCategory]);
 
   const mapRef = useRef<any>(null);
   const layersRef = useRef<any>(null);

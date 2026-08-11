@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User, KeyRound } from 'lucide-react';
+import { User, KeyRound, Phone } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { Splash } from '@/screens/Splash';
@@ -12,26 +12,43 @@ import { Bills } from '@/screens/Bills';
 import { Emergency } from '@/screens/Emergency';
 import { ZenAI } from '@/screens/ZenAI';
 import { Notifications, Profile } from '@/screens/Profile';
-import MerchantDashboard from '@/screens/MerchantDashboard';
+import StaffDashboard from '@/screens/StaffDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
 import { supabase } from '@/lib/supabase';
 
 type Screen =
   | { name: 'home' }
-  | { name: 'map' }
+  | { name: 'map'; category?: any }
   | { name: 'explore' }
   | { name: 'emergency' }
   | { name: 'notifications' }
   | { name: 'profile' }
   | { name: 'zen' }
-  | { name: 'complaints' }
-  | { name: 'bills' }
+  | { name: 'complaints'; category?: any }
+  | { name: 'bills'; type?: any }
   | { name: 'service'; id: string };
 
 function AppContent() {
-  const { session, loading, profile, signOut } = useAuth();
+  const { session, loading, profile, signOut, refreshProfile } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
+
+  // Mandatory Phone Gate States
+  const [pendingScreen, setPendingScreen] = useState<Screen | null>(null);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const navigateToScreen = (target: Screen) => {
+    const serviceScreens = ['complaints', 'bills', 'emergency', 'zen', 'service'];
+    if (serviceScreens.includes(target.name) && (!profile?.phone || profile.phone.trim() === '')) {
+      setPendingScreen(target);
+      setPhoneInput('');
+      setPhoneError(null);
+    } else {
+      setScreen(target);
+    }
+  };
 
   // Password Recovery Flow States
   const [isRecovery, setIsRecovery] = useState(false);
@@ -151,8 +168,8 @@ function AppContent() {
     );
   }
 
-  if (profile?.role === 'business') {
-    return <MerchantDashboard />;
+  if (profile?.role === 'police' || profile?.role === 'hospital' || profile?.role === 'bmc') {
+    return <StaffDashboard />;
   }
 
   if (profile?.role === 'admin') {
@@ -175,9 +192,9 @@ function AppContent() {
     'notifications';
 
   const openService = (id: string) => {
-    if (id === 'bills') setScreen({ name: 'bills' });
-    else if (id === 'complaints') setScreen({ name: 'complaints' });
-    else setScreen({ name: 'service', id });
+    if (id === 'bills') navigateToScreen({ name: 'bills' });
+    else if (id === 'complaints') navigateToScreen({ name: 'complaints' });
+    else navigateToScreen({ name: 'service', id });
   };
 
   const back = () => setScreen({ name: 'home' });
@@ -186,19 +203,32 @@ function AppContent() {
     <div className="relative">
       {screen.name === 'home' && (
         <Home
-          onTab={(t) => setScreen(tabMap[t])}
-          onOpenZen={() => setScreen({ name: 'zen' })}
+          onTab={(t) => navigateToScreen(tabMap[t])}
+          onOpenZen={() => navigateToScreen({ name: 'zen' })}
           onOpenService={openService}
         />
       )}
-      {screen.name === 'map' && <SmartMap onBack={back} />}
+      {screen.name === 'map' && <SmartMap onBack={back} initialCategory={screen.category} />}
       {screen.name === 'explore' && <Explore onBack={back} onOpenService={openService} />}
-      {screen.name === 'service' && <ServiceDetail serviceId={screen.id} onBack={() => setScreen({ name: 'explore' })} />}
+      {screen.name === 'service' && (
+        <ServiceDetail 
+          serviceId={screen.id} 
+          onBack={() => setScreen({ name: 'explore' })} 
+          onFileComplaint={(category) => navigateToScreen({ name: 'complaints', category })}
+          onPayBill={(type) => navigateToScreen({ name: 'bills', type })}
+          onViewMap={(category) => setScreen({ name: 'map', category })}
+        />
+      )}
       {screen.name === 'emergency' && <Emergency onBack={back} />}
       {screen.name === 'notifications' && <Notifications onBack={back} />}
-      {screen.name === 'zen' && <ZenAI onBack={back} />}
-      {screen.name === 'complaints' && <Complaints onBack={back} />}
-      {screen.name === 'bills' && <Bills onBack={back} />}
+      {screen.name === 'zen' && (
+        <ZenAI 
+          onBack={back} 
+          onNavigate={(targetScreen) => navigateToScreen(targetScreen)} 
+        />
+      )}
+      {screen.name === 'complaints' && <Complaints onBack={back} initialCategory={screen.category} />}
+      {screen.name === 'bills' && <Bills onBack={back} initialType={screen.type} />}
       {screen.name === 'profile' && <Profile onBack={back} />}
 
       {/* Floating profile button */}
@@ -214,6 +244,96 @@ function AppContent() {
       {/* Bottom nav — hidden on full-screen overlays */}
       {!['zen', 'complaints', 'bills', 'service', 'profile'].includes(screen.name) && (
         <BottomNav active={activeTab} onChange={(t) => setScreen(tabMap[t])} />
+      )}
+
+      {/* Phone Number Mandatory Modal */}
+      {pendingScreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink-950/60 backdrop-blur-sm" />
+          <div className="relative w-full sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl animate-scale-up space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mx-auto">
+              <Phone className="w-6 h-6 animate-pulse" />
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-ink-900 text-lg">Contact Number Required</h3>
+              <p className="text-xs text-ink-500 leading-normal px-2">
+                To proceed with this service, you must link a valid 10-digit mobile number to your citizen profile for municipal tracking.
+              </p>
+            </div>
+            
+            <div className="space-y-3 pt-2">
+              <div>
+                <input
+                  type="tel"
+                  placeholder="10-Digit Mobile Number"
+                  value={phoneInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, ''); // numeric only
+                    if (val.length <= 10) setPhoneInput(val);
+                  }}
+                  className="w-full text-center px-4 py-3 bg-slate-50 border border-ink-200 rounded-xl text-sm focus:outline-none focus:border-amber-500 transition-all font-bold tracking-widest text-ink-800"
+                />
+              </div>
+
+              {phoneError && (
+                <p className="text-center text-xs text-red-500 font-semibold">{phoneError}</p>
+              )}
+              
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => setPendingScreen(null)}
+                  className="flex-1 py-2.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 rounded-xl font-bold text-xs text-slate-600 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (phoneInput.length !== 10) {
+                      setPhoneError('Please enter a valid 10-digit phone number.');
+                      return;
+                    }
+                    setPhoneSaving(true);
+                    setPhoneError(null);
+                    try {
+                      // Check for duplicate phone number across all users
+                      const { data: existingPhone } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('phone', phoneInput.trim())
+                        .neq('id', profile?.id)
+                        .maybeSingle();
+
+                      if (existingPhone) {
+                        setPhoneError('This phone number is already registered to another user account.');
+                        setPhoneSaving(false);
+                        return;
+                      }
+
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ phone: phoneInput.trim() })
+                        .eq('id', profile?.id);
+                      if (error) throw error;
+                      
+                      await refreshProfile();
+                      setScreen(pendingScreen); // Proceed to target screen
+                      setPendingScreen(null);
+                    } catch (e: any) {
+                      setPhoneError(e.message || 'Failed to update phone number.');
+                    } finally {
+                      setPhoneSaving(false);
+                    }
+                  }}
+                  disabled={phoneSaving}
+                  className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {phoneSaving ? 'Saving...' : 'Verify & Continue'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

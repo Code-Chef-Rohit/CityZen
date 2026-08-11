@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   const [selectedUserToResetPW, setSelectedUserToResetPW] = useState<any>(null);
   const [newAdminResetPassword, setNewAdminResetPassword] = useState('');
   const [resettingPW, setResettingPW] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
 
   // Analytics Metrics
   const [metrics, setMetrics] = useState({
@@ -176,17 +178,51 @@ export default function AdminDashboard() {
     loadMetricsAndData();
   };
 
+  const handleChangeUserRole = async (userId: string, newRole: 'citizen' | 'police' | 'hospital' | 'bmc' | 'admin') => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+      if (error) throw error;
+      loadMetricsAndData();
+      alert(`User role updated successfully to ${newRole.toUpperCase()}!`);
+    } catch (e: any) {
+      alert("Failed to update user role: " + e.message);
+    }
+  };
+
+  const handleRedoComplaint = async (id: string) => {
+    if (window.confirm("Are you sure you want to redo this complaint? This will reset its status to 'submitted' and clear BMC resolution proof notes.")) {
+      await supabase
+        .from('complaints')
+        .update({ status: 'submitted', resolution_proof: null, resolved_at: null })
+        .eq('id', id);
+      loadMetricsAndData();
+    }
+  };
+
+  const handleRedoEmergency = async (id: string) => {
+    if (window.confirm("Are you sure you want to re-open/redo this SOS dispatch? This will reset its status to 'active'.")) {
+      await supabase
+        .from('emergency_requests')
+        .update({ status: 'active', resolved_at: null })
+        .eq('id', id);
+      loadMetricsAndData();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
       <header className="bg-slate-900 border-b border-white/5 px-6 py-4 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
-            <Shield className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
+            <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="font-extrabold text-lg text-orange-300">City Zen Admin Control Center</h1>
-            <p className="text-xs text-ink-400">Superuser Municipal Auditing & System Configuration</p>
+            <h1 className="font-extrabold text-lg text-orange-300">CityZen Admin Control Center</h1>
+            <p className="text-xs text-slate-400">Superuser Municipal Auditing & System Configuration</p>
           </div>
         </div>
 
@@ -366,13 +402,29 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-3 text-slate-300 font-medium">{u.email || 'N/A'}</td>
                               <td className="py-3">
-                                <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
-                                  u.role === 'admin' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                                  u.role === 'business' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                  'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                }`}>
-                                  {u.role === 'admin' ? 'Super Admin' : u.role === 'business' ? 'Merchant' : 'Citizen'}
-                                </span>
+                                {u.id !== profile?.id ? (
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleChangeUserRole(u.id, e.target.value as any)}
+                                    className={`bg-slate-900 border rounded-xl px-2 py-1 text-[10px] font-bold uppercase focus:outline-none focus:border-orange-500 cursor-pointer ${
+                                      u.role === 'admin' ? 'text-orange-400 border-orange-500/25 bg-orange-500/10' :
+                                      u.role === 'police' ? 'text-blue-400 border-blue-500/25 bg-blue-500/10' :
+                                      u.role === 'hospital' ? 'text-red-400 border-red-500/25 bg-red-500/10' :
+                                      u.role === 'bmc' ? 'text-amber-400 border-amber-500/25 bg-amber-500/10' :
+                                      'text-emerald-400 border-emerald-500/25 bg-emerald-500/10'
+                                    }`}
+                                  >
+                                    <option value="citizen">Citizen</option>
+                                    <option value="police">Police</option>
+                                    <option value="hospital">Hospital</option>
+                                    <option value="bmc">BMC</option>
+                                    <option value="admin">Super Admin</option>
+                                  </select>
+                                ) : (
+                                  <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                                    Super Admin
+                                  </span>
+                                )}
                               </td>
                               <td className="py-3 text-slate-300">{u.ward ? `Ward ${u.ward}` : 'Not set'}</td>
                               <td className="py-3 text-slate-300">
@@ -437,7 +489,10 @@ export default function AdminDashboard() {
                            user?.full_name?.toLowerCase().includes(query) ||
                            user?.email?.toLowerCase().includes(query);
                   });
-                  const masters = filteredComplaints.filter(c => !c.description?.startsWith('[ML_MERGE:'));
+                  const masters = filteredComplaints.filter(c => 
+                    !c.description?.startsWith('[ML_MERGE:') && 
+                    !c.description?.startsWith('[ML_CLUSTER_OVERLOAD:')
+                  );
 
                   return (
                     <table className="w-full text-left text-xs border-collapse">
@@ -454,7 +509,10 @@ export default function AdminDashboard() {
                       <tbody>
                         {masters.map(c => {
                           const children = complaints.filter(x => 
-                            x.description && x.description.startsWith(`[ML_MERGE:${c.id}]`)
+                            x.description && (
+                              x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
+                              x.description.includes(`[ML_CLUSTER_OVERLOAD:${c.id}`)
+                            )
                           );
                           const childIds = children.map(x => x.id);
                           const reportCount = 1 + children.length;
@@ -468,10 +526,20 @@ export default function AdminDashboard() {
                                 <p className="font-semibold text-white flex items-center gap-1.5">
                                   {c.title}
                                   {c.photo_url && (
-                                    <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1 py-0.5 rounded border border-cyan-500/25">ML Photo Link</span>
+                                    <button 
+                                      onClick={() => setPreviewPhoto(c.photo_url)}
+                                      className="text-[9px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                                    >
+                                      <Camera className="w-2.5 h-2.5" /> View Photo
+                                    </button>
                                   )}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-0.5 max-w-sm truncate">{cleanDesc}</p>
+                                {c.status === 'resolved' && c.resolution_proof && (
+                                  <p className="text-[10px] text-emerald-400 mt-1 italic">
+                                    BMC Proof: "{c.resolution_proof}"
+                                  </p>
+                                )}
                               </td>
                               <td className="py-3 text-center">
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -488,17 +556,28 @@ export default function AdminDashboard() {
                               <td className="py-3 text-slate-300 capitalize">{c.category} ({c.department || 'Civic'})</td>
                               <td className="py-3 text-slate-300">{c.location_text || 'MG Road'}</td>
                               <td className="py-3 text-right">
-                                <select
-                                  value={c.status}
-                                  onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value, childIds)}
-                                  className="bg-slate-800 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-orange-500 cursor-pointer"
-                                >
-                                  <option value="submitted">Submitted</option>
-                                  <option value="assigned">Assigned</option>
-                                  <option value="in_progress">In Progress</option>
-                                  <option value="resolved">Resolved</option>
-                                  <option value="rejected">Rejected</option>
-                                </select>
+                                <div className="flex items-center justify-end gap-2">
+                                  <select
+                                    value={c.status}
+                                    onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value, childIds)}
+                                    className="bg-slate-800 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-orange-500 cursor-pointer"
+                                  >
+                                    <option value="submitted">Submitted</option>
+                                    <option value="assigned">Assigned</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="rejected">Rejected</option>
+                                  </select>
+                                  {c.status === 'resolved' && (
+                                    <button
+                                      onClick={() => handleRedoComplaint(c.id)}
+                                      className="px-2 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-xl text-[10px] transition-all cursor-pointer"
+                                      title="Redo / Re-open complaint"
+                                    >
+                                      Redo
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -633,12 +712,20 @@ export default function AdminDashboard() {
                                 </span>
                               </td>
                               <td className="py-3 text-right">
-                                {e.status !== 'resolved' && (
+                                {e.status !== 'resolved' ? (
                                   <button
                                     onClick={() => handleResolveEmergency(e.id)}
                                     className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
                                   >
                                     Resolve
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleRedoEmergency(e.id)}
+                                    className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                    title="Redo SOS dispatch request"
+                                  >
+                                    Redo
                                   </button>
                                 )}
                               </td>
@@ -743,6 +830,58 @@ export default function AdminDashboard() {
                 className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50 cursor-pointer"
               >
                 {resettingPW ? 'Resetting...' : 'Force Reset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Preview Lightbox Modal */}
+      {previewPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => { setPreviewPhoto(null); setZoomScale(1); }} />
+          <div className="relative max-w-3xl w-full bg-slate-900 border border-white/10 rounded-3xl p-5 overflow-hidden flex flex-col items-center justify-center animate-slide-up shadow-2xl">
+            <button
+              onClick={() => { setPreviewPhoto(null); setZoomScale(1); }}
+              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-950/60 border border-white/10 text-white flex items-center justify-center hover:bg-slate-950 transition-colors cursor-pointer z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-full overflow-auto flex items-center justify-center rounded-2xl bg-black/40 p-2 border border-white/5 max-h-[70vh]">
+              <img 
+                src={previewPhoto} 
+                alt="Evidence Lightbox" 
+                className="max-w-full max-h-[65vh] object-contain rounded-xl transition-transform duration-200" 
+                style={{ transform: `scale(${zoomScale})` }}
+              />
+            </div>
+            
+            {/* Interactive Zoom Controller */}
+            <div className="mt-4 flex items-center gap-3 bg-slate-950/80 border border-white/10 rounded-full px-4 py-2 text-white shadow-lg">
+              <button 
+                type="button"
+                onClick={() => setZoomScale(s => Math.max(1, s - 0.25))}
+                className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-bold font-mono min-w-[40px] text-center">{Math.round(zoomScale * 100)}%</span>
+              <button 
+                type="button"
+                onClick={() => setZoomScale(s => Math.min(3.5, s + 0.25))}
+                className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <div className="w-px h-4 bg-white/20 mx-1" />
+              <button 
+                type="button"
+                onClick={() => setZoomScale(1)}
+                className="text-[10px] font-bold bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded transition-colors cursor-pointer"
+              >
+                Reset
               </button>
             </div>
           </div>

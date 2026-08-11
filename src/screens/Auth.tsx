@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Building2, Mail, Lock, User, Phone, ArrowRight } from 'lucide-react';
+import { Building2, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/Button';
 import { supabase } from '@/lib/supabase';
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -25,6 +24,7 @@ export function Auth() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [signupRole, setSignupRole] = useState<'citizen' | 'business'>('citizen');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,9 +37,24 @@ export function Auth() {
         await signIn(email.trim(), password);
       } else if (mode === 'signup') {
         if (!fullName.trim()) throw new Error('Please enter your name');
-        await signUp(email.trim(), password, fullName.trim(), phone.trim(), signupRole);
+        if (phone.trim()) {
+          const { data: existingPhone } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('phone', phone.trim())
+            .maybeSingle();
+
+          if (existingPhone) {
+            throw new Error('This phone number is already registered to another user account.');
+          }
+        }
+        const signUpData = await signUp(email.trim(), password, fullName.trim(), phone.trim(), signupRole);
+        if (signUpData && !signUpData.session) {
+          alert("Account created successfully! Please check your email to verify your account before logging in.");
+          setMode('signin');
+          setPassword('');
+        }
       } else {
-        // Mode 'forgot' password reset email flow
         const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: window.location.origin
         });
@@ -62,157 +77,262 @@ export function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-[420px] bg-slate-900 border border-white/5 rounded-[32px] p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-        <div className="absolute top-0 left-1/4 w-1/2 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent opacity-50" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans select-none">
+      {/* Dynamic Ambient Background Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[160px] pointer-events-none" />
+      
+      {/* Subtle Grid Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+
+      {/* Floating Smart City Status Pill Badges */}
+      <div className="hidden lg:flex absolute top-8 left-8 items-center gap-2 px-4 py-2 rounded-full bg-slate-900/60 border border-white/10 text-xs font-semibold text-emerald-400 backdrop-blur-md shadow-xl animate-pulse">
+        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+        CityZen Smart Grid v2.5 Online
+      </div>
+      <div className="hidden lg:flex absolute top-8 right-8 items-center gap-2 px-4 py-2 rounded-full bg-slate-900/60 border border-white/10 text-xs font-semibold text-cyan-400 backdrop-blur-md shadow-xl">
+        <ShieldCheck className="w-4 h-4" />
+        256-bit Encrypted Portal
+      </div>
+
+      {/* Main Glassmorphism Card */}
+      <div className="w-full max-w-[440px] bg-slate-900/80 border border-white/10 rounded-[36px] p-7 sm:p-9 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative z-10 backdrop-blur-2xl animate-fade-in">
         
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-400 mb-4 border border-primary-500/20">
-            <Building2 className="w-7 h-7" />
+        {/* Glowing Top Edge Highlight */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-70" />
+
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center mb-7">
+          <div className="relative mb-3 group">
+            <div className="absolute inset-0 bg-cyan-500/30 rounded-2xl blur-lg group-hover:blur-xl transition-all" />
+            <div className="relative w-20 h-20 rounded-2xl border border-white/20 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
+              <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">CityZen Portal</h1>
-          <p className="text-xs text-slate-400 mt-1.5 font-medium">
-            {mode === 'signin' ? 'Access your civic administration services' : 
-             mode === 'signup' ? 'Join the digitized municipality network' : 
-             'Request password recovery secure link'}
+
+          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+            CityZen <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold uppercase">Portal</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs leading-relaxed">
+            {mode === 'signin' ? 'Sign in to manage your city services, bills & reports' : 
+             mode === 'signup' ? 'Create your unified citizen identity account' : 
+             'Reset your account credentials securely'}
           </p>
         </div>
 
-        <div className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Onboard Account As</label>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-white/5">
-                    <button
-                      type="button"
-                      onClick={() => setSignupRole('citizen')}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        signupRole === 'citizen' ? 'bg-primary-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Citizen User
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSignupRole('business')}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        signupRole === 'business' ? 'bg-primary-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Merchant (Hospital)
-                    </button>
-                  </div>
-                </div>
+        {/* Navigation Mode Segment Switcher */}
+        {mode !== 'forgot' && (
+          <div className="grid grid-cols-2 p-1.5 bg-slate-950/80 border border-white/10 rounded-2xl mb-6 shadow-inner">
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setError(null); }}
+              className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                mode === 'signin' 
+                  ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('signup'); setError(null); }}
+              className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                mode === 'signup' 
+                  ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
-                <Field
-                  icon={<User className="w-4 h-4" />}
-                  type="text"
-                  placeholder="Full name"
-                  value={fullName}
-                  onChange={setFullName}
-                />
-              </div>
-            )}
-            
-            <Field
-              icon={<Mail className="w-4 h-4" />}
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={setEmail}
-            />
-            
-            {mode === 'signup' && (
-              <Field
-                icon={<Phone className="w-4 h-4" />}
-                type="tel"
-                placeholder="Phone number"
-                value={phone}
-                onChange={setPhone}
-              />
-            )}
-            
-            {mode !== 'forgot' && (
-              <Field
-                icon={<Lock className="w-4 h-4" />}
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={setPassword}
-              />
-            )}
-
-            {mode === 'signin' && (
-              <div className="text-right">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Sign Up Role Toggle Card */}
+          {mode === 'signup' && (
+            <div className="space-y-2 mb-4">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Account Type</label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => { setMode('forgot'); setError(null); }}
-                  className="text-xs font-bold text-primary-500 hover:text-primary-400 hover:underline cursor-pointer"
+                  onClick={() => setSignupRole('citizen')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                    signupRole === 'citizen'
+                      ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
+                      : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                  }`}
                 >
-                  Forgot Password?
+                  <User className={`w-4 h-4 ${signupRole === 'citizen' ? 'text-primary-400' : 'text-slate-500'}`} />
+                  <div>
+                    <p className="text-xs font-extrabold">Citizen</p>
+                    <p className="text-[9px] opacity-75">Public User</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSignupRole('business')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                    signupRole === 'business'
+                      ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
+                      : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                  }`}
+                >
+                  <Building2 className={`w-4 h-4 ${signupRole === 'business' ? 'text-primary-400' : 'text-slate-500'}`} />
+                  <div>
+                    <p className="text-xs font-extrabold">Merchant</p>
+                    <p className="text-[9px] opacity-75">Hospital/Biz</p>
+                  </div>
                 </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {error && (
-              <div className="text-xs text-red-400 bg-red-500/10 rounded-xl px-4 py-2.5 border border-red-500/15">
-                {error}
-              </div>
-            )}
-
-            <Button type="submit" size="lg" loading={loading} className="w-full">
-              {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </form>
-
+          {/* Full Name (Sign up only) */}
+          {mode === 'signup' && (
+            <Field
+              icon={<User className="w-4 h-4" />}
+              type="text"
+              placeholder="Full Name"
+              value={fullName}
+              onChange={setFullName}
+            />
+          )}
+          
+          {/* Email Address */}
+          <Field
+            icon={<Mail className="w-4 h-4" />}
+            type="email"
+            placeholder="Email Address"
+            value={email}
+            onChange={setEmail}
+          />
+          
+          {/* Phone Number (Sign up only) */}
+          {mode === 'signup' && (
+            <Field
+              icon={<Phone className="w-4 h-4" />}
+              type="tel"
+              placeholder="10-Digit Mobile Number"
+              value={phone}
+              onChange={(val) => setPhone(val.replace(/\D/g, '').slice(0, 10))}
+            />
+          )}
+          
+          {/* Password Input */}
           {mode !== 'forgot' && (
-            <>
-              <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-slate-500 font-medium">or</span>
-                <div className="flex-1 h-px bg-white/10" />
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                <Lock className="w-4 h-4" />
               </div>
-
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full pl-11 pr-11 py-3 bg-slate-950/80 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
+              />
               <button
                 type="button"
-                disabled={loading}
-                onClick={() => { setError(null); signInWithGoogle(); }}
-                className="w-full flex items-center justify-center gap-3 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
-                <GoogleIcon className="w-5 h-5" />
-                Continue with Google
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          )}
+
+          {/* Forgot Password Link */}
+          {mode === 'signin' && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(null); }}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
+          {/* Error Banner */}
+          {error && (
+            <div className="text-xs text-red-400 bg-red-500/10 rounded-2xl p-3 border border-red-500/20 font-medium animate-shake">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* Submit Action Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition-all transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+          >
+            {loading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <span>{mode === 'signin' ? 'Sign In to Portal' : mode === 'signup' ? 'Create Unified Account' : 'Send Recovery Link'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Google SSO Button */}
+        {mode !== 'forgot' && (
+          <>
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => { setError(null); signInWithGoogle(); }}
+              className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <GoogleIcon className="w-5 h-5" />
+              <span>Continue with Google</span>
+            </button>
+          </>
+        )}
+
+        {/* Footer Navigation */}
+        <p className="text-center text-xs text-slate-400 mt-6 font-medium">
+          {mode === 'forgot' ? (
+            <>
+              Remember your credentials?{' '}
+              <button
+                onClick={() => { setMode('signin'); setError(null); }}
+                className="text-cyan-400 font-bold hover:underline cursor-pointer"
+              >
+                Sign in
+              </button>
+            </>
+          ) : (
+            <>
+              {mode === 'signin' ? "Don't have a citizen account? " : 'Already registered? '}
+              <button
+                onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
+                className="text-cyan-400 font-bold hover:underline cursor-pointer"
+              >
+                {mode === 'signin' ? 'Sign up' : 'Sign in'}
               </button>
             </>
           )}
-
-          <p className="text-center text-xs text-slate-400 mt-4">
-            {mode === 'forgot' ? (
-              <>
-                Back to{' '}
-                <button
-                  onClick={() => { setMode('signin'); setError(null); }}
-                  className="text-primary-500 font-bold hover:underline cursor-pointer"
-                >
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>
-                {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-                <button
-                  onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
-                  className="text-primary-500 font-bold hover:underline cursor-pointer"
-                >
-                  {mode === 'signin' ? 'Sign up' : 'Sign in'}
-                </button>
-              </>
-            )}
-          </p>
-        </div>
+        </p>
       </div>
+
+      {/* Footer Tagline */}
+      <p className="text-center text-[11px] text-slate-500 mt-6 font-semibold tracking-wider uppercase z-10">
+        CityZen Municipal Network · One City One App
+      </p>
     </div>
   );
 }
@@ -235,7 +355,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required
-        className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all"
+        className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
       />
     </div>
   );

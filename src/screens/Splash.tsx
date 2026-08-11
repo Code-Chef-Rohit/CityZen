@@ -35,8 +35,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
       <div className="relative z-10 flex flex-col items-center">
         <div className="relative w-28 h-28 mb-8">
-          <div className="absolute inset-0 bg-white/10 rounded-3xl backdrop-blur-md flex items-center justify-center animate-float">
-            <Building2 className="w-14 h-14 text-white" strokeWidth={1.5} />
+          <div className="absolute inset-0 bg-slate-950/40 rounded-3xl border border-white/20 shadow-2xl overflow-hidden backdrop-blur-md flex items-center justify-center animate-float">
+            <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           {orbitIcons.map(({ Icon, color, delay }, i) => {
             const angle = (i / orbitIcons.length) * Math.PI * 2;

@@ -26,7 +26,7 @@ const billers = [
   { id: 'mcg', label: 'MCG Waste (Waste)', type: 'waste' as const, name: 'Municipal Corp of Gurugram' },
 ];
 
-export function Bills({ onBack }: { onBack: () => void }) {
+export function Bills({ onBack, initialType }: { onBack: () => void; initialType?: BillType }) {
   const { session } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,9 +34,11 @@ export function Bills({ onBack }: { onBack: () => void }) {
   const [payBill, setPayBill] = useState<Bill | null>(null);
 
   // Add Bill states
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(!!initialType);
   const [addMode, setAddMode] = useState<'link' | 'manual'>('link');
-  const [selectedBiller, setSelectedBiller] = useState(billers[0]);
+  const [selectedBiller, setSelectedBiller] = useState(
+    initialType ? (billers.find(b => b.type === initialType) || billers[0]) : billers[0]
+  );
   const [consumerNo, setConsumerNo] = useState('');
   const [fetchingBill, setFetchingBill] = useState(false);
   const [bbpsLogs, setBbpsLogs] = useState<string[]>([]);
@@ -74,6 +76,17 @@ export function Bills({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     load();
   }, [session]);
+
+  useEffect(() => {
+    if (initialType) {
+      setNewType(initialType);
+      const matched = billers.find(b => b.type === initialType);
+      if (matched) {
+        setSelectedBiller(matched);
+      }
+      setShowAddModal(true);
+    }
+  }, [initialType]);
 
   const handleFetchBill = () => {
     if (!consumerNo.trim() || consumerNo.length < 5) {

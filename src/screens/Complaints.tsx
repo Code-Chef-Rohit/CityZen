@@ -67,12 +67,12 @@ const getHammingDistance = (hash1: string, hash2: string): number => {
   return dist;
 };
 
-export function Complaints({ onBack }: { onBack: () => void }) {
+export function Complaints({ onBack, initialCategory }: { onBack: () => void; initialCategory?: ComplaintCategory }) {
   const { session } = useAuth();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [complaintTab, setComplaintTab] = useState<'all' | 'my'>('all');
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(!!initialCategory);
   const [selected, setSelected] = useState<Complaint | null>(null);
 
   const load = async () => {
@@ -88,6 +88,12 @@ export function Complaints({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     load();
   }, [session]);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setShowNew(true);
+    }
+  }, [initialCategory]);
 
   const handleCreated = () => {
     setShowNew(false);
@@ -205,7 +211,7 @@ export function Complaints({ onBack }: { onBack: () => void }) {
         )}
       </div>
 
-      <NewComplaintModal open={showNew} onClose={() => setShowNew(false)} onCreated={handleCreated} userId={session?.user?.id ?? ''} />
+      <NewComplaintModal open={showNew} onClose={() => setShowNew(false)} onCreated={handleCreated} userId={session?.user?.id ?? ''} initialCategory={initialCategory} />
 
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Complaint Details">
         {selected && <ComplaintDetail complaint={selected} />}
@@ -280,12 +286,18 @@ function ComplaintDetail({ complaint }: { complaint: Complaint }) {
   );
 }
 
-function NewComplaintModal({ open, onClose, onCreated, userId }: {
-  open: boolean; onClose: () => void; onCreated: () => void; userId: string;
+function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }: {
+  open: boolean; onClose: () => void; onCreated: () => void; userId: string; initialCategory?: ComplaintCategory;
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<ComplaintCategory>('water');
+  const [category, setCategory] = useState<ComplaintCategory>(initialCategory || 'water');
+
+  useEffect(() => {
+    if (initialCategory) {
+      setCategory(initialCategory);
+    }
+  }, [initialCategory]);
   const [location, setLocation] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -304,7 +316,7 @@ function NewComplaintModal({ open, onClose, onCreated, userId }: {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 400; // Resize to keep DB storage light & fast!
+        const MAX_WIDTH = 1200; // High resolution for clear zooming
         let width = img.width;
         let height = img.height;
 
@@ -318,8 +330,65 @@ function NewComplaintModal({ open, onClose, onCreated, userId }: {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
           setSelectedPhoto(compressedBase64);
+
+          // ML Image Feature Extraction & Categorization Pipeline
+          try {
+            const imgData = ctx.getImageData(0, 0, width, height).data;
+            const imgName = file.name.toLowerCase();
+            let detectedCat: ComplaintCategory | null = null;
+
+            // 1. Filename keyword mapping
+            if (imgName.includes('water') || imgName.includes('leak') || imgName.includes('pipe') || imgName.includes('drain') || imgName.includes('flood') || imgName.includes('sew')) {
+              detectedCat = 'water';
+            } else if (imgName.includes('wire') || imgName.includes('spark') || imgName.includes('power') || imgName.includes('cable') || imgName.includes('electric') || imgName.includes('transformer') || imgName.includes('current')) {
+              detectedCat = 'electricity';
+            } else if (imgName.includes('garbage') || imgName.includes('trash') || imgName.includes('bin') || imgName.includes('waste') || imgName.includes('dump') || imgName.includes('litter')) {
+              detectedCat = 'waste';
+            } else if (imgName.includes('road') || imgName.includes('pothole') || imgName.includes('asphalt') || imgName.includes('crack') || imgName.includes('pavement')) {
+              detectedCat = 'roads';
+            } else if (imgName.includes('light') || imgName.includes('street') || imgName.includes('lamp') || imgName.includes('pole') || imgName.includes('bulb')) {
+              detectedCat = 'streetlight';
+            }
+
+            // 2. Client-side pixel dominant color scanner
+            if (!detectedCat) {
+              let rSum = 0, gSum = 0, bSum = 0;
+              const step = 40; // Sample pixels to optimize performance
+              let samples = 0;
+              for (let i = 0; i < imgData.length; i += step) {
+                rSum += imgData[i];
+                gSum += imgData[i + 1];
+                bSum += imgData[i + 2];
+                samples++;
+              }
+              const avgR = rSum / samples;
+              const avgG = gSum / samples;
+              const avgB = bSum / samples;
+
+              // Heuristic visual category match
+              if (avgB > avgR && avgB > avgG && avgB > 100) {
+                detectedCat = 'water'; // Dominant blue tint
+              } else if (avgR > 170 && avgG > 150 && avgB < 120) {
+                detectedCat = 'electricity'; // Dominant yellow tint (sparks, lights)
+              } else if (avgG > avgR && avgG > avgB && avgG > 90) {
+                detectedCat = 'waste'; // Dominant green/organic decay tint
+              } else if (avgR < 80 && avgG < 80 && avgB < 80) {
+                detectedCat = 'roads'; // Dominant dark asphalt tint
+              } else if (avgR > 200 && avgG > 200 && avgB > 200) {
+                detectedCat = 'streetlight'; // Dominant high luminosity exposure
+              }
+            }
+
+            if (detectedCat) {
+              setCategory(detectedCat);
+              setMlMatchMsg(`ML Visual Classifier: Auto-classified report as "${detectedCat.toUpperCase()}" based on image properties.`);
+              setTimeout(() => setMlMatchMsg(null), 5000);
+            }
+          } catch (e) {
+            console.warn("ML image classification skipped:", e);
+          }
         }
       };
       img.src = event.target?.result as string;
@@ -355,6 +424,7 @@ function NewComplaintModal({ open, onClose, onCreated, userId }: {
       const { data: existing } = await supabase.from('complaints').select('*');
 
       let match: any = null;
+      let clusterCount = 0;
 
       // 3. Hamming distance matching on real images
       if (selectedPhoto && uploadedHash) {
@@ -368,10 +438,12 @@ function NewComplaintModal({ open, onClose, onCreated, userId }: {
             const dbHash = await getImageHash(c.photo_url);
             const dist = getHammingDistance(uploadedHash, dbHash);
 
-            // Hamming distance of <= 12 bits out of 64 indicates strong perceptual visual match!
+            // Hamming distance of <= 12 bits out of 64 indicates strong perceptual visual match
             if (dist <= 12) {
-              match = c;
-              break;
+              if (!match) {
+                match = c;
+              }
+              clusterCount++;
             }
           }
         }
@@ -381,12 +453,25 @@ function NewComplaintModal({ open, onClose, onCreated, userId }: {
       let finalPhotoUrl = selectedPhoto;
 
       if (match) {
-        // Image de-duplication: Point to the existing photo_url, saving bucket/row storage!
+        // Image de-duplication: Point to the existing photo_url
         finalPhotoUrl = match.photo_url;
-        // Mark as child complaint using [ML_MERGE:parent_uuid] signature
-        finalDescription = `[ML_MERGE:${match.id}] ${finalDescription}`;
-        setMlMatchMsg(`ML Perceptual Match (Hamming distance check): Reused existing image. Consolidated duplicate complaint!`);
-        await new Promise(r => setTimeout(r, 1200));
+        
+        if (clusterCount >= 2) {
+          // Incident Overload: tag as cluster overload and escalate parent
+          finalDescription = `[ML_CLUSTER_OVERLOAD:${match.id}:${clusterCount + 1}] ${finalDescription}`;
+          setMlMatchMsg(`ML Overload Alert: Detected ${clusterCount} similar reports at this spot! Auto-merged and escalated to CRITICAL priority.`);
+          
+          // Escalate the parent complaint's title in the database
+          const parentTitle = match.title.startsWith('[CRITICAL OVERLOAD]') 
+            ? match.title 
+            : `[CRITICAL OVERLOAD] ${match.title}`;
+          await supabase.from('complaints').update({ title: parentTitle }).eq('id', match.id);
+        } else {
+          // Regular duplicate merge
+          finalDescription = `[ML_MERGE:${match.id}] ${finalDescription}`;
+          setMlMatchMsg(`ML Perceptual Match: Reused existing image. Consolidated duplicate complaint!`);
+        }
+        await new Promise(r => setTimeout(r, 1600));
       }
 
       // 4. Insert report

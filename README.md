@@ -7,16 +7,20 @@ CityZen is a premium, real-time civic portal designed for Bhubaneswar, Odisha. I
 ## 🌟 Key Features
 
 ### 1. Citizen Portal
-* **Live Emergency SOS**: Instantly triggers emergency signals. Automatically reads browser GPS coordinates, resolves them to the nearest database landmark (e.g. *AIIMS Hospital*), and opens a simulated operator voice line with real-time Speech-to-Speech synthesis.
-* **Live City Status**: Dynamic homepage grid monitoring Temperature, AQI, Humidity, Water Purity, Noise (dB), and CO₂ levels fetched in real-time from the database.
+* **Live Emergency SOS**: Instantly triggers emergency signals. Automatically reads browser GPS coordinates, resolves them to the nearest database landmark, and opens a simulated operator voice line with real-time Speech-to-Speech synthesis.
+* **Live City Status & IoT Telemetry**: Dynamic homepage grid monitoring Temperature, AQI, Humidity, Water Purity, Noise, and CO₂ levels with pulsing green status indicators and a 3-second live sensor update simulation.
+* **Real-time Weather & AQI Integration**: Fetches real live weather conditions and US AQI scores based on the browser's exact Geolocation using the Open-Meteo APIs.
 * **Interactive Smart Map**: Leaflet-powered geographic map rendering closest public transit, medical, police, fire, parking, and government hubs.
-* **Civic Complaints & Utility Invoices**: Citizens can file geo-tagged complaints with resolution tracking, link utility accounts, and pay water or electricity bills.
-* **Ask Zen AI**: An intelligent assistant capable of querying the database to find nearest hospitals, report leaks, retrieve outstanding bills, or check current weather.
-* **Account Activities & Security**: Citizen profile dashboard showing linked utilities, resolved complaints, SOS dispatches, and self-service password updates.
+* **Certificates Vault (DigiLocker)**: Connects to a `citizen_certificates` table allowing citizens to securely link Aadhaar, Driving License, Birth, and Income certificates with gold watermarked PDF cards and download options.
+* **Civic Complaints & Utility Invoices**: Citizens can file geo-tagged complaints with resolution tracking, link utility accounts, and pay water or electricity bills. Enforces a **Mandatory Unique Phone Number Gate** to prevent duplicate registrations.
+* **Ask Zen AI**: An intelligent assistant capable of querying the database to retrieve actual unpaid bills, find nearest hospitals, and route users directly to the right pages via action buttons.
+* **Glassmorphic Auth & Redesign**: A futuristic portal with ambient glowing mesh gradients, background geometric grids, floating badges, and interactive radio toggle cards.
 
-### 2. Merchant Dashboard
-* Management portal for local business owners and service providers.
-* Invoicing trackers, bill creation tools, and client ledger.
+### 2. Merchant Dashboard & BMC Panel
+* **Operations Inspector**: Right sidebar interface for BMC responders to review photo evidence, submit resolution proof records, and manage civic tasks.
+* **High-Res Zoomable Lightbox**: Allows admins and BMC responders to zoom (up to 350%), pan, and inspect original citizen-uploaded evidence in high fidelity.
+* **ML Duplicate Clustering & Overload Badges**: Average Hash (aHash) matching logic groups duplicate complaints at the same coordinates. Blinks a **🚨 OVERLOAD CLUSTER (X REPORTS)** alert, while child reports are hidden to keep logs clean.
+* **ML Image Classifier**: Client-side semantic classifier that automatically selects the correct complaint category dropdown option based on image filename keyword checks and canvas dominant pixel color analysis.
 
 ### 3. Municipal Admin Panel
 * **Comprehensive Search Bars**: Filter users, bills, active complaints, and emergency dispatches instantly by city, name, category, or email.

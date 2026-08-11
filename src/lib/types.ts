@@ -1,4 +1,4 @@
-export type Role = 'citizen' | 'business' | 'admin';
+export type Role = 'citizen' | 'police' | 'hospital' | 'bmc' | 'admin';
 export type Language = 'en' | 'hi' | 'ta' | 'te' | 'mr' | 'bn';
 
 export interface Profile {
@@ -27,6 +27,7 @@ export interface Complaint {
   department: string | null;
   location_text: string | null;
   photo_url: string | null;
+  resolution_proof?: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -103,4 +104,24 @@ export interface EnvReading {
   value: number;
   unit: string;
   recorded_at: string;
+}
+
+export interface HospitalAmbulanceContact {
+  id: string;
+  hospital_user_id: string;
+  disease_specialty: string;
+  ambulance_phone: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CitizenCertificate {
+  id: string;
+  user_id: string;
+  doc_type: 'birth' | 'income' | 'aadhaar' | 'driving_license' | 'rc';
+  doc_number: string;
+  issued_name: string;
+  issue_date: string;
+  status: 'verified' | 'pending';
+  created_at: string;
 }

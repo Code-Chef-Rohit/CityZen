@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Mic, MapPin, Building2, Droplets, Zap, X } from 'lucide-react';
+import { Sparkles, Send, Mic, MapPin, Building2, Droplets, Zap, X, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { cn } from '@/lib/utils';
@@ -8,18 +8,25 @@ interface Message {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  cards?: { icon: typeof MapPin; title: string; subtitle: string; action?: string }[];
+  cards?: { 
+    icon: any; 
+    title: string; 
+    subtitle: string; 
+    action?: string; 
+    actionClick?: () => void;
+  }[];
 }
 
 const suggestions = [
   'Find nearest hospital',
-  'Report a water leakage',
-  'Pay my electricity bill',
-  'What\'s the AQI today?',
-  'Track my complaints',
+  'Report water leakage',
+  'Pay utility bills',
+  'Check Air Quality today',
+  'Track active complaints',
+  'Link Aadhaar or Birth certificate'
 ];
 
-export function ZenAI({ onBack }: { onBack: () => void }) {
+export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (screenObj: any) => void }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -97,9 +104,10 @@ export function ZenAI({ onBack }: { onBack: () => void }) {
 
     if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('yo') || q.includes('greetings') || q.includes('morning') || q.includes('afternoon') || q.includes('evening')) {
       let reply = `Hello ${name.split(' ')[0]}! I'm Zen, your smart local helper. I see you are logged in from Ward ${ward}. `;
-      const unpaidBills = cityContext.outstandingBills;
+      const unpaidBills = cityContext.outstandingBills.filter((b: any) => b.status === 'unpaid');
       if (unpaidBills.length > 0) {
-        reply += `You currently have ${unpaidBills.length} unpaid utility bills (Electricity: ₹1,450.00, Water: ₹280.50). `;
+        const billDescriptions = unpaidBills.map((b: any) => `${b.type.charAt(0).toUpperCase() + b.type.slice(1)}: ₹${b.amount}`).join(', ');
+        reply += `You currently have ${unpaidBills.length} unpaid utility bills (${billDescriptions}). `;
       } else {
         reply += `You have no pending bills. `;
       }
@@ -124,15 +132,28 @@ export function ZenAI({ onBack }: { onBack: () => void }) {
             icon: Building2,
             title: h.name,
             subtitle: `${h.address || 'Bhubaneswar'} · ${h.phone || '0674-247-6600'}`,
-            action: 'Get Directions'
+            action: 'Get Directions',
+            actionClick: () => onNavigate?.({ name: 'map', category: 'hospital' })
           }))
         };
       }
       return {
         text: `I found medical facilities in your city: AIIMS Hospital Bhubaneswar (Sijua, Patrapada) is closest. I've rendered directions cards for you below:`,
         cards: [
-          { icon: Building2, title: 'AIIMS Hospital Bhubaneswar', subtitle: 'Sijua, Patrapada · Open 24/7 · 0674-247-6600', action: 'Get Directions' },
-          { icon: Building2, title: 'AMRI Hospital', subtitle: 'Khandagiri Chowk · Open 24/7 · 0674-666-6600', action: 'Get Directions' }
+          { 
+            icon: Building2, 
+            title: 'AIIMS Hospital Bhubaneswar', 
+            subtitle: 'Sijua, Patrapada · Open 24/7 · 0674-247-6600', 
+            action: 'Get Directions',
+            actionClick: () => onNavigate?.({ name: 'map', category: 'hospital' })
+          },
+          { 
+            icon: Building2, 
+            title: 'AMRI Hospital', 
+            subtitle: 'Khandagiri Chowk · Open 24/7 · 0674-666-6600', 
+            action: 'Get Directions',
+            actionClick: () => onNavigate?.({ name: 'map', category: 'hospital' })
+          }
         ]
       };
     }
@@ -146,48 +167,108 @@ export function ZenAI({ onBack }: { onBack: () => void }) {
             icon: b.type === 'electricity' ? Zap : Droplets,
             title: `${b.type.charAt(0).toUpperCase() + b.type.slice(1)} Bill`,
             subtitle: `₹${b.amount} · Status: ${b.status} · Due: ${b.due || 'Soon'}`,
-            action: 'Pay Now'
+            action: 'Pay Now',
+            actionClick: () => onNavigate?.({ name: 'bills', type: b.type })
           }))
         };
       }
-      return { text: `You have no pending bills. All utility accounts are fully settled!` };
+      return { 
+        text: `You have no pending bills. All utility accounts are fully settled!`,
+        cards: [{
+          icon: Zap,
+          title: 'Bills Portal',
+          subtitle: 'Check history and links',
+          action: 'Open Portal',
+          actionClick: () => onNavigate?.({ name: 'bills' })
+        }]
+      };
     }
 
     if (q.includes('complaint') || q.includes('track') || q.includes('status') || q.includes('report') || q.includes('broken') || q.includes('leak') || q.includes('garbage')) {
       const activeC = cityContext.filedComplaints;
+      const categoryHint = q.includes('water') ? 'water' : q.includes('electric') ? 'electricity' : q.includes('garbage') || q.includes('waste') ? 'waste' : 'other';
       if (activeC.length > 0) {
         return {
           text: `You have ${activeC.length} active complaints filed. The most recent — "${activeC[0].title}" — is currently "${activeC[0].status}".`,
-          cards: activeC.map((c: any, i: number) => ({
+          cards: activeC.map((c: any) => ({
             icon: MapPin,
             title: c.title,
             subtitle: `Category: ${c.category} · Status: ${c.status}`,
-            action: 'Open'
+            action: 'Open tracker',
+            actionClick: () => onNavigate?.({ name: 'complaints' })
           }))
         };
       }
       return {
         text: `You have no active complaints filed. You can report issues like water leakage or broken streetlights from the Complaints tab.`,
         cards: [
-          { icon: MapPin, title: 'Report New Issue', subtitle: 'Auto-assign to municipal supervisor', action: 'Start' }
+          { 
+            icon: MapPin, 
+            title: 'Report New Issue', 
+            subtitle: 'Auto-assign to municipal supervisor', 
+            action: 'Start',
+            actionClick: () => onNavigate?.({ name: 'complaints', category: categoryHint })
+          }
         ]
       };
     }
 
-    if (q.includes('aqi') || q.includes('air') || q.includes('quality') || q.includes('temp') || q.includes('weather') || q.includes('pollution') || q.includes('rain') || q.includes('sunny')) {
+    if (q.includes('aqi') || q.includes('air') || q.includes('quality') || q.includes('temp') || q.includes('weather') || q.includes('pollution') || q.includes('rain') || q.includes('sunny') || q.includes('environment')) {
+      const aqiService = cityContext.availableServices?.find((s: any) => 
+        s.name.toLowerCase().includes('air') || s.name.toLowerCase().includes('aqi') || s.name.toLowerCase().includes('quality')
+      );
       return {
-        text: `Here is the current live environmental status for Ward 12:\n• AQI: 78 (Satisfactory)\n• Temp: 29.5°C (Sunny)\n• Water Quality: 88%\n• Noise level: 62dB\n• Green Coverage: 34%\n• CO2 Level: 420ppm`
+        text: `Here is the current live environmental status for Ward 12:\n• AQI: 78 (Satisfactory)\n• Temp: 29.5°C (Sunny)\n• Water Quality: 88%\n• Noise level: 62dB\n• Green Coverage: 34%\n• CO2 Level: 420ppm`,
+        cards: [
+          {
+            icon: Sparkles,
+            title: 'Air Quality Center',
+            subtitle: 'Open full metrics dashboard',
+            action: 'Open Dashboard',
+            actionClick: () => {
+              if (aqiService) {
+                onNavigate?.({ name: 'service', id: aqiService.id });
+              } else {
+                onNavigate?.({ name: 'explore' });
+              }
+            }
+          }
+        ]
+      };
+    }
+
+    if (q.includes('certificate') || q.includes('permit') || q.includes('license') || q.includes('aadhaar') || q.includes('digilocker') || q.includes('pan') || q.includes('birth') || q.includes('income')) {
+      const certService = cityContext.availableServices?.find((s: any) => 
+        s.name.toLowerCase().includes('certificate') || s.name.toLowerCase().includes('permit')
+      );
+      return {
+        text: `You can access your verified government certificates using your DigiLocker citizen document vault:`,
+        cards: [
+          {
+            icon: FileText,
+            title: 'DigiLocker Document Vault',
+            subtitle: 'Manage Aadhaar, Driving License, Birth Certificates',
+            action: 'Open DigiLocker',
+            actionClick: () => {
+              if (certService) {
+                onNavigate?.({ name: 'service', id: certService.id });
+              } else {
+                onNavigate?.({ name: 'explore' });
+              }
+            }
+          }
+        ]
       };
     }
 
     if (q.includes('thanks') || q.includes('thank you') || q.includes('great') || q.includes('awesome') || q.includes('cool') || q.includes('ok') || q.includes('perfect')) {
       return {
-        text: `You're welcome, ${name.split(' ')[0]}! Let me know if there's anything else I can help you with today.`
+        text: `You're welcome! Let me know if there's anything else I can help you with today.`
       };
     }
 
     return {
-      text: `I'm Zen, your smart local assistant. I can help with:\n• Finding nearest hospitals ("nearest hospital")\n• Reviewing outstanding invoices ("show bills")\n• Tracking filed complaints ("complaint status")\n• Checking live environmental readings ("weather updates")\n\nHow can I help you today?`
+      text: `I'm Zen, your smart local assistant. I can help with:\n• Finding nearest hospitals ("nearest hospital")\n• Reviewing outstanding invoices ("show bills")\n• Tracking filed complaints ("complaint status")\n• Checking live environmental readings ("weather updates")\n• Managing DigiLocker certificates ("government certificates")\n\nHow can I help you today?`
     };
   };
 
@@ -323,7 +404,10 @@ export function ZenAI({ onBack }: { onBack: () => void }) {
                         <p className="text-xs text-ink-400 truncate">{card.subtitle}</p>
                       </div>
                       {card.action && (
-                        <button className="text-xs font-semibold text-primary-600 whitespace-nowrap">
+                        <button
+                          onClick={() => card.actionClick && card.actionClick()}
+                          className="text-xs font-semibold text-primary-600 whitespace-nowrap hover:text-primary-750 bg-primary-50/50 hover:bg-primary-55 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                        >
                           {card.action}
                         </button>
                       )}

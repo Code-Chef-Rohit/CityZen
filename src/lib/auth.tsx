@@ -8,7 +8,7 @@ interface AuthState {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string, phone: string, role: 'citizen' | 'business') => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, phone: string, role: 'citizen' | 'business') => Promise<any>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -111,15 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
 
-    // Fallback: Directly upsert role in profiles table to bypass any outdated auth trigger constraints
+    // Fallback: Directly upsert role and email in profiles table to bypass any outdated auth trigger constraints
     if (data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        full_name: fullName,
-        phone,
-        role: role
-      });
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          full_name: fullName,
+          phone,
+          role: role,
+          email: email.trim()
+        });
+      } catch (upsertErr) {
+        console.warn("Client-side profile upsert bypassed. Relying on DB trigger:", upsertErr);
+      }
     }
+    return data;
   };
 
   const signInWithGoogle = async () => {
