@@ -830,7 +830,11 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
               <div className="relative rounded-2xl overflow-hidden border border-slate-200 aspect-video bg-slate-50 flex items-center justify-center group">
                 <img src={selectedPhoto} alt="Upload Preview" className="w-full h-full object-cover" />
                 <button
-                  onClick={() => setSelectedPhoto(null)}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPhoto(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
                   className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />

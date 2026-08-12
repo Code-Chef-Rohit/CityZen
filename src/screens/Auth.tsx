@@ -36,19 +36,24 @@ export function Auth() {
       if (mode === 'signin') {
         await signIn(email.trim(), password);
       } else if (mode === 'signup') {
-        if (!fullName.trim()) throw new Error('Please enter your name');
-        if (phone.trim()) {
-          const { data: existingPhone } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('phone', phone.trim())
-            .maybeSingle();
-
-          if (existingPhone) {
-            throw new Error('This phone number is already registered to another user account.');
-          }
+        if (!fullName.trim()) throw new Error('Please enter your full name.');
+        const cleanPhone = phone.replace(/\D/g, '').trim();
+        if (!cleanPhone || cleanPhone.length !== 10) {
+          throw new Error('Please enter a valid 10-digit mobile number for registration.');
         }
-        const signUpData = await signUp(email.trim(), password, fullName.trim(), phone.trim(), signupRole);
+
+        // Check if phone already registered to any existing profile
+        const { data: existingPhone, error: phoneCheckErr } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', cleanPhone)
+          .maybeSingle();
+
+        if (existingPhone) {
+          throw new Error(`Mobile number ${cleanPhone} is already registered to another user account. Each account must have a unique mobile number.`);
+        }
+
+        const signUpData = await signUp(email.trim(), password, fullName.trim(), cleanPhone, signupRole);
         if (signUpData && !signUpData.session) {
           alert("Account created successfully! Please check your email to verify your account before logging in.");
           setMode('signin');

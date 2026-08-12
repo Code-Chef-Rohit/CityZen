@@ -302,8 +302,9 @@ function AppContent() {
                 </button>
                 <button
                   onClick={async () => {
-                    if (phoneInput.length !== 10) {
-                      setPhoneError('Please enter a valid 10-digit phone number.');
+                    const cleanPhone = phoneInput.replace(/\D/g, '').trim();
+                    if (cleanPhone.length !== 10) {
+                      setPhoneError('Please enter a valid 10-digit mobile number.');
                       return;
                     }
                     setPhoneSaving(true);
@@ -313,19 +314,19 @@ function AppContent() {
                       const { data: existingPhone } = await supabase
                         .from('profiles')
                         .select('id')
-                        .eq('phone', phoneInput.trim())
+                        .eq('phone', cleanPhone)
                         .neq('id', profile?.id)
                         .maybeSingle();
 
                       if (existingPhone) {
-                        setPhoneError('This phone number is already registered to another user account.');
+                        setPhoneError(`Mobile number ${cleanPhone} is already registered to another citizen account. Each user must have a unique mobile number.`);
                         setPhoneSaving(false);
                         return;
                       }
 
                       const { error } = await supabase
                         .from('profiles')
-                        .update({ phone: phoneInput.trim() })
+                        .update({ phone: cleanPhone })
                         .eq('id', profile?.id);
                       if (error) throw error;
                       

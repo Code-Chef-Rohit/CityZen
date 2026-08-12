@@ -207,29 +207,44 @@ export function Profile({ onBack }: { onBack: () => void }) {
 
   const handleSave = async () => {
     setSaving(true);
-    if (phone.trim()) {
+    const cleanPhone = phone.replace(/\D/g, '').trim();
+    if (cleanPhone && cleanPhone.length !== 10) {
+      alert("Please enter a valid 10-digit mobile number.");
+      setSaving(false);
+      return;
+    }
+
+    if (cleanPhone) {
       const { data: existingPhone } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('phone', phone.trim())
+        .select('id, full_name')
+        .eq('phone', cleanPhone)
         .neq('id', profile?.id)
         .maybeSingle();
 
       if (existingPhone) {
-        alert("This phone number is already registered to another user account.");
+        alert(`This phone number (${cleanPhone}) is already registered to another citizen account. Each user must have a unique mobile number.`);
         setSaving(false);
         return;
       }
     }
 
-    await supabase.from('profiles').update({
-      full_name: fullName.trim(),
-      phone: phone.trim(),
-      ward: ward ? Number(ward) : null,
-    }).eq('id', profile?.id);
-    await refreshProfile();
-    setSaving(false);
-    setEditing(false);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        full_name: fullName.trim(),
+        phone: cleanPhone || null,
+        ward: ward ? Number(ward) : null,
+      }).eq('id', profile?.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      setSaving(false);
+      setEditing(false);
+    } catch (err: any) {
+      setSaving(false);
+      alert("Failed to update profile: " + (err.message || err));
+    }
   };
 
   const handleDeleteAccount = async () => {

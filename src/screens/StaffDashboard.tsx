@@ -296,6 +296,7 @@ export default function StaffDashboard() {
     }
     setSubmittingProof(true);
     try {
+      // 1. Resolve master complaint
       const { error } = await supabase
         .from('complaints')
         .update({
@@ -308,7 +309,38 @@ export default function StaffDashboard() {
       
       if (error) throw error;
 
-      // Notify citizen who filed
+      // 2. Resolve all linked child duplicate complaints
+      const childComplaints = complaints.filter(x => 
+        x.description && (
+          x.description.startsWith(`[ML_MERGE:${selectedComplaint.id}]`) ||
+          x.description.includes(`[ML_CLUSTER_OVERLOAD:${selectedComplaint.id}`)
+        )
+      );
+
+      if (childComplaints.length > 0) {
+        const childIds = childComplaints.map(c => c.id);
+        await supabase
+          .from('complaints')
+          .update({
+            status: 'resolved',
+            resolution_proof: resolutionProofText.trim(),
+            resolution_photo_url: resolutionProofPhoto,
+            resolved_at: new Date().toISOString()
+          })
+          .in('id', childIds);
+
+        // Notify all citizens who reported this consolidated issue
+        for (const child of childComplaints) {
+          await supabase.from('notifications').insert({
+            user_id: child.user_id,
+            title: 'Consolidated Complaint Resolved by BMC',
+            message: `Your report "${child.title}" has been completed. BMC Proof: ${resolutionProofText.trim()}`,
+            type: 'complaint'
+          });
+        }
+      }
+
+      // Notify master citizen who filed
       await supabase.from('notifications').insert({
         user_id: selectedComplaint.user_id,
         title: 'Complaint Resolved by BMC',
@@ -320,7 +352,7 @@ export default function StaffDashboard() {
       setResolutionProofText('');
       setResolutionProofPhoto(null);
       loadData();
-      alert("Complaint marked resolved successfully with proof photo logged!");
+      alert(`Complaint ${childComplaints.length > 0 ? `and ${childComplaints.length} consolidated reports` : ''} marked resolved successfully with BMC proof photo!`);
     } catch (err: any) {
       alert("Failed to resolve complaint: " + err.message);
     } finally {
