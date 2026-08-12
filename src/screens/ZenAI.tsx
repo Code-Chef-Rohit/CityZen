@@ -336,24 +336,21 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
     }
 
     if (q.includes('aqi') || q.includes('air') || q.includes('quality') || q.includes('temp') || q.includes('weather') || q.includes('pollution') || q.includes('rain') || q.includes('sunny') || q.includes('environment')) {
-      const aqiService = cityContext.availableServices?.find((s: any) => 
-        s.name.toLowerCase().includes('air') || s.name.toLowerCase().includes('aqi') || s.name.toLowerCase().includes('quality')
-      );
+      const w = cityContext.liveWeather || { temp: 29, aqi: 68, humidity: 68, pm25: 21.4, pm10: 46.8 };
+      let aqiStatus = 'Good';
+      if (w.aqi > 50 && w.aqi <= 100) aqiStatus = 'Moderate';
+      else if (w.aqi > 100 && w.aqi <= 150) aqiStatus = 'Poor / Sensitive';
+      else if (w.aqi > 150) aqiStatus = 'Unhealthy';
+
       return {
-        text: `Here is the current live environmental status for Ward 12:\n• AQI: 78 (Satisfactory)\n• Temp: 29.5°C (Sunny)\n• Water Quality: 88%\n• Noise level: 62dB\n• Green Coverage: 34%\n• CO2 Level: 420ppm`,
+        text: `Here is the current live environmental & atmospheric reading for your location:\n• Air Quality Index (AQI): ${w.aqi} (${aqiStatus})\n• Temperature: ${w.temp}°C\n• Relative Humidity: ${w.humidity}%\n• Fine Particulate (PM2.5): ${w.pm25} µg/m³\n• Respirable Dust (PM10): ${w.pm10} µg/m³\n• Continuous Sensor Telemetry Online`,
         cards: [
           {
             icon: Sparkles,
-            title: 'Air Quality Center',
-            subtitle: 'Open full metrics dashboard',
-            action: 'Open Dashboard',
-            actionClick: () => {
-              if (aqiService) {
-                onNavigate?.({ name: 'service', id: aqiService.id });
-              } else {
-                onNavigate?.({ name: 'explore' });
-              }
-            }
+            title: 'Live Environmental Status',
+            subtitle: `AQI ${w.aqi} · ${w.temp}°C Live`,
+            action: 'View Home Telemetry',
+            actionClick: () => onNavigate?.({ name: 'home' })
           }
         ]
       };
@@ -458,6 +455,23 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         servicesData = servicesRes.data ?? [];
       }
 
+      let liveWeatherInfo = { temp: 29, aqi: 68, humidity: 68, pm25: 21.4, pm10: 46.8 };
+      try {
+        const [wRes, aRes] = await Promise.all([
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=20.2961&longitude=85.8245&current=temperature_2m,relative_humidity_2m`).then(r => r.json()),
+          fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=20.2961&longitude=85.8245&current=us_aqi,pm10,pm2_5`).then(r => r.json())
+        ]);
+        if (wRes?.current) {
+          liveWeatherInfo.temp = Math.round(wRes.current.temperature_2m);
+          liveWeatherInfo.humidity = Math.round(wRes.current.relative_humidity_2m);
+        }
+        if (aRes?.current) {
+          liveWeatherInfo.aqi = Math.round(aRes.current.us_aqi ?? 68);
+          liveWeatherInfo.pm25 = Number((aRes.current.pm2_5 ?? 21.4).toFixed(1));
+          liveWeatherInfo.pm10 = Number((aRes.current.pm10 ?? 46.8).toFixed(1));
+        }
+      } catch (e) {}
+
       const cityContext = {
         userProfile: {
           name: profileData?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Citizen',
@@ -469,7 +483,8 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         filedComplaints: complaintsData.map(c => ({ title: c.title, status: c.status, category: c.category })),
         environmentalReadings: envData.map(e => ({ metric: e.metric, value: e.value, unit: e.unit })),
         nearbyLocations: mapPointsData.map(m => ({ name: m.name, category: m.category, address: m.address, phone: m.phone })),
-        availableServices: servicesData
+        availableServices: servicesData,
+        liveWeather: liveWeatherInfo
       };
 
       await new Promise(resolve => setTimeout(resolve, 600));

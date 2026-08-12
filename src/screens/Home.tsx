@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  Sun, Cloud, CloudRain, CloudLightning, Droplets, Wind, Thermometer, Volume2, Leaf, Siren, ChevronRight,
-  TrendingUp, AlertCircle, Sparkles, Bell, Zap, Trash2, Car,
+  Sun, Cloud, CloudRain, CloudLightning, Droplets, Wind, Thermometer, Leaf, Siren, ChevronRight,
+  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -17,7 +17,6 @@ interface HomeProps {
 
 export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
   const { profile, session } = useAuth();
-  const [env, setEnv] = useState<EnvReading[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -29,63 +28,80 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
     icon: 'sun' | 'cloud' | 'rain' | 'thunder';
   }>({
     temp: 29,
-    condition: 'Cloudy',
+    condition: 'Partly Cloudy',
     icon: 'cloud'
   });
+
   const [liveSensors, setLiveSensors] = useState({
     temp: 29,
-    aqi: 72,
-    humidity: 64,
-    water: 88.4,
-    noise: 58,
-    co2: 412
+    feelsLike: 32,
+    aqi: 68,
+    humidity: 68,
+    pm25: 21.4,
+    pm10: 46.8,
+    windSpeed: 12.0,
+    uvIndex: 4
   });
 
+  const getAqiCategory = (aqiVal: number) => {
+    if (aqiVal <= 50) return { label: 'Good', color: 'text-emerald-400', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' };
+    if (aqiVal <= 100) return { label: 'Moderate', color: 'text-amber-400', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/25' };
+    if (aqiVal <= 150) return { label: 'Poor', color: 'text-orange-400', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/25' };
+    if (aqiVal <= 200) return { label: 'Unhealthy', color: 'text-red-400', badge: 'bg-red-500/15 text-red-400 border-red-500/25' };
+    if (aqiVal <= 300) return { label: 'Very Unhealthy', color: 'text-purple-400', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/25' };
+    return { label: 'Hazardous', color: 'text-rose-500', badge: 'bg-rose-500/15 text-rose-500 border-rose-500/25' };
+  };
+
   useEffect(() => {
-    // 1. Real-time IoT sensor telemetry ticker (3-second pulse)
-    const ticker = setInterval(() => {
-      setLiveSensors(prev => ({
-        ...prev,
-        noise: Math.min(85, Math.max(45, prev.noise + (Math.random() > 0.5 ? 1 : -1))),
-        co2: Math.min(480, Math.max(390, prev.co2 + (Math.random() > 0.5 ? 2 : -2))),
-        water: Number((Math.min(99, Math.max(80, prev.water + (Math.random() > 0.5 ? 0.2 : -0.2)))).toFixed(1))
-      }));
-    }, 3000);
+    const fetchLiveMetrics = async (lat: number, lng: number) => {
+      try {
+        const [weatherRes, airRes] = await Promise.all([
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m`).then(r => r.json()),
+          fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm10,pm2_5,uv_index`).then(r => r.json())
+        ]);
 
-    const fetchLiveMetrics = (lat: number, lng: number) => {
-      // Live weather & humidity
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.current) {
-            const t = Math.round(data.current.temperature_2m);
-            const h = Math.round(data.current.relative_humidity_2m);
-            const code = data.current.weather_code;
+        if (weatherRes?.current) {
+          const t = Math.round(weatherRes.current.temperature_2m);
+          const feels = Math.round(weatherRes.current.apparent_temperature ?? t);
+          const h = Math.round(weatherRes.current.relative_humidity_2m);
+          const wind = Number((weatherRes.current.wind_speed_10m ?? 12).toFixed(1));
+          const code = weatherRes.current.weather_code;
 
-            let cond = 'Cloudy';
-            let iconType: 'sun' | 'cloud' | 'rain' | 'thunder' = 'cloud';
-            if (code === 0) { cond = 'Clear'; iconType = 'sun'; }
-            else if (code >= 1 && code <= 3) { cond = 'Cloudy'; iconType = 'cloud'; }
-            else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) { cond = 'Rainy'; iconType = 'rain'; }
-            else if (code >= 95) { cond = 'Thunderstorm'; iconType = 'thunder'; }
-            else if (code >= 45 && code <= 48) { cond = 'Foggy'; iconType = 'cloud'; }
+          let cond = 'Sunny / Clear';
+          let iconType: 'sun' | 'cloud' | 'rain' | 'thunder' = 'sun';
+          if (code === 0) { cond = 'Sunny / Clear'; iconType = 'sun'; }
+          else if (code >= 1 && code <= 3) { cond = 'Partly Cloudy'; iconType = 'cloud'; }
+          else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) { cond = 'Rain Showers'; iconType = 'rain'; }
+          else if (code >= 95) { cond = 'Thunderstorm'; iconType = 'thunder'; }
+          else if (code >= 45 && code <= 48) { cond = 'Foggy / Hazy'; iconType = 'cloud'; }
 
-            setRealWeather({ temp: t, condition: cond, icon: iconType });
-            setLiveSensors(prev => ({ ...prev, temp: t, humidity: h }));
-          }
-        })
-        .catch((err) => console.warn('Real weather fetch error:', err));
+          setRealWeather({ temp: t, condition: cond, icon: iconType });
+          setLiveSensors(prev => ({
+            ...prev,
+            temp: t,
+            feelsLike: feels,
+            humidity: h,
+            windSpeed: wind
+          }));
+        }
 
-      // Live US AQI
-      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.current?.us_aqi) {
-            const liveAqi = Math.round(data.current.us_aqi);
-            setLiveSensors(prev => ({ ...prev, aqi: liveAqi }));
-          }
-        })
-        .catch((err) => console.warn('Live AQI fetch error:', err));
+        if (airRes?.current) {
+          const liveAqi = Math.round(airRes.current.us_aqi ?? 68);
+          const p25 = Number((airRes.current.pm2_5 ?? 21.4).toFixed(1));
+          const p10 = Number((airRes.current.pm10 ?? 46.8).toFixed(1));
+          const uv = Math.round(airRes.current.uv_index ?? 4);
+
+          setLiveSensors(prev => ({
+            ...prev,
+            aqi: liveAqi,
+            pm25: p25,
+            pm10: p10,
+            uvIndex: uv
+          }));
+        }
+      } catch (err) {
+        console.warn('Real meteorological telemetry fetch error:', err);
+      }
     };
 
     if (navigator.geolocation) {
@@ -97,21 +113,17 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
     } else {
       fetchLiveMetrics(20.2961, 85.8245);
     }
-
-    return () => clearInterval(ticker);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [envRes, billsRes, complaintsRes, notifRes] = await Promise.all([
-        supabase.from('environmental_readings').select('*'),
+      const [billsRes, complaintsRes, notifRes] = await Promise.all([
         supabase.from('bills').select('*').eq('status', 'unpaid').order('due_date', { ascending: true }).limit(3),
         supabase.from('complaints').select('*').order('created_at', { ascending: false }).limit(3),
         supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(3),
       ]);
       if (cancelled) return;
-      setEnv(envRes.data ?? []);
       setBills(billsRes.data ?? []);
       setComplaints(complaintsRes.data ?? []);
       setNotifications(notifRes.data ?? []);
@@ -124,10 +136,6 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const rawName = profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || 'Citizen';
   const firstName = rawName.trim().split(' ')[0] || 'Citizen';
-
-  const envMap = Object.fromEntries(env.map((e) => [e.metric, e]));
-  const aqi = envMap.aqi;
-  const temp = envMap.temperature;
 
   return (
     <div className="min-h-screen md:min-h-0 md:h-[calc(100vh-3rem)] w-full md:max-w-5xl mx-auto bg-ink-50 pb-24 md:shadow-2xl md:my-6 md:rounded-3xl overflow-y-auto border border-slate-800/40 animate-fade-in">
@@ -162,26 +170,29 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
           <div className="flex gap-3 mt-5">
             <div className="flex-1 bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3">
               {realWeather.icon === 'sun' ? (
-                <Sun className="w-8 h-8 text-amber-300" />
+                <Sun className="w-8 h-8 text-amber-300 shrink-0" />
               ) : realWeather.icon === 'rain' ? (
-                <CloudRain className="w-8 h-8 text-sky-200" />
+                <CloudRain className="w-8 h-8 text-sky-200 shrink-0" />
               ) : realWeather.icon === 'thunder' ? (
-                <CloudLightning className="w-8 h-8 text-amber-400" />
+                <CloudLightning className="w-8 h-8 text-amber-400 shrink-0" />
               ) : (
-                <Cloud className="w-8 h-8 text-sky-200" />
+                <Cloud className="w-8 h-8 text-sky-200 shrink-0" />
               )}
               <div>
-                <p className="text-2xl font-bold leading-none">{realWeather.temp}°C</p>
-                <p className="text-primary-100/80 text-xs mt-0.5">
-                  {realWeather.condition} · {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                <p className="text-2xl font-bold leading-none">{liveSensors.temp}°C</p>
+                <p className="text-primary-100/80 text-xs mt-0.5 font-medium">
+                  {realWeather.condition} · Feels {liveSensors.feelsLike}°C
                 </p>
               </div>
             </div>
             <div className="flex-1 bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3">
-              <Wind className="w-8 h-8 text-primary-200" />
+              <Wind className="w-8 h-8 text-primary-200 shrink-0" />
               <div>
-                <p className="text-2xl font-bold leading-none">{aqi?.value ?? 78}</p>
-                <p className="text-primary-100/80 text-xs mt-0.5">AQI · Satisfactory</p>
+                <p className="text-2xl font-bold leading-none">{liveSensors.aqi}</p>
+                <p className="text-primary-100/90 text-xs mt-0.5 font-semibold flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${getAqiCategory(liveSensors.aqi).color.includes('emerald') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                  AQI · {getAqiCategory(liveSensors.aqi).label}
+                </p>
               </div>
             </div>
           </div>
@@ -228,21 +239,24 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
         </div>
       </div>
 
-      {/* Live city status */}
+      {/* Live Environmental Telemetry */}
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-ink-900">Live City Status</h2>
-          <span className="text-xs text-primary-600 font-semibold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" /> Real-time IoT Stream
+          <div>
+            <h2 className="font-bold text-ink-900 text-sm">Live Environmental Telemetry</h2>
+            <p className="text-[10px] text-ink-400">Continuous Satellite & Ground Sensor Station Feeds</p>
+          </div>
+          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Station Feed
           </span>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={Thermometer} label="Temp" value={liveSensors.temp} unit="°C" color="text-accent-500" />
-          <StatCard icon={Wind} label="AQI" value={liveSensors.aqi} unit="" color="text-primary-500" />
+          <StatCard icon={Thermometer} label="Temperature" value={liveSensors.temp} unit="°C" color="text-amber-500" />
+          <StatCard icon={Wind} label="Air Quality" value={liveSensors.aqi} unit="AQI" color="text-primary-500" />
           <StatCard icon={Droplets} label="Humidity" value={liveSensors.humidity} unit="%" color="text-sky-500" />
-          <StatCard icon={Droplets} label="Water" value={liveSensors.water} unit="%" color="text-secondary-500" />
-          <StatCard icon={Volume2} label="Noise" value={liveSensors.noise} unit="dB" color="text-error-500" />
-          <StatCard icon={TrendingUp} label="CO₂" value={liveSensors.co2} unit="ppm" color="text-ink-500" />
+          <StatCard icon={Leaf} label="PM 2.5" value={liveSensors.pm25} unit="µg/m³" color="text-emerald-500" />
+          <StatCard icon={Wind} label="PM 10" value={liveSensors.pm10} unit="µg/m³" color="text-indigo-500" />
+          <StatCard icon={Gauge} label="Wind Speed" value={liveSensors.windSpeed} unit="km/h" color="text-teal-500" />
         </div>
       </div>
 
