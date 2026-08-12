@@ -57,8 +57,23 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         supabase.from('emergency_requests').select('*').order('created_at', { ascending: false })
       ]);
 
+      let usersList = usersRes.data ?? [];
       const errs: string[] = [];
-      if (usersRes.error) errs.push(`Profiles Table: ${usersRes.error.message}`);
+
+      if (usersRes.error) {
+        console.warn("Direct profiles query encountered an issue. Trying RPC get_all_profiles:", usersRes.error.message);
+        try {
+          const { data: rpcUsers, error: rpcErr } = await supabase.rpc('get_all_profiles');
+          if (!rpcErr && rpcUsers && rpcUsers.length > 0) {
+            usersList = rpcUsers;
+          } else {
+            errs.push(`Profiles Table: ${usersRes.error.message}`);
+          }
+        } catch (rpcEx) {
+          errs.push(`Profiles Table: ${usersRes.error.message}`);
+        }
+      }
+
       if (complaintsRes.error) errs.push(`Complaints Table: ${complaintsRes.error.message}`);
       if (billsRes.error) errs.push(`Bills Table: ${billsRes.error.message}`);
       if (emergenciesRes.error) errs.push(`SOS Table: ${emergenciesRes.error.message}`);
@@ -68,7 +83,6 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         setSyncError(errs.join(' • '));
       }
 
-      const usersList = usersRes.data ?? [];
       const complaintsList = complaintsRes.data ?? [];
       const billsList = billsRes.data ?? [];
       const emergenciesList = emergenciesRes.data ?? [];
