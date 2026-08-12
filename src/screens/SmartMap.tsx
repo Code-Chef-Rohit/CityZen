@@ -110,11 +110,11 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
       const isBhubaneswar = Math.abs(lat - 20.2184) < 1.0 && Math.abs(lng - 85.7331) < 1.0;
       if (isBhubaneswar) {
         const filteredReal = realBhubaneswarPoints.filter(
-          realP => !allPoints.some(dbP => dbP.name === realP.name)
+          realP => !allPoints.some((dbP: any) => dbP.name === realP.name)
         );
         allPoints = [...allPoints, ...filteredReal];
       } else {
-        const nearby = allPoints.filter(p => 
+        const nearby = allPoints.filter((p: any) => 
           Math.abs(Number(p.lat) - lat) < 0.25 && 
           Math.abs(Number(p.lng) - lng) < 0.25
         );

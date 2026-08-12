@@ -25,7 +25,7 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('services').select('*').order('category').then(({ data }) => {
+    supabase.from('services').select('*').order('category').then(({ data }: any) => {
       setServices(data ?? []);
       setLoading(false);
     });
@@ -180,7 +180,7 @@ export function ServiceDetail({
 
   useEffect(() => {
     setLoading(true);
-    supabase.from('services').select('*').eq('id', serviceId).maybeSingle().then(({ data }) => {
+    supabase.from('services').select('*').eq('id', serviceId).maybeSingle().then(({ data }: any) => {
       setService(data as Service | null);
       setLoading(false);
       
@@ -234,7 +234,7 @@ export function ServiceDetail({
     try {
       const { data } = await supabase.from('environmental_readings').select('*');
       if (data) {
-        const aqi = data.find(d => d.metric === 'aqi')?.value;
+        const aqi = data.find((d: any) => d.metric === 'aqi')?.value;
         if (aqi) {
           setAqiVal(aqi);
           setAqiPms({

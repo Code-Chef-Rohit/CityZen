@@ -74,7 +74,7 @@ export default function StaffDashboard() {
         
         // Find one assigned to this user (we can check phone match or choose first)
         if (facs && facs.length > 0) {
-          const matched = facs.find(f => f.phone === profile.phone) || facs[0];
+          const matched = facs.find((f: any) => f.phone === profile.phone) || facs[0];
           setSelectedFacility(matched);
           setFacName(matched.name);
           setFacAddress(matched.address || '');

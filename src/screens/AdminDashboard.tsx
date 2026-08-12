@@ -67,9 +67,9 @@ export default function AdminDashboard() {
 
       // Calculate Metrics
       const totalUsers = usersList.length;
-      const activeComplaints = complaintsList.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length;
-      const totalUnpaidAmount = billsList.filter(b => b.status === 'unpaid').reduce((sum, b) => sum + Number(b.amount), 0);
-      const activeEmergencies = emergenciesList.filter(e => e.status !== 'resolved').length;
+      const activeComplaints = complaintsList.filter((c: any) => c.status !== 'resolved' && c.status !== 'rejected').length;
+      const totalUnpaidAmount = billsList.filter((b: any) => b.status === 'unpaid').reduce((sum: number, b: any) => sum + Number(b.amount), 0);
+      const activeEmergencies = emergenciesList.filter((e: any) => e.status !== 'resolved').length;
 
       setMetrics({
         totalUsers,

@@ -14,7 +14,7 @@ import { ZenAI } from '@/screens/ZenAI';
 import { Notifications, Profile } from '@/screens/Profile';
 import StaffDashboard from '@/screens/StaffDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 
 type Screen =
   | { name: 'home' }
@@ -139,6 +139,7 @@ function AppContent() {
   }
 
   if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
+  if (!isConfigured) return <MissingConfigScreen />;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink-50">
@@ -335,6 +336,55 @@ function AppContent() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function MissingConfigScreen() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background ambient glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-red-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none" />
+      
+      <div className="w-full max-w-[480px] bg-slate-900/80 border border-white/10 rounded-[32px] p-8 shadow-2xl relative z-10 backdrop-blur-xl space-y-6">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-70" />
+        
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-4 animate-pulse">
+            <div className="absolute inset-0 bg-red-500/20 rounded-2xl blur-lg" />
+            <div className="relative w-16 h-16 rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
+              <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
+            </div>
+          </div>
+          <h1 className="text-xl font-black text-white tracking-tight">Database Credentials Required</h1>
+          <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+            Your application was deployed successfully, but the Supabase connection keys are not configured in your hosting environment variables.
+          </p>
+        </div>
+
+        <div className="bg-slate-950/80 border border-white/5 rounded-2xl p-5 space-y-4 text-xs leading-relaxed text-slate-300">
+          <p className="font-bold text-white flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            How to resolve on Netlify:
+          </p>
+          <ol className="list-decimal list-inside space-y-2.5 text-slate-400 font-medium pl-1">
+            <li>Go to your <strong className="text-slate-200">Netlify Dashboard</strong>.</li>
+            <li>Select your <strong className="text-slate-200">CityZen</strong> site, then navigate to <strong className="text-slate-200">Site Configuration &gt; Environment Variables</strong>.</li>
+            <li>Add the following two keys:
+              <div className="bg-slate-900 border border-white/5 rounded-lg p-2.5 mt-1.5 font-mono text-[10px] text-cyan-400 space-y-1.5 select-all">
+                <div>VITE_SUPABASE_URL = <span className="text-slate-400">your_supabase_url</span></div>
+                <div>VITE_SUPABASE_ANON_KEY = <span className="text-slate-400">your_anon_key</span></div>
+              </div>
+            </li>
+            <li>Go to <strong className="text-slate-200">Deploys</strong> and click <strong className="text-slate-200">Trigger Deploy &gt; Clear Cache and Deploy Site</strong>.</li>
+          </ol>
+        </div>
+
+        <p className="text-center text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+          CityZen Municipal Network · Setup Guide
+        </p>
+      </div>
     </div>
   );
 }
