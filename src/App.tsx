@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User, KeyRound, Phone } from 'lucide-react';
+import { User, KeyRound, Phone, Shield } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { Splash } from '@/screens/Splash';
@@ -32,6 +32,7 @@ function AppContent() {
   const { session, loading, profile, signOut, refreshProfile } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
+  const [adminViewMode, setAdminViewMode] = useState<'admin' | 'citizen'>('admin');
 
   // Mandatory Phone Gate States
   const [pendingScreen, setPendingScreen] = useState<Screen | null>(null);
@@ -173,8 +174,8 @@ function AppContent() {
     return <StaffDashboard />;
   }
 
-  if (profile?.role === 'admin') {
-    return <AdminDashboard />;
+  if (profile?.role === 'admin' && adminViewMode === 'admin') {
+    return <AdminDashboard onSwitchToCitizen={() => setAdminViewMode('citizen')} />;
   }
 
   const tabMap: Record<Tab, Screen> = {
@@ -231,6 +232,17 @@ function AppContent() {
       {screen.name === 'complaints' && <Complaints onBack={back} initialCategory={screen.category} />}
       {screen.name === 'bills' && <Bills onBack={back} initialType={screen.type} />}
       {screen.name === 'profile' && <Profile onBack={back} />}
+
+      {/* Floating admin control center button for admin users in citizen mode */}
+      {profile?.role === 'admin' && (
+        <button
+          onClick={() => setAdminViewMode('admin')}
+          className="fixed top-4 left-4 z-40 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-full text-xs font-black flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer ring-2 ring-white/30"
+          title="Return to Admin Control Center"
+        >
+          <Shield className="w-3.5 h-3.5" /> Admin Center
+        </button>
+      )}
 
       {/* Floating profile button */}
       {screen.name === 'home' && (

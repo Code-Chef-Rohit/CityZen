@@ -62,18 +62,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loadProfile = async (uid: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', uid)
-      .maybeSingle();
-    if (error) {
-      console.warn('profile load error', error.message);
-      return;
+  const loadProfile = async (uid: string, userObjParam?: any) => {
+    try {
+      const userObj = userObjParam || session?.user;
+      const userEmail = (userObj?.email || '').toLowerCase().trim();
+      const isOwner = userEmail === 'rohitranjanpatra8@gmail.com';
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', uid)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('profile load error', error.message);
+      }
+
+      if (!data) {
+        const initialRole = isOwner ? 'admin' : 'citizen';
+        const newProfile: Profile = {
+          id: uid,
+          full_name: userObj?.user_metadata?.full_name || userObj?.user_metadata?.name || (isOwner ? 'Rohit Ranjan Patra' : 'Citizen'),
+          email: userEmail,
+          phone: isOwner ? '7735550648' : (userObj?.user_metadata?.phone || ''),
+          role: initialRole,
+          ward: 12,
+          language: 'en',
+          avatar_url: null,
+          created_at: new Date().toISOString()
+        };
+        try {
+          const { data: created } = await supabase.from('profiles').insert(newProfile).select('*').maybeSingle();
+          setProfile(created || newProfile);
+        } catch (e) {
+          setProfile(newProfile);
+        }
+      } else {
+        const profileObj = { ...data } as Profile;
+        // If user is primary owner, automatically ensure role is 'admin'
+        if (isOwner && profileObj.role !== 'admin') {
+          profileObj.role = 'admin';
+          await supabase.from('profiles').update({ role: 'admin', email: userEmail }).eq('id', uid);
+        }
+        if (userEmail && (!profileObj.email || profileObj.email !== userEmail)) {
+          profileObj.email = userEmail;
+          await supabase.from('profiles').update({ email: userEmail }).eq('id', uid);
+        }
+        setProfile(profileObj);
+      }
+      await seedUserSandboxData(uid);
+    } catch (e) {
+      console.warn("loadProfile uncaught error:", e);
     }
-    setProfile(data as Profile | null);
-    await seedUserSandboxData(uid);
   };
 
   useEffect(() => {
@@ -85,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }: any) => {
       setSession(data.session);
       if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
+        loadProfile(data.session.user.id, data.session.user).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -94,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
       setSession(newSession);
       if (newSession?.user) {
-        loadProfile(newSession.user.id);
+        loadProfile(newSession.user.id, newSession.user);
       } else {
         setProfile(null);
       }

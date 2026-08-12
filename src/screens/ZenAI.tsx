@@ -123,6 +123,128 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
       };
     }
 
+    if (q.includes('pothole') || q.includes('road') || q.includes('street block') || q.includes('highway') || q.includes('tar') || q.includes('asphalt')) {
+      return {
+        text: "I can help you file a road maintenance or pothole complaint. Click 'Start' to open the complaints page pre-configured for roads.",
+        cards: [{
+          icon: MapPin,
+          title: "Report Road/Pothole Issue",
+          subtitle: "Roads & Highways Department",
+          action: "Start",
+          actionClick: () => onNavigate?.({ name: 'complaints', category: 'roads' })
+        }]
+      };
+    }
+
+    if (q.includes('light') || q.includes('street lamp') || q.includes('dark street') || q.includes('bulb') || q.includes('electricity line')) {
+      return {
+        text: "I can help you report a broken streetlight. Click 'Start' to submit a ticket to the Electrical Maintenance team.",
+        cards: [{
+          icon: Zap,
+          title: "Report Streetlight Failure",
+          subtitle: "Electrical & Lighting Board",
+          action: "Start",
+          actionClick: () => onNavigate?.({ name: 'complaints', category: 'streetlight' })
+        }]
+      };
+    }
+
+    if (q.includes('garbage') || q.includes('waste') || q.includes('trash') || q.includes('dump') || q.includes('smell') || q.includes('rubbish') || q.includes('bin') || q.includes('litter')) {
+      return {
+        text: "I can help you report garbage accumulation or illegal dumping. Click 'Start' to alert the municipal sanitation inspectors.",
+        cards: [{
+          icon: Droplets,
+          title: "Sanitation/Garbage Alert",
+          subtitle: "Municipal Waste Management",
+          action: "Start",
+          actionClick: () => onNavigate?.({ name: 'complaints', category: 'waste' })
+        }]
+      };
+    }
+
+    if (q.includes('sewage') || q.includes('drain') || q.includes('gutter') || q.includes('overflow') || q.includes('leak') || q.includes('pipe') || q.includes('plumbing')) {
+      return {
+        text: "I can help you report a sewage leak, water leakage or gutter overflow. Click 'Start' to alert the water & sewerage division.",
+        cards: [{
+          icon: Droplets,
+          title: "Report Water/Sewage Leakage",
+          subtitle: "Sewerage & Drainage Board",
+          action: "Start",
+          actionClick: () => onNavigate?.({ name: 'complaints', category: 'water' })
+        }]
+      };
+    }
+
+    if (q.includes('noise') || q.includes('loud') || q.includes('speaker') || q.includes('nuisance') || q.includes('volume') || q.includes('decibel')) {
+      return {
+        text: "I can help you report excessive public noise. Click 'Start' to submit a ticket to the environment control ward.",
+        cards: [{
+          icon: Sparkles,
+          title: "Report Noise Pollution",
+          subtitle: "Environmental Control Division",
+          action: "Start",
+          actionClick: () => onNavigate?.({ name: 'complaints', category: 'noise' })
+        }]
+      };
+    }
+
+    if (q.includes('police') || q.includes('theft') || q.includes('crime') || q.includes('cop') || q.includes('robbery') || q.includes('fight') || q.includes('safety') || q.includes('security')) {
+      return {
+        text: "For immediate police response, click 'SOS Emergency' to raise a security alert. You can also view nearby police stations on the map.",
+        cards: [
+          {
+            icon: Sparkles,
+            title: "Trigger Police SOS",
+            subtitle: "Broadcasts exact GPS to nearest cruiser",
+            action: "SOS Portal",
+            actionClick: () => onNavigate?.({ name: 'emergency' })
+          },
+          {
+            icon: MapPin,
+            title: "Locate Police Stations",
+            subtitle: "View list and navigation guides",
+            action: "View Map",
+            actionClick: () => onNavigate?.({ name: 'map', category: 'police' })
+          }
+        ]
+      };
+    }
+
+    if (q.includes('fire') || q.includes('smoke') || q.includes('blaze') || q.includes('burn') || q.includes('explosion') || q.includes('gas leak')) {
+      return {
+        text: "For fire emergencies, click 'SOS Emergency' to trigger a dispatch, or locate nearby fire stations on the map.",
+        cards: [
+          {
+            icon: Sparkles,
+            title: "Trigger Fire SOS",
+            subtitle: "Broadcasts exact GPS to fire rescue",
+            action: "SOS Portal",
+            actionClick: () => onNavigate?.({ name: 'emergency' })
+          },
+          {
+            icon: MapPin,
+            title: "Locate Fire Stations",
+            subtitle: "View list and navigation guides",
+            action: "View Map",
+            actionClick: () => onNavigate?.({ name: 'map', category: 'fire' })
+          }
+        ]
+      };
+    }
+
+    if (q.includes('edit profile') || q.includes('change language') || q.includes('change name') || q.includes('change phone') || q.includes('update info') || q.includes('settings') || q.includes('modify profile')) {
+      return {
+        text: "You can update your personal registry details, preferred language, and ward assignment inside the Profile settings screen.",
+        cards: [{
+          icon: FileText,
+          title: "Open Profile Settings",
+          subtitle: "Edit language, ward, name & phone",
+          action: "Open Profile",
+          actionClick: () => onNavigate?.({ name: 'profile' })
+        }]
+      };
+    }
+
     if (q.includes('hospital') || q.includes('doctor') || q.includes('clinic') || q.includes('medical') || q.includes('health') || q.includes('emergency') || q.includes('ambulance') || q.includes('siren') || q.includes('sos')) {
       const hospitals = cityContext.nearbyLocations.filter((p: any) => p.category === 'hospital');
       if (hospitals.length > 0) {
@@ -267,8 +389,37 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
       };
     }
 
+    if (q.includes('all services') || q.includes('explore') || q.includes('features') || q.includes('what can you do') || q.includes('help') || q.includes('menu') || q.includes('services') || q.includes('cityzen')) {
+      return {
+        text: "I am Zen, your smart municipality agent. Here are the core services I can help you with:",
+        cards: [
+          {
+            icon: Building2,
+            title: "Explore Services",
+            subtitle: "DigiLocker certificates, utility gateways, smart city portals",
+            action: "Explore",
+            actionClick: () => onNavigate?.({ name: 'explore' })
+          },
+          {
+            icon: MapPin,
+            title: "Filing Complaints",
+            subtitle: "Streetlight, potholes, waste & sewage tracker",
+            action: "Complaints",
+            actionClick: () => onNavigate?.({ name: 'complaints' })
+          },
+          {
+            icon: Zap,
+            title: "Invoices & Bills",
+            subtitle: "Electricity, water, tax billings",
+            action: "Bills Portal",
+            actionClick: () => onNavigate?.({ name: 'bills' })
+          }
+        ]
+      };
+    }
+
     return {
-      text: `I'm Zen, your smart local assistant. I can help with:\n• Finding nearest hospitals ("nearest hospital")\n• Reviewing outstanding invoices ("show bills")\n• Tracking filed complaints ("complaint status")\n• Checking live environmental readings ("weather updates")\n• Managing DigiLocker certificates ("government certificates")\n\nHow can I help you today?`
+      text: `I'm Zen, your smart local assistant. I can help with:\n• Finding nearest hospitals ("nearest hospital")\n• Reviewing outstanding invoices ("show bills")\n• Tracking filed complaints ("complaint status")\n• Checking live environmental readings ("weather updates")\n• Managing DigiLocker certificates ("government certificates")\n• Filing local issues ("report a pothole" or "streetlight not working")\n• Security emergency dispatch ("police SOS" or "fire SOS")\n\nHow can I help you today?`
     };
   };
 

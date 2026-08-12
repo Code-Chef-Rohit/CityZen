@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { 
-  Building, Bed, Activity, Phone, MapPin, Save, LogOut, CheckCircle2, Siren, Shield, Plus
+  Building, Bed, Activity, Phone, MapPin, Save, LogOut, CheckCircle2, Siren, Shield, Plus, Mail
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/Button';
 
 export default function MerchantDashboard() {
-  const { profile, signOut } = useAuth();
+  const { profile, session, signOut } = useAuth();
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<any>(null);
   
@@ -58,49 +58,24 @@ export default function MerchantDashboard() {
       try {
         const parts = hospital.address.split('|||');
         cleanAddress = parts[0].trim();
-        const meta = JSON.parse(parts[1].trim());
-        bTotal = meta.bedsTotal ?? 100;
-        bAvail = meta.bedsAvailable ?? 45;
-        specs = meta.specialties ?? specs;
-      } catch (e) {
-        console.warn(e);
-      }
+        const parsed = JSON.parse(parts[1]);
+        if (parsed.bedsTotal) bTotal = Number(parsed.bedsTotal);
+        if (parsed.bedsAvailable) bAvail = Number(parsed.bedsAvailable);
+        if (parsed.specialties) specs = parsed.specialties;
+      } catch (e) {}
     }
+
+    setHospitalName(hospital.name || '');
     setAddressText(cleanAddress);
     setBedsTotal(bTotal);
     setBedsAvailable(bAvail);
     setSpecialties(specs);
+    setLatitudeText(String(hospital.lat || '20.2223'));
+    setLongitudeText(String(hospital.lng || '85.7335'));
   };
 
-  const loadEmergencyAlerts = async () => {
-    // Fetch active or dispatched medical requests
-    const { data } = await supabase
-      .from('emergency_requests')
-      .select('*')
-      .in('type', ['ambulance', 'disaster'])
-      .order('created_at', { ascending: false });
-    setEmergencyAlerts(data ?? []);
-    setLoadingAlerts(false);
-  };
-
-  useEffect(() => {
-    loadHospitals();
-    loadEmergencyAlerts();
-
-    // Subscribe to emergency dispatches
-    const channel = supabase
-      .channel('emergencies')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_requests' }, () => {
-        loadEmergencyAlerts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile]);
-
-  const handleSaveHospital = async () => {
+  const handleSaveHospitalDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedHospital) return;
     setSaving(true);
     setSuccessMsg('');
@@ -108,15 +83,55 @@ export default function MerchantDashboard() {
     const meta = JSON.stringify({ bedsTotal, bedsAvailable, specialties });
     const fullAddress = `${addressText.trim()} ||| ${meta}`;
 
-    await supabase.from('map_points').update({
-      address: fullAddress,
-      phone: phoneText.trim()
-    }).eq('id', selectedHospital.id);
+    const { error } = await supabase
+      .from('map_points')
+      .update({
+        name: hospitalName.trim(),
+        address: fullAddress,
+        phone: phoneText.trim(),
+        lat: Number(latitudeText),
+        lng: Number(longitudeText)
+      })
+      .eq('id', selectedHospital.id);
 
     setSaving(false);
-    setSuccessMsg('Hospital facility details updated successfully!');
-    setTimeout(() => setSuccessMsg(''), 3000);
+    if (error) {
+      alert('Failed to update hospital: ' + error.message);
+    } else {
+      setSuccessMsg('Hospital telemetry updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+      loadHospitals();
+    }
+  };
+
+  const loadEmergencyAlerts = async () => {
+    const { data } = await supabase
+      .from('emergency_requests')
+      .select('*')
+      .eq('type', 'ambulance')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setEmergencyAlerts(data ?? []);
+    setLoadingAlerts(false);
+  };
+
+  useEffect(() => {
     loadHospitals();
+    loadEmergencyAlerts();
+  }, [profile]);
+
+  const handleQuickBedUpdate = async (newAvailable: number) => {
+    if (!selectedHospital) return;
+    if (newAvailable < 0 || newAvailable > bedsTotal) return;
+
+    setBedsAvailable(newAvailable);
+    const meta = JSON.stringify({ bedsTotal, bedsAvailable: newAvailable, specialties });
+    const fullAddress = `${addressText.trim()} ||| ${meta}`;
+
+    await supabase
+      .from('map_points')
+      .update({ address: fullAddress })
+      .eq('id', selectedHospital.id);
   };
 
   const handleRegisterHospital = async () => {
@@ -159,6 +174,8 @@ export default function MerchantDashboard() {
     loadEmergencyAlerts();
   };
 
+  const merchantEmail = session?.user?.email || profile?.email || 'merchant@cityzen.gov';
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
@@ -174,8 +191,15 @@ export default function MerchantDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="flex flex-col text-right hidden sm:block">
+            <span className="text-xs font-bold text-white">{profile?.full_name || 'Hospital Merchant'}</span>
+            <span className="text-[10px] text-emerald-300/80 font-mono flex items-center justify-end gap-1">
+              <Mail className="w-3 h-3 text-emerald-400" /> {merchantEmail}
+            </span>
+          </div>
+
           <div className="bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
-            Active Role: Merchant (Hospital Manager)
+            Active Role: Merchant
           </div>
 
           <button
@@ -269,7 +293,7 @@ export default function MerchantDashboard() {
                     </div>
                   )}
 
-                  <Button onClick={handleSaveHospital} loading={saving} size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Button onClick={handleSaveHospitalDetails} loading={saving} size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                     <Save className="w-4 h-4 mr-2" /> Save Facility Details
                   </Button>
                 </div>

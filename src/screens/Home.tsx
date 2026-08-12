@@ -144,9 +144,9 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
               <div>
                 <p className="text-primary-100 text-xs">{greeting},</p>
                 <h1 className="text-xl font-extrabold leading-tight">{firstName} 👋</h1>
-                <p className="text-primary-100/80 text-[10px] mt-0.5 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary-300 animate-pulse" />
-                  Ward {profile?.ward ?? 12} · Live
+                <p className="text-primary-100/90 text-[10px] mt-0.5 flex items-center gap-1 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary-300 animate-pulse shrink-0" />
+                  <span className="truncate max-w-[200px]">{session?.user?.email || profile?.email || `Ward ${profile?.ward ?? 12}`}</span>
                 </p>
               </div>
             </div>

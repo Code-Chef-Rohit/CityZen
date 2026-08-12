@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Siren, Bell, Droplets, AlertCircle, Car, Sparkles, CheckCheck,
-  Trash2, User, LogOut, Globe, MapPin, Shield, ChevronRight, Lock
+  Trash2, User, LogOut, Globe, MapPin, Shield, ChevronRight, Lock, Mail, Phone
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -117,7 +117,7 @@ export function Notifications({ onBack }: { onBack: () => void }) {
 }
 
 export function Profile({ onBack }: { onBack: () => void }) {
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { profile, session, signOut, refreshProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
@@ -246,6 +246,8 @@ export function Profile({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const userEmail = session?.user?.email || profile?.email || 'citizen@cityzen.gov';
+
   return (
     <Screen>
       <ScreenHeader title="Profile" subtitle="Your account" onBack={onBack} />
@@ -254,18 +256,22 @@ export function Profile({ onBack }: { onBack: () => void }) {
       <div className="px-4 py-4">
         <div className="bg-gradient-to-br from-primary-600 to-secondary-700 rounded-2xl p-5 text-white shadow-lg">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-extrabold">
-              {(profile?.full_name ?? 'C')[0].toUpperCase()}
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-extrabold shrink-0">
+              {(profile?.full_name ?? userEmail ?? 'C')[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-lg font-bold truncate">{profile?.full_name || 'Citizen'}</p>
-              <p className="text-primary-100 text-xs flex items-center gap-1 mt-0.5">
-                <Shield className="w-3 h-3" /> {profile?.role ?? 'citizen'} · Ward {profile?.ward ?? '—'}
+              <p className="text-primary-100 text-xs flex items-center gap-1.5 mt-0.5 truncate font-mono">
+                <Mail className="w-3.5 h-3.5 shrink-0 text-primary-200" />
+                <span className="truncate">{userEmail}</span>
+              </p>
+              <p className="text-primary-200/90 text-xs flex items-center gap-1 mt-1 font-medium">
+                <Shield className="w-3 h-3 text-primary-300" /> {profile?.role ?? 'citizen'} · Ward {profile?.ward ?? '—'}
               </p>
             </div>
             <button
               onClick={startEditing}
-              className="px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg text-xs font-semibold hover:bg-white/25 transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-lg text-xs font-semibold hover:bg-white/25 transition-colors cursor-pointer shrink-0"
             >
               Edit
             </button>
@@ -312,6 +318,8 @@ export function Profile({ onBack }: { onBack: () => void }) {
       {/* Settings list */}
       <div className="px-4">
         <div className="bg-white rounded-2xl shadow-sm divide-y divide-ink-100">
+          <SettingRow icon={Mail} label="Logged-in Email" value={userEmail} />
+          <SettingRow icon={Phone} label="Contact Phone" value={profile?.phone || 'Not set'} />
           <SettingRow icon={Globe} label="Language" value={profile?.language?.toUpperCase() ?? 'EN'} />
           <button onClick={toggleTheme} className="w-full text-left cursor-pointer">
             <SettingRow icon={Sparkles} label="Theme Mode" value={theme === 'dark' ? 'Dark Mode' : 'Light Mode'} />
@@ -321,9 +329,15 @@ export function Profile({ onBack }: { onBack: () => void }) {
           <button onClick={() => setChangingPassword(true)} className="w-full text-left cursor-pointer">
             <SettingRow icon={Lock} label="Security Settings" value="Change Password" />
           </button>
+          {profile?.role === 'admin' && (
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full text-left cursor-pointer bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 transition-colors"
+            >
+              <SettingRow icon={Shield} label="Administrator Access" value="Open Admin Center ⚡" />
+            </button>
+          )}
         </div>
-
-
 
         <button
           onClick={() => signOut()}
@@ -356,6 +370,19 @@ export function Profile({ onBack }: { onBack: () => void }) {
             <h2 className="text-lg font-bold text-ink-900 mb-4">Edit Profile</h2>
             <div className="space-y-4">
               <div>
+                <label className="text-xs font-semibold text-ink-500 mb-1.5 block">Logged-in Email (Registered Account)</label>
+                <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-ink-100/70 rounded-xl text-xs font-medium text-ink-700 border border-ink-200">
+                  <div className="flex items-center gap-2 truncate">
+                    <Mail className="w-4 h-4 text-ink-400 shrink-0" />
+                    <span className="font-mono truncate">{userEmail}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                    Verified
+                  </span>
+                </div>
+              </div>
+
+              <div>
                 <label className="text-xs font-semibold text-ink-500 mb-1.5 block">Full Name</label>
                 <input
                   value={fullName}
@@ -381,13 +408,13 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 />
               </div>
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setEditing(false)} className="flex-1 py-3 bg-ink-100 rounded-xl font-semibold text-sm text-ink-600">
+                <button onClick={() => setEditing(false)} className="flex-1 py-3 bg-ink-100 rounded-xl font-semibold text-sm text-ink-600 cursor-pointer">
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 py-3 bg-primary-600 rounded-xl font-semibold text-sm text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 bg-primary-600 rounded-xl font-semibold text-sm text-white hover:bg-primary-700 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? 'Saving…' : 'Save'}
                 </button>

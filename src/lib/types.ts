@@ -8,7 +8,7 @@ export interface Profile {
   role: Role;
   language: Language;
   ward: number | null;
-  avatar_url: string | null;
+  avatar_url?: string | null;
   blocked?: boolean;
   email?: string;
   created_at: string;
@@ -26,8 +26,19 @@ export interface Complaint {
   status: ComplaintStatus;
   department: string | null;
   location_text: string | null;
+  lat?: number | null;
+  lng?: number | null;
   photo_url: string | null;
   resolution_proof?: string | null;
+  resolution_photo_url?: string | null;
+  visual_hash?: string | null;
+  ml_verification_score?: number | null;
+  profiles?: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    ward?: number | null;
+  } | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -58,6 +69,14 @@ export interface EmergencyRequest {
   status: EmergencyStatus;
   location_text: string | null;
   notes: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  profiles?: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    ward?: number | null;
+  } | null;
   created_at: string;
   resolved_at: string | null;
 }

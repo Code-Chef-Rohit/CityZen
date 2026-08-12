@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -8,8 +8,8 @@ import { formatINR } from '@/lib/utils';
 
 type Tab = 'users' | 'complaints' | 'bills' | 'emergencies';
 
-export default function AdminDashboard() {
-  const { profile, signOut, refreshProfile } = useAuth();
+export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitizen?: () => void }) {
+  const { profile, session, signOut, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('users');
   
   // Database Tables Lists
@@ -89,6 +89,11 @@ export default function AdminDashboard() {
   }, []);
 
   const handleToggleBlock = async (userId: string, currentBlocked: boolean) => {
+    const target = users.find(u => u.id === userId);
+    if (target?.email === 'rohitranjanpatra8@gmail.com' || target?.phone === '7735550648') {
+      alert("Security Violation: You do not have permission to suspend the primary owner account!");
+      return;
+    }
     if (userId === profile?.id) {
       alert("You cannot suspend your own admin account!");
       return;
@@ -147,13 +152,65 @@ export default function AdminDashboard() {
 
   const handleDeleteBill = async (billId: string) => {
     if (confirm('Delete this bill transaction?')) {
-      await supabase.from('bills').delete().eq('id', billId);
-      loadMetricsAndData();
+      const { error } = await supabase.from('bills').delete().eq('id', billId);
+      if (error) {
+        alert("Failed to delete bill: " + error.message);
+      } else {
+        loadMetricsAndData();
+      }
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    const target = users.find(u => u.id === userId);
+    if (target?.email === 'rohitranjanpatra8@gmail.com' || target?.phone === '7735550648') {
+      alert("Security Violation: You do not have permission to delete the primary owner account!");
+      return;
+    }
+    if (userId === profile?.id) {
+      alert("You cannot delete your own admin account!");
+      return;
+    }
+    if (confirm(`Are you sure you want to permanently delete user "${target?.full_name || 'Registered User'}" and all associated profiles/records? This action is irreversible.`)) {
+      const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
+      if (error) {
+        alert("Failed to delete user: " + error.message);
+      } else {
+        alert("User deleted successfully!");
+        loadMetricsAndData();
+      }
+    }
+  };
+
+  const handleDeleteComplaint = async (complaintId: string, childIds: string[] = []) => {
+    if (confirm("Permanently delete this complaint and all associated consolidated reports? This action is irreversible.")) {
+      const ids = [complaintId, ...childIds];
+      const { error } = await supabase.from('complaints').delete().in('id', ids);
+      if (error) {
+        alert("Failed to delete complaint: " + error.message);
+      } else {
+        loadMetricsAndData();
+      }
+    }
+  };
+
+  const handleDeleteEmergency = async (id: string) => {
+    if (confirm("Permanently delete this SOS dispatch record? This action is irreversible.")) {
+      const { error } = await supabase.from('emergency_requests').delete().eq('id', id);
+      if (error) {
+        alert("Failed to delete SOS record: " + error.message);
+      } else {
+        loadMetricsAndData();
+      }
     }
   };
 
   const handleAdminResetPassword = async () => {
     if (!selectedUserToResetPW) return;
+    if (selectedUserToResetPW.email === 'rohitranjanpatra8@gmail.com' || selectedUserToResetPW.phone === '7735550648') {
+      alert("Security Violation: You do not have permission to reset the password of the primary owner account!");
+      return;
+    }
     if (!newAdminResetPassword.trim() || newAdminResetPassword.length < 6) {
       alert("Password must be at least 6 characters long!");
       return;
@@ -179,6 +236,11 @@ export default function AdminDashboard() {
   };
 
   const handleChangeUserRole = async (userId: string, newRole: 'citizen' | 'police' | 'hospital' | 'bmc' | 'admin') => {
+    const target = users.find(u => u.id === userId);
+    if (target?.email === 'rohitranjanpatra8@gmail.com' || target?.phone === '7735550648') {
+      alert("Security Violation: You do not have permission to modify the owner's role authority!");
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -231,9 +293,26 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="bg-orange-950/40 px-3 py-1.5 rounded-xl border border-orange-500/20 text-[10px] font-bold text-orange-400">
-            Active Role: Super Admin
+          <div className="flex flex-col text-right hidden sm:block">
+            <span className="text-xs font-bold text-white">{profile?.full_name || 'System Administrator'}</span>
+            <span className="text-[10px] text-slate-400 font-mono flex items-center justify-end gap-1">
+              <Mail className="w-3 h-3 text-slate-500" /> {session?.user?.email || profile?.email || 'admin@cityzen.gov'}
+            </span>
           </div>
+
+          <div className="bg-orange-950/40 px-3 py-1.5 rounded-xl border border-orange-500/20 text-[10px] font-bold text-orange-400">
+            Role: Super Admin
+          </div>
+
+          {onSwitchToCitizen && (
+            <button
+              onClick={onSwitchToCitizen}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 rounded-xl text-xs text-blue-300 font-bold transition-all cursor-pointer shadow-sm"
+              title="Preview Citizen View"
+            >
+              <Users className="w-3.5 h-3.5" /> Citizen View
+            </button>
+          )}
 
           <button
             onClick={signOut}
@@ -406,7 +485,11 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-3 text-slate-300 font-medium">{u.email || 'N/A'}</td>
                               <td className="py-3">
-                                {u.id !== profile?.id ? (
+                                {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
+                                  <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse">
+                                    Primary Owner
+                                  </span>
+                                ) : u.id !== profile?.id ? (
                                   <select
                                     value={u.role}
                                     onChange={(e) => handleChangeUserRole(u.id, e.target.value as any)}
@@ -449,7 +532,9 @@ export default function AdminDashboard() {
                                 </span>
                               </td>
                               <td className="py-3 text-right">
-                                {u.id !== profile?.id ? (
+                                {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
+                                  <span className="text-[10px] text-orange-400 font-bold italic pr-2">Primary Owner</span>
+                                ) : u.id !== profile?.id ? (
                                   <div className="flex items-center justify-end gap-2">
                                     <button
                                       onClick={() => handleToggleBlock(u.id, !!u.blocked)}
@@ -467,9 +552,16 @@ export default function AdminDashboard() {
                                     >
                                       Reset PW
                                     </button>
+                                    <button
+                                      onClick={() => handleDeleteUser(u.id)}
+                                      className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                      title="Delete User Account"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 ) : (
-                                  <span className="text-[10px] text-slate-500 font-semibold italic">Your Account</span>
+                                  <span className="text-[10px] text-slate-500 font-semibold italic pr-2">Your Account</span>
                                 )}
                               </td>
                             </tr>
@@ -527,15 +619,28 @@ export default function AdminDashboard() {
                           return (
                             <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                               <td className="py-3 pr-2">
-                                <p className="font-semibold text-white flex items-center gap-1.5">
+                                <p className="font-semibold text-white flex flex-wrap items-center gap-1.5">
                                   {c.title}
                                   {c.photo_url && (
                                     <button 
                                       onClick={() => setPreviewPhoto(c.photo_url)}
-                                      className="text-[9px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                                      className="text-[9px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
                                     >
-                                      <Camera className="w-2.5 h-2.5" /> View Photo
+                                      <Camera className="w-2.5 h-2.5" /> Citizen Photo
                                     </button>
+                                  )}
+                                  {c.resolution_photo_url && (
+                                    <button 
+                                      onClick={() => setPreviewPhoto(c.resolution_photo_url)}
+                                      className="text-[9px] bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
+                                    >
+                                      <CheckCircle2 className="w-2.5 h-2.5" /> BMC Proof Photo
+                                    </button>
+                                  )}
+                                  {c.ml_verification_score && (
+                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                      {c.ml_verification_score}% Authenticity Verified
+                                    </span>
                                   )}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-0.5 max-w-sm truncate">{cleanDesc}</p>
@@ -558,7 +663,19 @@ export default function AdminDashboard() {
                                 {citizenNames}
                               </td>
                               <td className="py-3 text-slate-300 capitalize">{c.category} ({c.department || 'Civic'})</td>
-                              <td className="py-3 text-slate-300">{c.location_text || 'MG Road'}</td>
+                              <td className="py-3 text-slate-300">
+                                <div className="space-y-1">
+                                  <span>{c.location_text || 'MG Road'}</span>
+                                  {c.lat && c.lng && (
+                                    <button
+                                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`, '_blank')}
+                                      className="text-[9px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 px-2 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                    >
+                                      <Navigation className="w-2.5 h-2.5" /> Guide Me
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                               <td className="py-3 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <select
@@ -581,6 +698,13 @@ export default function AdminDashboard() {
                                       Redo
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeleteComplaint(c.id, childIds)}
+                                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Complaint"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -716,22 +840,31 @@ export default function AdminDashboard() {
                                 </span>
                               </td>
                               <td className="py-3 text-right">
-                                {e.status !== 'resolved' ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  {e.status !== 'resolved' ? (
+                                    <button
+                                      onClick={() => handleResolveEmergency(e.id)}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                                    >
+                                      Resolve
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleRedoEmergency(e.id)}
+                                      className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                      title="Redo SOS dispatch request"
+                                    >
+                                      Redo
+                                    </button>
+                                  )}
                                   <button
-                                    onClick={() => handleResolveEmergency(e.id)}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                                    onClick={() => handleDeleteEmergency(e.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete SOS Dispatch"
                                   >
-                                    Resolve
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
-                                ) : (
-                                  <button
-                                    onClick={() => handleRedoEmergency(e.id)}
-                                    className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                    title="Redo SOS dispatch request"
-                                  >
-                                    Redo
-                                  </button>
-                                )}
+                                </div>
                               </td>
                             </tr>
                           );
