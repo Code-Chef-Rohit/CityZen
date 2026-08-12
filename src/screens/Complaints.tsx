@@ -22,115 +22,12 @@ const categories: { value: ComplaintCategory; label: string }[] = [
 
 const statusFlow: ComplaintStatus[] = ['submitted', 'assigned', 'in_progress', 'resolved'];
 
-// Haversine formula for real-world distance in meters
-const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371000; // Earth's radius in meters
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-// ML Perceptual Hashing (64-bit Average Hash algorithm)
-const getImageHash = (base64Str: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 8;
-      canvas.height = 8;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(''); return; }
-      ctx.drawImage(img, 0, 0, 8, 8);
-      const imgData = ctx.getImageData(0, 0, 8, 8).data;
-      
-      let total = 0;
-      const greyValues = [];
-      for (let i = 0; i < imgData.length; i += 4) {
-        const r = imgData[i];
-        const g = imgData[i+1];
-        const b = imgData[i+2];
-        const grey = 0.299 * r + 0.587 * g + 0.114 * b;
-        greyValues.push(grey);
-        total += grey;
-      }
-      const average = total / 64;
-      
-      let hash = '';
-      for (let i = 0; i < 64; i++) {
-        hash += greyValues[i] >= average ? '1' : '0';
-      }
-      resolve(hash);
-    };
-    img.onerror = () => resolve('');
-    img.src = base64Str;
-  });
-};
-
-const getHammingDistance = (hash1: string, hash2: string): number => {
-  if (hash1.length !== hash2.length || hash1.length === 0) return 999;
-  let dist = 0;
-  for (let i = 0; i < hash1.length; i++) {
-    if (hash1[i] !== hash2[i]) dist++;
-  }
-  return dist;
-};
-
-// ML Visual Authenticity Analyzer: Evaluates sensor noise, entropy & dynamic color variance
-const verifyImageAuthenticity = (ctx: CanvasRenderingContext2D, width: number, height: number): { isReal: boolean; score: number; details: string } => {
-  try {
-    const imgData = ctx.getImageData(0, 0, width, height).data;
-    let rSum = 0, gSum = 0, bSum = 0;
-    const colorBuckets = new Set<string>();
-    let diffVarianceSum = 0;
-    const totalPixels = width * height;
-    const step = Math.max(1, Math.floor(totalPixels / 2000));
-    let samples = 0;
-
-    for (let i = 0; i < imgData.length; i += step * 4) {
-      const r = imgData[i];
-      const g = imgData[i + 1];
-      const b = imgData[i + 2];
-      rSum += r;
-      gSum += g;
-      bSum += b;
-
-      // Color quantization buckets to test color depth entropy
-      const rB = Math.floor(r / 32);
-      const gB = Math.floor(g / 32);
-      const bB = Math.floor(b / 32);
-      colorBuckets.add(`${rB}-${gB}-${bB}`);
-
-      // Neighbor variance test
-      if (i + 4 < imgData.length) {
-        const nextR = imgData[i + 4];
-        const diff = Math.abs(r - nextR);
-        diffVarianceSum += diff;
-      }
-      samples++;
-    }
-
-    const colorEntropy = colorBuckets.size / 512; // Fraction of 8x8x8 color space populated
-    const avgNeighborVariance = diffVarianceSum / samples;
-
-    // A real camera capture has high color entropy (> 0.08) and natural noise variance (> 2.5)
-    // Flat synthetic or solid images have extremely low color entropy (< 0.02) and zero variance
-    let score = Math.round(Math.min(99, Math.max(65, (colorEntropy * 60) + (avgNeighborVariance * 1.8) + 40)));
-    
-    if (colorBuckets.size <= 4 || avgNeighborVariance < 0.5) {
-      return { isReal: false, score: 24, details: "Low-entropy / artificial image detected" };
-    }
-
-    return { isReal: true, score, details: `Verified Real Camera Capture (${score}% Authenticity Score)` };
-  } catch (e) {
-    return { isReal: true, score: 92, details: "Verified Genuine Civic Incident" };
-  }
-};
+import { 
+  getDistanceInMeters, 
+  getImageHash, 
+  getHammingDistance, 
+  verifyImageAuthenticity 
+} from '@/lib/mlImageVerification';
 
 export function Complaints({ onBack, initialCategory }: { onBack: () => void; initialCategory?: ComplaintCategory }) {
   const { session } = useAuth();
