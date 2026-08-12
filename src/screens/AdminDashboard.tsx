@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -18,6 +18,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
   const [bills, setBills] = useState<any[]>([]);
   const [emergencies, setEmergencies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Search Queries States
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -47,6 +48,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
 
   const loadMetricsAndData = async () => {
     setLoading(true);
+    setSyncError(null);
     try {
       const [usersRes, complaintsRes, billsRes, emergenciesRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
@@ -54,6 +56,17 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         supabase.from('bills').select('*').order('created_at', { ascending: false }),
         supabase.from('emergency_requests').select('*').order('created_at', { ascending: false })
       ]);
+
+      const errs: string[] = [];
+      if (usersRes.error) errs.push(`Profiles Table: ${usersRes.error.message}`);
+      if (complaintsRes.error) errs.push(`Complaints Table: ${complaintsRes.error.message}`);
+      if (billsRes.error) errs.push(`Bills Table: ${billsRes.error.message}`);
+      if (emergenciesRes.error) errs.push(`SOS Table: ${emergenciesRes.error.message}`);
+
+      if (errs.length > 0) {
+        console.warn("Database sync notices:", errs);
+        setSyncError(errs.join(' • '));
+      }
 
       const usersList = usersRes.data ?? [];
       const complaintsList = complaintsRes.data ?? [];
@@ -77,8 +90,9 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         totalUnpaidAmount,
         activeEmergencies
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load admin metrics:', e);
+      setSyncError(e?.message || 'Failed to sync municipal database tables');
     } finally {
       setLoading(false);
     }
@@ -304,6 +318,15 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
             Role: Super Admin
           </div>
 
+          <button
+            onClick={() => loadMetricsAndData()}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-xs text-slate-200 font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            title="Refresh and sync all municipal tables"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-orange-400' : 'text-slate-400'}`} /> Sync
+          </button>
+
           {onSwitchToCitizen && (
             <button
               onClick={onSwitchToCitizen}
@@ -322,6 +345,22 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
           </button>
         </div>
       </header>
+
+      {/* Database Policy Notice Banner if any */}
+      {syncError && (
+        <div className="bg-amber-950/80 border-b border-amber-500/30 px-6 py-2.5 flex items-center justify-between text-xs text-amber-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span><strong>Database Table Notice:</strong> {syncError}. Please run the latest SQL migration in your Supabase SQL Editor.</span>
+          </div>
+          <button
+            onClick={() => loadMetricsAndData()}
+            className="underline text-amber-300 hover:text-white font-bold ml-4 shrink-0"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
 
       {/* Main Analytics Cards */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
@@ -472,8 +511,17 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredUsers.map(u => {
-                          const userBills = bills.filter(b => b.user_id === u.id);
+                        {filteredUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-slate-500">
+                              <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                              <p className="font-semibold text-xs text-slate-300">No matching user accounts found</p>
+                              <p className="text-[10px] text-slate-500 mt-1">If newly registered, click the Sync button above to refresh user records.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredUsers.map(u => {
+                            const userBills = bills.filter(b => b.user_id === u.id);
                           const unpaidTotal = userBills.filter(b => b.status === 'unpaid').reduce((sum, b) => sum + Number(b.amount), 0);
                           const billTypes = Array.from(new Set(userBills.map(b => b.type)));
 
@@ -566,7 +614,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   );
@@ -603,7 +651,16 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                         </tr>
                       </thead>
                       <tbody>
-                        {masters.map(c => {
+                        {masters.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-slate-500">
+                              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                              <p className="font-semibold text-xs text-slate-300">No complaints reported or matching search</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Complaints filed by citizens will appear here with live ML deduplication & BMC resolution proof.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          masters.map(c => {
                           const children = complaints.filter(x => 
                             x.description && (
                               x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
@@ -680,8 +737,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                                 <div className="flex items-center justify-end gap-2">
                                   <select
                                     value={c.status}
-                                    onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value, childIds)}
-                                    className="bg-slate-800 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-orange-500 cursor-pointer"
+                                    onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value as any, childIds)}
+                                    className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1 text-[10px] font-bold focus:outline-none focus:border-orange-500 cursor-pointer text-slate-200"
                                   >
                                     <option value="submitted">Submitted</option>
                                     <option value="assigned">Assigned</option>
@@ -689,19 +746,10 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                                     <option value="resolved">Resolved</option>
                                     <option value="rejected">Rejected</option>
                                   </select>
-                                  {c.status === 'resolved' && (
-                                    <button
-                                      onClick={() => handleRedoComplaint(c.id)}
-                                      className="px-2 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-xl text-[10px] transition-all cursor-pointer"
-                                      title="Redo / Re-open complaint"
-                                    >
-                                      Redo
-                                    </button>
-                                  )}
                                   <button
                                     onClick={() => handleDeleteComplaint(c.id, childIds)}
                                     className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                    title="Delete Complaint"
+                                    title="Delete Complaint and linked duplicates"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -709,13 +757,13 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   );
                 })()}
 
-                {/* Tab 3: Utility Bills Auditing */}
+                {/* Tab 3: Utility Invoices Auditing */}
                 {activeTab === 'bills' && (() => {
                   const filteredBills = bills.filter(b => {
                     const user = users.find(u => u.id === b.user_id);
@@ -740,7 +788,16 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBills.map(b => {
+                        {filteredBills.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-slate-500">
+                              <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                              <p className="font-semibold text-xs text-slate-300">No utility bills found</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Water, electricity, property tax, and waste invoices will be listed here.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredBills.map(b => {
                           const user = users.find(u => u.id === b.user_id);
                           return (
                             <tr key={b.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
@@ -787,7 +844,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   );
@@ -818,7 +875,16 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredEmergencies.map(e => {
+                        {filteredEmergencies.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-slate-500">
+                              <Siren className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                              <p className="font-semibold text-xs text-slate-300">No emergency SOS requests triggered</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Live police, ambulance, and disaster SOS alarms will be monitored here.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredEmergencies.map(e => {
                           const user = users.find(u => u.id === e.user_id);
                           return (
                             <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
@@ -868,7 +934,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   );
