@@ -189,7 +189,7 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
       </div>
 
       {/* Zen AI card */}
-      <div className="px-5 -mt-12">
+      <div className="px-5 -mt-12 relative z-10">
         <button
           onClick={onOpenZen}
           className="w-full bg-white rounded-2xl shadow-lg p-4 flex items-center gap-3 text-left hover:shadow-xl transition-shadow group"
