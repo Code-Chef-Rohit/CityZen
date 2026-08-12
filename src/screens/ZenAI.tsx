@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Mic, MapPin, Building2, Droplets, Zap, X, FileText } from 'lucide-react';
+import { Sparkles, Send, Mic, MapPin, Building2, Droplets, Zap, X, FileText, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { cn } from '@/lib/utils';
@@ -26,18 +26,37 @@ const suggestions = [
   'Link Aadhaar or Birth certificate'
 ];
 
+const DEFAULT_WELCOME_MSG: Message = {
+  id: 'welcome',
+  role: 'ai',
+  text: "Hi! I'm Zen, your city assistant. Ask me anything — find services, file complaints, pay bills, or get city updates.",
+};
+
+// In-memory module cache to persist conversation across screen transitions until page refresh
+let inMemoryZenMessages: Message[] = [DEFAULT_WELCOME_MSG];
+
 export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (screenObj: any) => void }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'ai',
-      text: "Hi! I'm Zen, your city assistant. Ask me anything — find services, file complaints, pay bills, or get city updates.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    return inMemoryZenMessages.length > 0 ? inMemoryZenMessages : [DEFAULT_WELCOME_MSG];
+  });
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [listening, setListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    inMemoryZenMessages = messages;
+  }, [messages]);
+
+  const handleClearChat = () => {
+    const fresh: Message = {
+      id: 'welcome-' + Date.now(),
+      role: 'ai',
+      text: "Hi! I'm Zen, your city assistant. Ask me anything — find services, file complaints, pay bills, or get city updates.",
+    };
+    inMemoryZenMessages = [fresh];
+    setMessages([fresh]);
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -535,8 +554,19 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         subtitle="Your city assistant"
         onBack={onBack}
         right={
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2">
+            {messages.length > 1 && (
+              <button
+                onClick={handleClearChat}
+                className="text-[11px] font-bold text-ink-500 hover:text-error-500 bg-ink-100 hover:bg-error-50 px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
+                title="Clear current chat"
+              >
+                <RotateCcw className="w-3 h-3" /> Clear
+              </button>
+            )}
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-600 flex items-center justify-center shadow-sm">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
           </div>
         }
       />
