@@ -180,11 +180,15 @@ export default function AdminDashboard() {
 
   const handleChangeUserRole = async (userId: string, newRole: 'citizen' | 'police' | 'hospital' | 'bmc' | 'admin') => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Row update was rejected by Row-Level Security. Please ensure you have run the migration script in your Supabase SQL Editor to allow admins to edit profiles.");
+      }
       loadMetricsAndData();
       alert(`User role updated successfully to ${newRole.toUpperCase()}!`);
     } catch (e: any) {
