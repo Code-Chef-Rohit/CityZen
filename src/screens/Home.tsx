@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Sun, Cloud, CloudRain, CloudLightning, Droplets, Wind, Thermometer, Leaf, Siren, ChevronRight,
-  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge
+  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge, User
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -13,9 +13,10 @@ interface HomeProps {
   onTab: (tab: Tab) => void;
   onOpenZen: () => void;
   onOpenService: (serviceId: string) => void;
+  onOpenProfile?: () => void;
 }
 
-export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
+export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomeProps) {
   const { profile, session } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -138,37 +139,53 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
   const firstName = rawName.trim().split(' ')[0] || 'Citizen';
 
   return (
-    <div className="min-h-screen md:min-h-0 md:h-[calc(100vh-3rem)] w-full md:max-w-5xl mx-auto bg-ink-50 pb-24 md:shadow-2xl md:my-6 md:rounded-3xl overflow-y-auto border border-slate-800/40 animate-fade-in">
+    <div className="min-h-[100dvh] md:min-h-0 md:h-[calc(100vh-3rem)] w-full md:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 pb-24 md:shadow-2xl md:my-6 md:rounded-3xl overflow-y-auto border-0 md:border md:border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100">
       {/* Hero header */}
-      <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800 text-white px-5 pt-12 pb-20 overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary-400/20 rounded-full blur-2xl -ml-8 -mb-8" />
+      <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800 text-white px-4 sm:px-6 pt-8 sm:pt-12 pb-16 sm:pb-20 overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary-400/20 rounded-full blur-2xl -ml-8 -mb-8 pointer-events-none" />
         <div className="relative z-10">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl border border-white/20 overflow-hidden shadow-lg shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl border border-white/20 overflow-hidden shadow-lg shrink-0">
                 <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-primary-100 text-xs">{greeting},</p>
-                <h1 className="text-xl font-extrabold leading-tight">{firstName} 👋</h1>
+                <h1 className="text-lg sm:text-xl font-extrabold leading-tight truncate">{firstName} 👋</h1>
                 <p className="text-primary-100/90 text-[10px] mt-0.5 flex items-center gap-1 font-mono">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary-300 animate-pulse shrink-0" />
-                  <span className="truncate max-w-[200px]">{session?.user?.email || profile?.email || `Ward ${profile?.ward ?? 12}`}</span>
+                  <span className="truncate max-w-[170px] sm:max-w-[240px]">{session?.user?.email || profile?.email || `Ward ${profile?.ward ?? 12}`}</span>
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => onTab('notifications')}
-              className="relative w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center hover:bg-white/25 transition-colors"
-            >
-              <Bell className="w-5 h-5" />
-            </button>
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => onTab('notifications')}
+                className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center hover:bg-white/25 active:scale-95 transition-all cursor-pointer shadow-sm"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error-400 animate-pulse" />
+                )}
+              </button>
+              {onOpenProfile && (
+                <button
+                  onClick={onOpenProfile}
+                  className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center hover:bg-white/25 active:scale-95 transition-all cursor-pointer border border-white/20 shadow-sm"
+                  title="My Profile"
+                >
+                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Weather + AQI strip */}
-          <div className="flex gap-3 mt-5">
-            <div className="flex-1 bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mt-4 sm:mt-5">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3 border border-white/10">
               {realWeather.icon === 'sun' ? (
                 <Sun className="w-8 h-8 text-amber-300 shrink-0" />
               ) : realWeather.icon === 'rain' ? (
@@ -178,19 +195,19 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
               ) : (
                 <Cloud className="w-8 h-8 text-sky-200 shrink-0" />
               )}
-              <div>
-                <p className="text-2xl font-bold leading-none">{liveSensors.temp}°C</p>
-                <p className="text-primary-100/80 text-xs mt-0.5 font-medium">
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold leading-none">{liveSensors.temp}°C</p>
+                <p className="text-primary-100/80 text-[11px] sm:text-xs mt-0.5 font-medium truncate">
                   {realWeather.condition} · Feels {liveSensors.feelsLike}°C
                 </p>
               </div>
             </div>
-            <div className="flex-1 bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3 border border-white/10">
               <Wind className="w-8 h-8 text-primary-200 shrink-0" />
-              <div>
-                <p className="text-2xl font-bold leading-none">{liveSensors.aqi}</p>
-                <p className="text-primary-100/90 text-xs mt-0.5 font-semibold flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${getAqiCategory(liveSensors.aqi).color.includes('emerald') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold leading-none">{liveSensors.aqi}</p>
+                <p className="text-primary-100/90 text-[11px] sm:text-xs mt-0.5 font-semibold flex items-center gap-1.5 truncate">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${getAqiCategory(liveSensors.aqi).color.includes('emerald') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                   AQI · {getAqiCategory(liveSensors.aqi).label}
                 </p>
               </div>
@@ -200,25 +217,25 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
       </div>
 
       {/* Zen AI card */}
-      <div className="px-5 -mt-12 relative z-10">
+      <div className="px-4 sm:px-5 -mt-10 sm:-mt-12 relative z-10">
         <button
           onClick={onOpenZen}
-          className="w-full bg-white rounded-2xl shadow-lg p-4 flex items-center gap-3 text-left hover:shadow-xl transition-shadow group"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg p-3.5 sm:p-4 flex items-center gap-3 text-left hover:shadow-xl active:scale-[0.99] transition-all group cursor-pointer"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-600 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6 text-white" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-600 flex items-center justify-center shrink-0 shadow-md">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-ink-900">Ask Zen AI</p>
-            <p className="text-xs text-ink-500 truncate">"Find nearest hospital" · voice & text</p>
+            <p className="font-bold text-ink-900 dark:text-white text-sm sm:text-base">Ask Zen AI</p>
+            <p className="text-xs text-ink-500 dark:text-slate-400 truncate">"Find nearest hospital" · voice & text assistant</p>
           </div>
-          <ChevronRight className="w-5 h-5 text-ink-300 group-hover:translate-x-0.5 transition-transform" />
+          <ChevronRight className="w-5 h-5 text-ink-300 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </button>
       </div>
 
       {/* Quick actions */}
-      <div className="px-5 mt-5">
-        <div className="grid grid-cols-4 gap-3">
+      <div className="px-4 sm:px-5 mt-5">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           {[
             { label: 'SOS', icon: Siren, color: 'bg-error-500', tab: 'emergency' as Tab },
             { label: 'Bills', icon: Droplets, color: 'bg-secondary-500', action: () => onOpenService('bills') },
@@ -228,29 +245,29 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
             <button
               key={label}
               onClick={() => (tab ? onTab(tab) : action?.())}
-              className="flex flex-col items-center gap-2"
+              className="flex flex-col items-center gap-1.5 sm:gap-2 active:scale-95 transition-transform cursor-pointer"
             >
-              <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center shadow-md hover:scale-105 transition-transform`}>
-                <Icon className="w-6 h-6 text-white" />
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-md hover:scale-105 transition-transform`}>
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <span className="text-xs font-medium text-ink-600">{label}</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-ink-700 dark:text-slate-300">{label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Live Environmental Telemetry */}
-      <div className="px-5 mt-6">
+      <div className="px-4 sm:px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="font-bold text-ink-900 text-sm">Live Environmental Telemetry</h2>
-            <p className="text-[10px] text-ink-400">Continuous Satellite & Ground Sensor Station Feeds</p>
+            <h2 className="font-bold text-ink-900 dark:text-white text-sm">Live Environmental Telemetry</h2>
+            <p className="text-[10px] text-ink-400 dark:text-slate-400">Continuous Satellite & Ground Sensor Station Feeds</p>
           </div>
-          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Station Feed
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
           <StatCard icon={Thermometer} label="Temperature" value={liveSensors.temp} unit="°C" color="text-amber-500" />
           <StatCard icon={Wind} label="Air Quality" value={liveSensors.aqi} unit="AQI" color="text-primary-500" />
           <StatCard icon={Droplets} label="Humidity" value={liveSensors.humidity} unit="%" color="text-sky-500" />
@@ -261,7 +278,7 @@ export function Home({ onTab, onOpenZen, onOpenService }: HomeProps) {
       </div>
 
       {/* Pending bills */}
-      <div className="px-5 mt-6">
+      <div className="px-4 sm:px-5 mt-6">
         <SectionHeader title="Pending Bills" onMore={() => onOpenService('bills')} />
         {loading ? (
           <SkeletonRow />

@@ -138,20 +138,65 @@ export default function StaffDashboard() {
     }
   };
 
+  const [responderLocation, setResponderLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Live GPS tracking of responder position
+  useEffect(() => {
+    let watchId: number;
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setResponderLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        (err) => console.warn('Responder GPS unavailable:', err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+    }
+    return () => {
+      if (watchId && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, []);
+
+  const openGoogleMapsDirections = (lat?: number | null, lng?: number | null, locationText?: string | null) => {
+    let destination = '';
+    if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+      destination = `${lat},${lng}`;
+    } else if (locationText && locationText.trim()) {
+      destination = encodeURIComponent(locationText.trim());
+    } else {
+      destination = '20.2961,85.8245';
+    }
+
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    if (responderLocation) {
+      url = `https://www.google.com/maps/dir/?api=1&origin=${responderLocation.lat},${responderLocation.lng}&destination=${destination}&travelmode=driving`;
+    }
+    window.open(url, '_blank');
+  };
+
   const simulateRouting = (emergency: EmergencyRequest) => {
     setSelectedEmergency(emergency);
-    // Simulate routing coordinates check
-    const etaMin = Math.floor(Math.random() * 8) + 3;
-    const distanceKm = (Math.random() * 4 + 1.2).toFixed(1);
+    let distanceKm = '2.4';
+    if (responderLocation && emergency.lat && emergency.lng) {
+      distanceKm = getDistance(responderLocation.lat, responderLocation.lng, Number(emergency.lat), Number(emergency.lng)).toFixed(1);
+    } else {
+      distanceKm = (Math.random() * 3 + 1.2).toFixed(1);
+    }
+    const etaMin = Math.max(2, Math.round(Number(distanceKm) * 2.2));
     
     setRoutingSim({
       distance: `${distanceKm} km`,
       eta: `${etaMin} mins`,
       steps: [
-        "Head west on Police HQ Road towards NH-16",
-        `Merge onto NH-16, drive for ${((Number(distanceKm) * 0.7)).toFixed(1)} km`,
-        "Take local turn near target sector",
-        `Arrive at citizen location: ${emergency.location_text || 'Bhubaneswar coordinates'}`
+        "Depart from current responder GPS patrol location",
+        `Drive along main corridor towards ${emergency.location_text || 'target coordinates'} (${distanceKm} km)`,
+        "Turn towards reported citizen distress beacon",
+        `Arrive at citizen location: ${emergency.location_text || 'GPS Coordinates'}`
       ]
     });
   };
@@ -442,7 +487,15 @@ export default function StaffDashboard() {
                           }`}
                         >
                           <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                            <div className="space-y-1">
+                            <div 
+                              onClick={() => {
+                                setSelectedEmergency(e);
+                                simulateRouting(e);
+                                openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                              }}
+                              className="space-y-1 cursor-pointer group flex-1 min-w-0"
+                              title="Click to navigate to citizen location"
+                            >
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
                                   e.type === 'ambulance' ? 'bg-red-500/10 text-red-400' :
@@ -453,25 +506,38 @@ export default function StaffDashboard() {
                                   {e.type} ALERT
                                 </span>
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                  e.status === 'active' ? 'bg-red-500/10 text-red-505 animate-pulse' : 'bg-slate-800 text-slate-400'
+                                  e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' : 'bg-slate-800 text-slate-400'
                                 }`}>
                                   {e.status}
                                 </span>
                               </div>
-                              <p className="font-extrabold text-sm text-slate-100">{e.location_text || 'GPS Coordinates'}</p>
+                              <p className="font-extrabold text-sm text-slate-100 group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                <span className="underline decoration-blue-500/40 truncate">{e.location_text || 'GPS Coordinates'}</span>
+                              </p>
                               <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
                               <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
                             </div>
+
                             <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
                               <button
-                                onClick={() => simulateRouting(e)}
-                                className="flex-1 sm:flex-none px-3 py-2 bg-blue-650 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedEmergency(e);
+                                  simulateRouting(e);
+                                  openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                }}
+                                className="flex-1 sm:flex-none px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-blue-600/20"
+                                title="Navigate from my location to citizen location"
                               >
-                                <Navigation className="w-3.5 h-3.5" /> Navigate
+                                <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
                               </button>
                               {e.status === 'active' && (
                                 <button
-                                  onClick={() => handleResolveEmergency(e.id)}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleResolveEmergency(e.id);
+                                  }}
                                   className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
@@ -481,64 +547,69 @@ export default function StaffDashboard() {
                           </div>
                         </div>
                       ))}
-                    {emergencies.length === 0 && (
-                      <p className="text-center text-xs text-slate-500 py-6">No emergency SOS signals active. Stay vigilant!</p>
-                    )}
+                      {emergencies.length === 0 && (
+                        <p className="text-center text-xs text-slate-500 py-6">No emergency SOS signals active. Stay vigilant!</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Column: Citizen details & simulated GPS navigation */}
-              <div className="space-y-4">
-                <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-5">
-                  <h3 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">
-                    Active Dispatch Details
-                  </h3>
+                {/* Right Column: Citizen details & simulated GPS navigation */}
+                <div className="space-y-4">
+                  <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-5">
+                    <h3 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">
+                      Active Dispatch Details
+                    </h3>
 
-                  {selectedEmergency ? (
-                    (() => {
-                      const citizen = selectedEmergency.profiles || users.find(u => u.id === selectedEmergency.user_id);
-                      return (
-                        <div className="space-y-5">
-                          {/* Citizen private details card */}
-                          <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-3">
-                            <div className="flex items-center gap-2 text-blue-400">
-                              <User className="w-4 h-4" />
-                              <p className="text-xs font-bold uppercase tracking-wider">Citizen Registry Profile</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-sm font-bold text-white">{citizen?.full_name || 'Registered Citizen'}</p>
-                              <p className="text-xs text-slate-350 flex items-center gap-1">
-                                <Phone className="w-3.5 h-3.5 text-slate-500" /> {citizen?.phone || 'No contact phone'}
-                              </p>
-                              <p className="text-xs text-slate-350 flex items-center gap-1">
-                                <Mail className="w-3.5 h-3.5 text-slate-500" /> {citizen?.email || 'No registered email'}
-                              </p>
-                              <span className="inline-block text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-lg mt-1 font-semibold">
-                                Ward Number: {citizen?.ward || 'Unassigned'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Exact Incident Location Directions */}
-                          {selectedEmergency.lat && selectedEmergency.lng && (
-                            <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
-                              <div className="flex items-center gap-2 text-emerald-405">
-                                <MapPin className="w-4 h-4" />
-                                <p className="text-xs font-bold uppercase tracking-wider">Exact Incident GPS</p>
+                    {selectedEmergency ? (
+                      (() => {
+                        const citizen = selectedEmergency.profiles || users.find(u => u.id === selectedEmergency.user_id);
+                        return (
+                          <div className="space-y-5">
+                            {/* Citizen private details card */}
+                            <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-3">
+                              <div className="flex items-center gap-2 text-blue-400">
+                                <User className="w-4 h-4" />
+                                <p className="text-xs font-bold uppercase tracking-wider">Citizen Registry Profile</p>
                               </div>
                               <div className="space-y-1">
-                                <p className="text-xs text-slate-300 font-mono">Latitude: {Number(selectedEmergency.lat).toFixed(6)}</p>
-                                <p className="text-xs text-slate-300 font-mono">Longitude: {Number(selectedEmergency.lng).toFixed(6)}</p>
+                                <p className="text-sm font-bold text-white">{citizen?.full_name || 'Registered Citizen'}</p>
+                                <p className="text-xs text-slate-350 flex items-center gap-1">
+                                  <Phone className="w-3.5 h-3.5 text-slate-500" /> {citizen?.phone || 'No contact phone'}
+                                </p>
+                                <p className="text-xs text-slate-350 flex items-center gap-1">
+                                  <Mail className="w-3.5 h-3.5 text-slate-500" /> {citizen?.email || 'No registered email'}
+                                </p>
+                                <span className="inline-block text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-lg mt-1 font-semibold">
+                                  Ward Number: {citizen?.ward || 'Unassigned'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Exact Incident Location Directions */}
+                            <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                              <div className="flex items-center gap-2 text-emerald-400">
+                                <MapPin className="w-4 h-4" />
+                                <p className="text-xs font-bold uppercase tracking-wider">Citizen Query Location</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-slate-200 font-medium">
+                                  {selectedEmergency.location_text || 'Bhubaneswar Coordinates'}
+                                </p>
+                                {selectedEmergency.lat && selectedEmergency.lng && (
+                                  <p className="text-[11px] text-slate-400 font-mono">
+                                    GPS: {Number(selectedEmergency.lat).toFixed(6)}, {Number(selectedEmergency.lng).toFixed(6)}
+                                  </p>
+                                )}
                                 <button
-                                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedEmergency.lat},${selectedEmergency.lng}`, '_blank')}
-                                  className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/10"
+                                  onClick={() => openGoogleMapsDirections(selectedEmergency.lat, selectedEmergency.lng, selectedEmergency.location_text)}
+                                  className="w-full mt-2.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
+                                  title="Open turn-by-turn routing from current location to citizen"
                                 >
-                                  <Navigation className="w-3.5 h-3.5" /> Guide Me (Google Maps Directions)
+                                  <Navigation className="w-4 h-4" /> Guide Me to Citizen (Google Maps Navigation)
                                 </button>
                               </div>
                             </div>
-                          )}
 
                           {/* Simulated Directions block */}
                           {routingSim && (
@@ -631,32 +702,52 @@ export default function StaffDashboard() {
                               }`}
                             >
                               <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                                <div className="space-y-1">
+                                <div 
+                                  onClick={() => {
+                                    setSelectedEmergency(e);
+                                    simulateRouting(e);
+                                    openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                  }}
+                                  className="space-y-1 cursor-pointer group"
+                                  title="Click to navigate to citizen location"
+                                >
                                   <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-500/10 text-red-405">
+                                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-500/10 text-red-400">
                                       AMBULANCE ALERT
                                     </span>
                                     <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                      e.status === 'active' ? 'bg-red-500/10 text-red-505 animate-pulse' : 'bg-slate-800 text-slate-400'
+                                      e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' : 'bg-slate-800 text-slate-400'
                                     }`}>
                                       {e.status}
                                     </span>
                                   </div>
-                                  <p className="font-extrabold text-sm text-slate-100">{e.location_text || 'GPS Coordinates'}</p>
+                                  <p className="font-extrabold text-sm text-slate-100 group-hover:text-red-400 transition-colors flex items-center gap-1.5">
+                                    <MapPin className="w-4 h-4 text-red-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                    <span className="underline decoration-red-500/40">{e.location_text || 'GPS Coordinates'}</span>
+                                  </p>
                                   <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
                                   <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
                                 </div>
                                 <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
                                   <button
-                                    onClick={() => simulateRouting(e)}
-                                    className="flex-1 sm:flex-none px-3 py-2 bg-red-650 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setSelectedEmergency(e);
+                                      simulateRouting(e);
+                                      openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                    }}
+                                    className="flex-1 sm:flex-none px-3.5 py-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-red-600/20"
+                                    title="Navigate from my location to citizen location"
                                   >
-                                    <Navigation className="w-3.5 h-3.5" /> Navigate
+                                    <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
                                   </button>
                                   {e.status === 'active' && (
                                     <button
-                                      onClick={() => handleResolveEmergency(e.id)}
-                                      className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-405 border border-emerald-505/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleResolveEmergency(e.id);
+                                      }}
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                     >
                                       <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
                                     </button>
@@ -666,7 +757,7 @@ export default function StaffDashboard() {
                             </div>
                           ))}
                         {emergencies.filter(e => e.type === 'ambulance').length === 0 && (
-                          <p className="text-center text-xs text-slate-550 py-6 italic">No ambulance requests active. All is well!</p>
+                          <p className="text-center text-xs text-slate-500 py-6 italic">No ambulance requests active. All is well!</p>
                         )}
                       </div>
                     </div>
@@ -704,25 +795,30 @@ export default function StaffDashboard() {
                                 </div>
                               </div>
 
-                              {/* Exact GPS Card with guide button */}
-                              {selectedEmergency.lat && selectedEmergency.lng && (
-                                <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
-                                  <div className="flex items-center gap-2 text-emerald-405">
-                                    <MapPin className="w-4 h-4" />
-                                    <p className="text-xs font-bold uppercase tracking-wider">Exact Incident GPS</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-slate-300 font-mono">Latitude: {Number(selectedEmergency.lat).toFixed(6)}</p>
-                                    <p className="text-xs text-slate-300 font-mono">Longitude: {Number(selectedEmergency.lng).toFixed(6)}</p>
-                                    <button
-                                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedEmergency.lat},${selectedEmergency.lng}`, '_blank')}
-                                      className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/10"
-                                    >
-                                      <Navigation className="w-3.5 h-3.5" /> Guide Me (Google Maps Directions)
-                                    </button>
-                                  </div>
+                              {/* Exact Incident Location Directions */}
+                              <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                                <div className="flex items-center gap-2 text-emerald-400">
+                                  <MapPin className="w-4 h-4" />
+                                  <p className="text-xs font-bold uppercase tracking-wider">Citizen Query Location</p>
                                 </div>
-                              )}
+                                <div className="space-y-1">
+                                  <p className="text-xs text-slate-200 font-medium">
+                                    {selectedEmergency.location_text || 'Bhubaneswar Coordinates'}
+                                  </p>
+                                  {selectedEmergency.lat && selectedEmergency.lng && (
+                                    <p className="text-[11px] text-slate-400 font-mono">
+                                      GPS: {Number(selectedEmergency.lat).toFixed(6)}, {Number(selectedEmergency.lng).toFixed(6)}
+                                    </p>
+                                  )}
+                                  <button
+                                    onClick={() => openGoogleMapsDirections(selectedEmergency.lat, selectedEmergency.lng, selectedEmergency.location_text)}
+                                    className="w-full mt-2.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
+                                    title="Open turn-by-turn routing from current location to citizen"
+                                  >
+                                    <Navigation className="w-4 h-4" /> Guide Me to Citizen (Google Maps Navigation)
+                                  </button>
+                                </div>
+                              </div>
 
                               {/* Simulated Directions block */}
                               {routingSim && (
@@ -986,17 +1082,20 @@ export default function StaffDashboard() {
                               <p className="font-extrabold text-sm text-slate-100">{c.title}</p>
                               <p className="text-xs text-slate-400">{c.description || 'No description provided.'}</p>
                               <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                <span className="flex items-center gap-1 text-slate-350 font-medium">
+                                <span 
+                                  onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
+                                  className="flex items-center gap-1 text-slate-300 font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                                  title="Click to open directions in Google Maps"
+                                >
                                   <MapPin className="w-3.5 h-3.5 text-amber-400" /> {c.location_text || 'Bhubaneswar, Odisha'}
                                 </span>
-                                {c.lat && c.lng && (
-                                  <button
-                                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`, '_blank')}
-                                    className="px-2 py-0.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                  >
-                                    <Navigation className="w-2.5 h-2.5" /> Guide Me
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
+                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                                  title="Navigate from my location to incident in Google Maps"
+                                >
+                                  <Navigation className="w-3 h-3" /> Guide Me (Maps)
+                                </button>
                               </div>
 
                               {c.status === 'resolved' && (
@@ -1061,25 +1160,29 @@ export default function StaffDashboard() {
                       </div>
 
                       {/* GPS Geolocation and Guide Link */}
-                      {selectedComplaint.lat && selectedComplaint.lng && (
-                        <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-white/5 space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                              <MapPin className="w-4 h-4 text-amber-400" /> Incident Location
-                            </span>
+                      <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-white/5 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-amber-400" /> Incident Location
+                          </span>
+                          {selectedComplaint.lat && selectedComplaint.lng && (
                             <span className="text-[10px] text-slate-400 font-mono">
                               {Number(selectedComplaint.lat).toFixed(4)}, {Number(selectedComplaint.lng).toFixed(4)}
                             </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedComplaint.lat},${selectedComplaint.lng}`, '_blank')}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/10"
-                          >
-                            <Navigation className="w-3.5 h-3.5" /> Guide Me to Incident (Google Maps)
-                          </button>
+                          )}
                         </div>
-                      )}
+                        <p className="text-xs text-slate-200 font-medium">
+                          {selectedComplaint.location_text || 'Bhubaneswar, Odisha'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openGoogleMapsDirections(selectedComplaint.lat, selectedComplaint.lng, selectedComplaint.location_text)}
+                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
+                          title="Open turn-by-turn routing from current location to incident in Google Maps"
+                        >
+                          <Navigation className="w-3.5 h-3.5" /> Guide Me to Incident (Google Maps Navigation)
+                        </button>
+                      </div>
 
                       {/* Photo Evidence */}
                       {selectedComplaint.photo_url && (

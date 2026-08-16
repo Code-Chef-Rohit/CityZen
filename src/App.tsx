@@ -202,12 +202,13 @@ function AppContent() {
   const back = () => setScreen({ name: 'home' });
 
   return (
-    <div className="relative">
+    <div className="relative min-h-[100dvh] bg-ink-50 dark:bg-slate-950">
       {screen.name === 'home' && (
         <Home
           onTab={(t) => navigateToScreen(tabMap[t])}
           onOpenZen={() => navigateToScreen({ name: 'zen' })}
           onOpenService={openService}
+          onOpenProfile={() => setScreen({ name: 'profile' })}
         />
       )}
       {screen.name === 'map' && <SmartMap onBack={back} initialCategory={screen.category} />}
@@ -237,20 +238,10 @@ function AppContent() {
       {profile?.role === 'admin' && (
         <button
           onClick={() => setAdminViewMode('admin')}
-          className="fixed top-4 left-4 z-40 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-full text-xs font-black flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer ring-2 ring-white/30"
+          className="fixed top-[max(0.85rem,env(safe-area-inset-top))] left-4 z-40 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white rounded-full text-xs font-black flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer ring-2 ring-white/30"
           title="Return to Admin Control Center"
         >
           <Shield className="w-3.5 h-3.5" /> Admin Center
-        </button>
-      )}
-
-      {/* Floating profile button */}
-      {screen.name === 'home' && (
-        <button
-          onClick={() => setScreen({ name: 'profile' })}
-          className="fixed top-4 right-4 z-30 w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-        >
-          <User className="w-5 h-5" />
         </button>
       )}
 

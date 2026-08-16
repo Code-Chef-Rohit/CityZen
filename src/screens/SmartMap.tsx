@@ -82,7 +82,7 @@ interface MapProps {
 export function SmartMap({ onBack, initialCategory }: MapProps) {
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [activeCats, setActiveCats] = useState<Set<MapCategory>>(
-    new Set(initialCategory ? [initialCategory] : ['hospital', 'police', 'pharmacy', 'fire', 'park', 'transit', 'parking', 'government'])
+    new Set(initialCategory ? [initialCategory] : ['hospital'])
   );
   const [selected, setSelected] = useState<MapPoint | null>(null);
   const [loading, setLoading] = useState(true);
@@ -327,7 +327,24 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
 
       {/* Layer toggles */}
       <div className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-ink-100 dark:border-slate-800">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => {
+              if (activeCats.size === Object.keys(categoryConfig).length) {
+                setActiveCats(new Set(['hospital']));
+              } else {
+                setActiveCats(new Set(Object.keys(categoryConfig) as MapCategory[]));
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+              activeCats.size === Object.keys(categoryConfig).length
+                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-sm'
+                : 'bg-ink-100 dark:bg-slate-800 text-ink-600 dark:text-slate-300 border-transparent hover:bg-ink-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            {activeCats.size === Object.keys(categoryConfig).length ? '✓ All Layers' : 'Show All'}
+          </button>
+
           {(Object.keys(categoryConfig) as MapCategory[]).map((cat) => {
             const cfg = categoryConfig[cat];
             const active = activeCats.has(cat);
@@ -336,7 +353,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
                 key={cat}
                 onClick={() => toggleCat(cat)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  active ? `${cfg.bg} text-white shadow-sm` : 'bg-ink-100 dark:bg-slate-800 text-ink-400'
+                  active ? `${cfg.bg} text-white shadow-sm ring-2 ring-white/20` : 'bg-ink-100 dark:bg-slate-800 text-ink-500 dark:text-slate-400 hover:bg-ink-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <cfg.icon className="w-3.5 h-3.5" />

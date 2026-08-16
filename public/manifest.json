@@ -1,0 +1,105 @@
+{
+  "name": "CityZen \u2014 One City. One App.",
+  "short_name": "CityZen",
+  "description": "AI-Powered Smart City Companion for Bhubaneswar. Live Services, Map, Grievances, Utility Bills & Emergency SOS.",
+  "id": "cityzen-pwa-react",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#030712",
+  "theme_color": "#059669",
+  "categories": [
+    "utilities",
+    "lifestyle",
+    "government",
+    "productivity"
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/favicon-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Emergency SOS",
+      "short_name": "SOS",
+      "description": "Trigger emergency response dispatch",
+      "url": "/?tab=emergency",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Zen AI Assistant",
+      "short_name": "Zen AI",
+      "description": "Chat with Zen AI for city services & guidance",
+      "url": "/?tab=zen",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Report Civic Issue",
+      "short_name": "Complaints",
+      "description": "File grievance with GPS & photo",
+      "url": "/?tab=complaints",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Pay Utility Bills",
+      "short_name": "Bills",
+      "description": "Pay electricity, water and municipal taxes",
+      "url": "/?tab=bills",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
