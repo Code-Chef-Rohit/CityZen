@@ -309,33 +309,33 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
-      <header className="bg-slate-900 border-b border-white/5 px-6 py-4 flex items-center justify-between shadow-lg">
+      <header className="bg-slate-900 border-b border-white/5 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
             <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="font-extrabold text-lg text-orange-300">CityZen Admin Control Center</h1>
-            <p className="text-xs text-slate-400">Superuser Municipal Auditing & System Configuration</p>
+            <h1 className="font-extrabold text-base sm:text-lg text-orange-300">CityZen Admin Control Center</h1>
+            <p className="text-[11px] sm:text-xs text-slate-400">Superuser Municipal Auditing & System Configuration</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col text-right hidden sm:block">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex flex-col text-right hidden lg:block">
             <span className="text-xs font-bold text-white">{profile?.full_name || 'System Administrator'}</span>
             <span className="text-[10px] text-slate-400 font-mono flex items-center justify-end gap-1">
               <Mail className="w-3 h-3 text-slate-500" /> {session?.user?.email || profile?.email || 'admin@cityzen.gov'}
             </span>
           </div>
 
-          <div className="bg-orange-950/40 px-3 py-1.5 rounded-xl border border-orange-500/20 text-[10px] font-bold text-orange-400">
+          <div className="bg-orange-950/40 px-2.5 py-1 rounded-xl border border-orange-500/20 text-[10px] font-bold text-orange-400 shrink-0">
             Role: Super Admin
           </div>
 
           <button
             onClick={() => loadMetricsAndData()}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-xs text-slate-200 font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-xs text-slate-200 font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
             title="Refresh and sync all municipal tables"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-orange-400' : 'text-slate-400'}`} /> Sync
@@ -344,7 +344,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
           {onSwitchToCitizen && (
             <button
               onClick={onSwitchToCitizen}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 rounded-xl text-xs text-blue-300 font-bold transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 rounded-xl text-xs text-blue-300 font-bold transition-all cursor-pointer shadow-sm shrink-0"
               title="Preview Citizen View"
             >
               <Users className="w-3.5 h-3.5" /> Citizen View
@@ -353,7 +353,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
 
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 transition-colors cursor-pointer shrink-0"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
