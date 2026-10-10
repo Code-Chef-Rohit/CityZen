@@ -23,7 +23,7 @@ CityZen is a production-grade, real-time municipal operating system and civic en
 * **Hamming Distance Comparison**: Compares binary hashes against the civic database; a distance $\le 14$ ($\ge 78.1\%$ similarity) confirms visual duplication.
 * **Spatial Geodesic Proximity Filter (Haversine Matrix)**: Enforces a $\le 150\text{ meters}$ radius constraint between GPS coordinates so different incidents in other areas are not falsely merged.
 * **Visual Entropy & Sensor Authenticity Analyzer**: Evaluates 3D color quantization space ($8 \times 8 \times 8$ buckets) and adjacent pixel differential noise variance to generate a genuine camera capture score ($65\%\text{--}99\%$).
-* **Automated Overload Escalation**: When $\ge 2$ citizens report the same spot, the ML cluster escalates the incident to **`[CRITICAL OVERLOAD]`** priority on responder dashboards.
+* **Zen AI Feedforward Neural Network (MLP Intent Classifier - `src/lib/zenAiNeuralNetwork.ts`)**: Multilayer Perceptron featuring a 120-dimensional Bag-of-Words feature vectorizer, 32-neuron ReLU hidden layer, and Softmax probability evaluator $P(\text{Intent}_i | \text{Query})$ across 10 municipal categories with confidence scoring (e.g. `98% Confidence`).
 
 ---
 

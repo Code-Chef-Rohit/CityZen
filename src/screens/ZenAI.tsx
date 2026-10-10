@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { 
   Sparkles, Send, Mic, MapPin, Building2, Droplets, Zap, X, FileText, RotateCcw, 
-  Siren, Navigation, Compass, ShieldAlert, PhoneCall, CheckCircle2, ChevronRight 
+  Siren, Navigation, Compass, ShieldAlert, PhoneCall, CheckCircle2, ChevronRight, Cpu 
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { cn } from '@/lib/utils';
+import { processNeuralResponse } from '@/lib/zenAiNeuralNetwork';
 
 interface Message {
   id: string;
@@ -402,31 +403,31 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         liveWeather: liveWeatherInfo
       };
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 400));
 
-      const localResponse = generateLocalResponse(text, cityContext);
+      const neuralRes = processNeuralResponse(text, cityContext, onNavigate);
       setMessages((m) => [...m, {
         id: crypto.randomUUID(),
         role: 'ai',
-        text: localResponse.text,
-        cards: localResponse.cards
+        text: neuralRes.text,
+        cards: neuralRes.cards
       }]);
 
     } catch (err: any) {
       console.error(err);
-      const localResponse = generateLocalResponse(text, {
+      const neuralRes = processNeuralResponse(text, {
         userProfile: null,
         outstandingBills: [],
         filedComplaints: [],
         environmentalReadings: [],
         nearbyLocations: [],
         availableServices: []
-      });
+      }, onNavigate);
       setMessages((m) => [...m, {
         id: crypto.randomUUID(),
         role: 'ai',
-        text: localResponse.text,
-        cards: localResponse.cards
+        text: neuralRes.text,
+        cards: neuralRes.cards
       }]);
     } finally {
       setThinking(false);
@@ -480,7 +481,7 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
     <Screen noBottomPad className="flex flex-col h-[100dvh] md:h-[82vh] relative overflow-hidden bg-ink-50 dark:bg-slate-950">
       <ScreenHeader
         title="Zen AI"
-        subtitle="Your Smart Municipal Assistant"
+        subtitle="Neural Intent Engine v2.5 (Softmax MLP)"
         onBack={onBack}
         right={
           <div className="flex items-center gap-2">
