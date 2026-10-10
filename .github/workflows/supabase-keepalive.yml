@@ -1,0 +1,32 @@
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    # Runs every 3 days at 00:00 UTC to prevent Supabase 7-day inactivity auto-pause
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows manual run from GitHub Actions tab
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database Endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          echo "Checking Supabase connection..."
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ]; then
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY")
+            echo "Supabase Response Status Code: $HTTP_STATUS"
+            if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 206 ]; then
+              echo "✅ Supabase project is active and responding!"
+            else
+              echo "⚠️ Supabase ping status: $HTTP_STATUS"
+            fi
+          else
+            echo "ℹ️ VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY secret not found in GitHub Secrets."
+            echo "Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY under Repository Settings -> Secrets and variables -> Actions."
+          fi

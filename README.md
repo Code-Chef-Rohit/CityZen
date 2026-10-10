@@ -89,6 +89,29 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
+### 🔄 Preventing Supabase 7-Day Auto-Pause (Free Tier Keep-Alive)
+
+Supabase Free Tier projects auto-pause after **7 days of zero API activity**. To keep your project running 24/7 indefinitely:
+
+1. **Automated GitHub Action Workflow** (Included):
+   - We included a workflow file at [`.github/workflows/supabase-keepalive.yml`](file:///.github/workflows/supabase-keepalive.yml).
+   - Once you push this repo to GitHub, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to **GitHub Repo Settings $\rightarrow$ Secrets and variables $\rightarrow$ Actions**.
+   - GitHub Actions will run automatically every **3 days** to send a light query to Supabase, keeping the project active forever!
+
+2. **Local / Manual Ping Command**:
+   ```bash
+   npm run keep-alive
+   ```
+
+3. **External Free Monitoring (e.g. UptimeRobot or Cron-Job.org)**:
+   - Create a free monitor pointing to `https://<YOUR-SUPABASE-ID>.supabase.co/rest/v1/profiles?select=id&limit=1`
+   - Add HTTP headers:
+     - `apikey`: `YOUR_ANON_KEY`
+     - `Authorization`: `Bearer YOUR_ANON_KEY`
+   - Set monitor interval to every 1–3 days.
+
+---
+
 ## 💾 Database Schema & Migration Setup
 
 Run the following consolidated script in your **Supabase SQL Editor** (SQL Editor $\rightarrow$ New Query $\rightarrow$ Run):
