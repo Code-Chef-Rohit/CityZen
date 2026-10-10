@@ -11,12 +11,14 @@ export function Screen({ children, className, noBottomPad }: ScreenProps) {
   return (
     <div
       className={cn(
-        'min-h-[100dvh] md:min-h-0 md:h-[calc(100vh-3rem)] w-full md:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 md:shadow-2xl md:my-6 md:rounded-3xl overflow-y-auto border-0 md:border border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100',
-        !noBottomPad && 'pb-24',
+        'w-full min-h-[100dvh] bg-ink-50 dark:bg-slate-950 text-ink-800 dark:text-slate-100 animate-fade-in max-w-7xl mx-auto px-0 sm:px-4 lg:px-6 py-0 lg:py-4',
+        !noBottomPad && 'pb-24 lg:pb-8',
         className,
       )}
     >
-      {children}
+      <div className="w-full bg-white dark:bg-slate-900 border-0 lg:border lg:border-slate-200/80 dark:lg:border-slate-800/80 lg:rounded-3xl lg:shadow-2xl overflow-hidden min-h-[82vh] flex flex-col justify-between">
+        {children}
+      </div>
     </div>
   );
 }

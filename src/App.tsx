@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { User, KeyRound, Phone, Shield } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { BottomNav, type Tab } from '@/components/BottomNav';
+import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { Splash } from '@/screens/Splash';
 import { Auth } from '@/screens/Auth';
 import { Home } from '@/screens/Home';
@@ -203,6 +204,8 @@ function AppContent() {
 
   return (
     <div className="relative min-h-[100dvh] bg-ink-50 dark:bg-slate-950">
+      <DesktopNavbar currentScreen={screen.name} onNavigate={(s) => navigateToScreen(s as any)} />
+
       {screen.name === 'home' && (
         <Home
           onTab={(t) => navigateToScreen(tabMap[t])}
