@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { formatINR } from '@/lib/utils';
+import { formatINR, formatDate, timeAgo } from '@/lib/utils';
 
 type Tab = 'users' | 'complaints' | 'bills' | 'emergencies';
 
@@ -505,17 +505,21 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
               <div className="overflow-x-auto">
                 {/* Tab 1: User Roles Management */}
                 {activeTab === 'users' && (() => {
-                  const filteredUsers = users.filter(u => 
-                    u.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                    u.phone?.toLowerCase().includes(userSearchQuery.toLowerCase())
-                  );
+                  const filteredUsers = users.filter(u => {
+                    const q = userSearchQuery.toLowerCase();
+                    const joinedStr = u.created_at ? formatDate(u.created_at).toLowerCase() : '';
+                    return u.full_name?.toLowerCase().includes(q) ||
+                           u.email?.toLowerCase().includes(q) ||
+                           u.phone?.toLowerCase().includes(q) ||
+                           joinedStr.includes(q);
+                  });
 
                   return (
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
                           <th className="pb-3">User Profile Name</th>
+                          <th className="pb-3">Joined Date</th>
                           <th className="pb-3">Email Address</th>
                           <th className="pb-3">Role Authority</th>
                           <th className="pb-3">Ward</th>
@@ -527,7 +531,7 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                       <tbody>
                         {filteredUsers.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="py-8 text-center text-slate-500">
+                            <td colSpan={8} className="py-8 text-center text-slate-500">
                               <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
                               <p className="font-semibold text-xs text-slate-300">No matching user accounts found</p>
                               <p className="text-[10px] text-slate-500 mt-1">If newly registered, click the Sync button above to refresh user records.</p>
@@ -544,6 +548,15 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                               <td className="py-3 font-semibold text-white">
                                 {u.full_name || 'Anonymous User'}
                                 <span className="block text-[10px] text-slate-400 font-normal">{u.phone || 'No phone'}</span>
+                              </td>
+                              <td className="py-3 text-slate-300 font-medium">
+                                <div className="flex items-center gap-1.5 text-xs text-slate-200">
+                                  <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                  <span>{u.created_at ? formatDate(u.created_at) : 'N/A'}</span>
+                                </div>
+                                <span className="block text-[10px] text-slate-400 font-normal pl-5">
+                                  {u.created_at ? timeAgo(u.created_at) : ''}
+                                </span>
                               </td>
                               <td className="py-3 text-slate-300 font-medium">{u.email || 'N/A'}</td>
                               <td className="py-3">
