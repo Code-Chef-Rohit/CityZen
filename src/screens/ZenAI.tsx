@@ -32,8 +32,19 @@ const DEFAULT_WELCOME_MSG: Message = {
   text: "Hi! I'm Zen, your city assistant. Ask me anything — find services, file complaints, pay bills, or get city updates.",
 };
 
-// In-memory module cache to persist conversation across screen transitions until page refresh
-let inMemoryZenMessages: Message[] = [DEFAULT_WELCOME_MSG];
+// In-memory module cache & sessionStorage persistence to maintain chat history until page refresh
+const SESSION_STORAGE_KEY = 'cityzen_zen_ai_messages';
+
+let inMemoryZenMessages: Message[] = (() => {
+  try {
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [DEFAULT_WELCOME_MSG];
+})();
 
 export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (screenObj: any) => void }) {
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -46,6 +57,9 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
 
   useEffect(() => {
     inMemoryZenMessages = messages;
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(messages));
+    } catch (e) {}
   }, [messages]);
 
   const handleClearChat = () => {
@@ -55,6 +69,9 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
       text: "Hi! I'm Zen, your city assistant. Ask me anything — find services, file complaints, pay bills, or get city updates.",
     };
     inMemoryZenMessages = [fresh];
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch (e) {}
     setMessages([fresh]);
   };
 
