@@ -392,9 +392,15 @@ export function ServiceDetail({
     try {
       // Fetch user location
       let locText = 'Bhubaneswar Central';
+      let locLat: number | null = null;
+      let locLng: number | null = null;
       try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
-        locText = `Coordinates: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+        const pos = await new Promise<GeolocationPosition>((res, rej) => 
+          navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 4000 })
+        );
+        locLat = pos.coords.latitude;
+        locLng = pos.coords.longitude;
+        locText = `GPS: ${locLat.toFixed(5)}, ${locLng.toFixed(5)}`;
       } catch (e) {
         console.warn("Using default coordinates");
       }
@@ -403,6 +409,8 @@ export function ServiceDetail({
         type: 'police',
         status: 'active',
         location_text: locText,
+        lat: locLat,
+        lng: locLng,
         notes: sosNotes.trim() || 'SOS triggered from service exploration panel.'
       });
       if (error) throw error;

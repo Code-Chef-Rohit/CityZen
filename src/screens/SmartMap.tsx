@@ -89,6 +89,15 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [searchRadius, setSearchRadius] = useState<number>(10);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const geoTimeoutRef = useRef<any>(null);
+
+  const showGeoNotice = (msg: string) => {
+    setGeoError(msg);
+    if (geoTimeoutRef.current) clearTimeout(geoTimeoutRef.current);
+    geoTimeoutRef.current = setTimeout(() => {
+      setGeoError(null);
+    }, 4500);
+  };
 
   useEffect(() => {
     if (initialCategory) {
@@ -103,8 +112,16 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
 
   const loadPoints = async (lat?: number, lng?: number) => {
     try {
-      const { data } = await supabase.from('map_points').select('*');
-      let allPoints = data ?? [];
+      let allPoints: any[] = [];
+      if (supabase) {
+        const { data, error } = await supabase.from('map_points').select('*');
+        if (!error && data && data.length > 0) {
+          allPoints = data;
+        }
+      }
+      if (allPoints.length === 0) {
+        allPoints = [...realBhubaneswarPoints];
+      }
 
       if (lat !== undefined && lng !== undefined) {
         const isBhubaneswar = Math.abs(lat - 20.2184) < 1.0 && Math.abs(lng - 85.7331) < 1.0;
@@ -134,7 +151,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
       }
       setPoints(allPoints);
     } catch (e) {
-      console.warn("Error loading map points:", e);
+      console.warn("Notice: Loaded standard city POIs:", e);
       setPoints(realBhubaneswarPoints);
     } finally {
       setLoading(false);
@@ -159,11 +176,11 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
           }
         },
         (err) => {
-          console.warn('Map geolocation tracking error:', err);
+          console.warn('Map geolocation tracking info:', err);
           if (err.code === err.PERMISSION_DENIED) {
-            setGeoError('Location permission denied. Showing default city map.');
+            showGeoNotice('Location permission not granted. Displaying city map.');
           } else {
-            setGeoError('GPS coordinates unavailable. Showing city map.');
+            showGeoNotice('GPS signal searching. Displaying city map.');
           }
           
           const fallbackLat = 20.2184;
@@ -171,10 +188,10 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
           setUserLoc({ lat: fallbackLat, lng: fallbackLng });
           loadPoints(fallbackLat, fallbackLng);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
       );
     } else {
-      setGeoError('Geolocation tracking is not supported by your browser.');
+      showGeoNotice('Showing default city map.');
       const fallbackLat = 20.2184;
       const fallbackLng = 85.7331;
       setUserLoc({ lat: fallbackLat, lng: fallbackLng });
@@ -184,6 +201,9 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
     return () => {
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
+      }
+      if (geoTimeoutRef.current) {
+        clearTimeout(geoTimeoutRef.current);
       }
     };
   }, []);
@@ -235,11 +255,22 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         mapRef.current = map;
 
         const isDark = document.documentElement.classList.contains('dark');
-        const tileUrl = isDark 
-          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
-          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        const primaryOsmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const darkCartoUrl = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+        const initialTileUrl = isDark ? darkCartoUrl : primaryOsmUrl;
 
-        L.tileLayer(tileUrl, { maxZoom: 20 }).addTo(map);
+        const tileLayer = L.tileLayer(initialTileUrl, {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        tileLayer.on('tileerror', () => {
+          if (tileLayer._url !== primaryOsmUrl) {
+            tileLayer.setUrl(primaryOsmUrl);
+          }
+        });
+
+        tileLayer.addTo(map);
 
         layersRef.current = L.layerGroup().addTo(map);
 
@@ -399,8 +430,18 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
           {/* Map Viewport Container */}
           <div className="relative h-[48vh] sm:h-[55vh] lg:h-[65vh] bg-slate-100 dark:bg-slate-950 overflow-hidden border-b lg:border-r border-slate-200 dark:border-slate-800 lg:rounded-2xl lg:m-3 shadow-inner">
             {geoError && (
-              <div className="absolute top-4 left-4 right-16 bg-red-600/90 text-white p-2.5 rounded-xl shadow-xl z-[1000] border border-red-500/20 text-xs font-semibold backdrop-blur-sm">
-                ⚠️ {geoError}
+              <div className="absolute top-4 left-4 right-16 bg-slate-900/95 dark:bg-slate-800/95 text-slate-100 p-2.5 rounded-xl shadow-2xl z-[1000] border border-white/10 text-xs font-medium backdrop-blur-md flex items-center justify-between gap-2 animate-in fade-in">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Compass className="w-4 h-4 text-primary-400 shrink-0" />
+                  <span className="truncate">{geoError}</span>
+                </div>
+                <button
+                  onClick={() => setGeoError(null)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 

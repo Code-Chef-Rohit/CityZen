@@ -39,7 +39,7 @@ interface AIProtocolStep {
 }
 
 export function Emergency({ onBack }: { onBack: () => void }) {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [requests, setRequests] = useState<EmergencyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmType, setConfirmType] = useState<EmergencyType | null>(null);
@@ -89,6 +89,22 @@ export function Emergency({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     load();
   }, [session]);
+
+  // Immediately request current GPS position upon opening Emergency screen
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCurrentLat(pos.coords.latitude);
+          setCurrentLng(pos.coords.longitude);
+          setGpsAccuracy(Math.round(pos.coords.accuracy || 4));
+          setTrackingGps(true);
+        },
+        (err) => console.warn("GPS initial check:", err),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    }
+  }, []);
 
   // Continuously track high-precision GPS
   useEffect(() => {
@@ -376,43 +392,95 @@ export function Emergency({ onBack }: { onBack: () => void }) {
     setCallStatus('ended');
   };
 
+  const getFreshGPSLocation = (): Promise<{ lat: number; lng: number; accuracy: number }> => {
+    return new Promise((resolve) => {
+      if (!('geolocation' in navigator)) {
+        resolve({ lat: currentLat, lng: currentLng, accuracy: gpsAccuracy });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy || 5)
+          });
+        },
+        (err) => {
+          console.warn("Real-time GPS lock timeout or fallback:", err);
+          resolve({ lat: currentLat, lng: currentLng, accuracy: gpsAccuracy });
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    });
+  };
+
   const sendSOS = async (type: EmergencyType, spokenQuery: string = '') => {
     if (!session?.user) return;
 
-    let locationText = `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)} (Bhubaneswar, Odisha)`;
+    // 1. Actively acquire fresh high-accuracy GPS coordinates at this exact moment
+    const freshGps = await getFreshGPSLocation();
+    setCurrentLat(freshGps.lat);
+    setCurrentLng(freshGps.lng);
+    setGpsAccuracy(freshGps.accuracy);
+    setTrackingGps(true);
 
+    let locationText = `GPS: ${freshGps.lat.toFixed(5)}, ${freshGps.lng.toFixed(5)} (±${freshGps.accuracy}m)`;
+
+    // 2. Reverse-geocode to get real street address / area
     try {
-      const { data: points } = await supabase.from('map_points').select('name, lat, lng');
-      let nearestLandmark = '';
-      let minDistance = Infinity;
-      
-      if (points && points.length > 0) {
-        for (const p of points) {
-          const dist = getDistance(currentLat, currentLng, Number(p.lat), Number(p.lng));
-          if (dist < minDistance) {
-            minDistance = dist;
-            nearestLandmark = p.name;
-          }
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2200);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${freshGps.lat}&lon=${freshGps.lng}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const addrData = await res.json();
+        if (addrData?.display_name) {
+          locationText = `${addrData.display_name} (GPS: ${freshGps.lat.toFixed(5)}, ${freshGps.lng.toFixed(5)})`;
         }
       }
-
-      if (nearestLandmark && minDistance < 5) {
-        locationText = `Near ${nearestLandmark} (Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)}, Accuracy ±${gpsAccuracy}m)`;
-      }
     } catch (e) {
-      console.warn("Landmark lookup error:", e);
+      // Landmark lookup fallback
+      try {
+        const { data: points } = await supabase.from('map_points').select('name, lat, lng');
+        let nearestLandmark = '';
+        let minDistance = Infinity;
+        
+        if (points && points.length > 0) {
+          for (const p of points) {
+            const dist = getDistance(freshGps.lat, freshGps.lng, Number(p.lat), Number(p.lng));
+            if (dist < minDistance) {
+              minDistance = dist;
+              nearestLandmark = p.name;
+            }
+          }
+        }
+
+        if (nearestLandmark && minDistance < 5) {
+          locationText = `Near ${nearestLandmark} (GPS: ${freshGps.lat.toFixed(5)}, ${freshGps.lng.toFixed(5)}, ±${freshGps.accuracy}m)`;
+        }
+      } catch (err) {
+        // Fallback remains GPS coordinates
+      }
     }
 
+    // 3. Attach citizen identity details directly in notes header
+    const citizenName = profile?.full_name || 'Citizen';
+    const citizenPhone = profile?.phone || 'Not provided';
+    const citizenWard = profile?.ward ? `Ward ${profile.ward}` : 'General Ward';
+    const callerHeader = `[Citizen: ${citizenName} | Phone: ${citizenPhone} | Ward: ${citizenWard}]`;
     const initialNotes = spokenQuery 
-      ? `Voice SOS: "${spokenQuery}"` 
-      : 'Emergency SOS dispatched via one-tap beacon';
+      ? `${callerHeader} Voice SOS: "${spokenQuery}"` 
+      : `${callerHeader} Urgent emergency dispatch beacon`;
 
     const { data } = await supabase.from('emergency_requests').insert({
       user_id: session.user.id,
       type,
       location_text: locationText,
-      lat: currentLat,
-      lng: currentLng,
+      lat: freshGps.lat,
+      lng: freshGps.lng,
       notes: initialNotes,
     }).select('*').single();
 
