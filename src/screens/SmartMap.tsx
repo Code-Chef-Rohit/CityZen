@@ -254,19 +254,17 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         });
         mapRef.current = map;
 
-        const isDark = document.documentElement.classList.contains('dark');
         const primaryOsmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-        const darkCartoUrl = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-        const initialTileUrl = isDark ? darkCartoUrl : primaryOsmUrl;
+        const fallbackOsmUrl = 'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png';
 
-        const tileLayer = L.tileLayer(initialTileUrl, {
+        const tileLayer = L.tileLayer(primaryOsmUrl, {
           maxZoom: 19,
           attribution: '&copy; OpenStreetMap contributors'
         });
 
         tileLayer.on('tileerror', () => {
-          if (tileLayer._url !== primaryOsmUrl) {
-            tileLayer.setUrl(primaryOsmUrl);
+          if (tileLayer._url !== fallbackOsmUrl) {
+            tileLayer.setUrl(fallbackOsmUrl);
           }
         });
 

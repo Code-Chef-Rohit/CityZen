@@ -451,7 +451,7 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Shared Header */}
-      <header className="bg-slate-900/60 backdrop-blur-md border-b border-white/5 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <header className="bg-slate-900/60 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
             <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
@@ -462,7 +462,7 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex flex-col text-right hidden sm:block">
             <span className="text-xs font-bold text-white">{profile?.full_name || 'Staff Responder'}</span>
             <span className="text-[10px] text-slate-400 font-mono flex items-center justify-end gap-1">
@@ -470,7 +470,7 @@ export default function StaffDashboard() {
             </span>
           </div>
 
-          <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider ${
+          <div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider ${
             role === 'police' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
             role === 'hospital' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
             'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -480,7 +480,7 @@ export default function StaffDashboard() {
 
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 font-bold transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -493,14 +493,14 @@ export default function StaffDashboard() {
           <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6">
           
           {/* POLICE DASHBOARD VIEW */}
           {role === 'police' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Left Column: Active SOS List */}
               <div className="lg:col-span-2 space-y-4">
-                <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl">
+                <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <h2 className="font-extrabold text-base text-blue-400 flex items-center gap-2">
                       <Shield className="w-5 h-5" /> Emergency SOS Dispatches
@@ -657,7 +657,7 @@ export default function StaffDashboard() {
 
                 {/* Right Column: Citizen details & simulated GPS navigation */}
                 <div className="space-y-4">
-                  <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-5">
+                  <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-4 sm:space-y-5">
                     <h3 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">
                       Active Dispatch Details
                     </h3>
@@ -672,20 +672,20 @@ export default function StaffDashboard() {
                         const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || 'General';
 
                         return (
-                          <div className="space-y-5">
+                          <div className="space-y-4 sm:space-y-5">
                             {/* Citizen private details card */}
-                            <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-3">
+                            <div className="bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-3">
                               <div className="flex items-center gap-2 text-blue-400">
                                 <User className="w-4 h-4" />
                                 <p className="text-xs font-bold uppercase tracking-wider">Citizen Registry Profile</p>
                               </div>
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-sm font-bold text-white">{callerName}</p>
+                                  <p className="text-sm font-bold text-white truncate">{callerName}</p>
                                   {callerPhone && (
                                     <a
                                       href={`tel:${callerPhone}`}
-                                      className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                      className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                                       title="Call citizen"
                                     >
                                       <Phone className="w-3.5 h-3.5" /> Call Now
@@ -707,7 +707,7 @@ export default function StaffDashboard() {
                             </div>
 
                             {/* Exact Incident Location Directions */}
-                            <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                            <div className="bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-2">
                               <div className="flex items-center gap-2 text-emerald-400">
                                 <MapPin className="w-4 h-4" />
                                 <p className="text-xs font-bold uppercase tracking-wider">Citizen Query Location</p>
@@ -733,7 +733,7 @@ export default function StaffDashboard() {
 
                           {/* Simulated Directions block */}
                           {routingSim && (
-                            <div className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 space-y-4">
+                            <div className="bg-slate-950/40 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-3 sm:space-y-4">
                               <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2">
                                 <span className="text-slate-400 font-bold uppercase tracking-wider">Estimated Dispatch</span>
                                 <span className="font-black text-blue-400">{routingSim.eta} ({routingSim.distance})</span>
@@ -766,12 +766,12 @@ export default function StaffDashboard() {
 
           {/* HOSPITAL DASHBOARD VIEW */}
           {role === 'hospital' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Hospital Action Tab Bar */}
-              <div className="flex border-b border-white/10 gap-6">
+              <div className="flex border-b border-white/10 gap-3 sm:gap-6 overflow-x-auto no-scrollbar scrollbar-none pb-0.5">
                 <button
                   onClick={() => setHospitalTab('dispatches')}
-                  className={`pb-2.5 text-sm font-extrabold transition-all relative ${
+                  className={`pb-2.5 text-xs sm:text-sm font-extrabold transition-all relative whitespace-nowrap cursor-pointer ${
                     hospitalTab === 'dispatches' ? 'text-red-400 border-b-2 border-red-500' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -779,7 +779,7 @@ export default function StaffDashboard() {
                 </button>
                 <button
                   onClick={() => setHospitalTab('settings')}
-                  className={`pb-2.5 text-sm font-extrabold transition-all relative ${
+                  className={`pb-2.5 text-xs sm:text-sm font-extrabold transition-all relative whitespace-nowrap cursor-pointer ${
                     hospitalTab === 'settings' ? 'text-red-400 border-b-2 border-red-500' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -789,10 +789,10 @@ export default function StaffDashboard() {
 
               {/* HOSPITAL DISPATCHES TAB */}
               {hospitalTab === 'dispatches' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                   {/* Left Column: Ambulance SOS alerts */}
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl">
+                    <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                         <h2 className="font-extrabold text-base text-red-400 flex items-center gap-2">
                           <HeartPulse className="w-5 h-5 animate-pulse" /> Active Ambulance Requests
@@ -944,7 +944,7 @@ export default function StaffDashboard() {
 
                   {/* Right Column: Citizen details & simulated directions */}
                   <div className="space-y-4">
-                    <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-5">
+                    <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-4 sm:space-y-5">
                       <h3 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">
                         Active Dispatch Details
                       </h3>
@@ -959,20 +959,20 @@ export default function StaffDashboard() {
                           const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || 'General';
 
                           return (
-                            <div className="space-y-5">
+                            <div className="space-y-4 sm:space-y-5">
                               {/* Citizen private details card */}
-                              <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-3">
+                              <div className="bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-3">
                                 <div className="flex items-center gap-2 text-red-400">
                                   <User className="w-4 h-4" />
                                   <p className="text-xs font-bold uppercase tracking-wider">Citizen Registry Profile</p>
                                 </div>
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-bold text-white">{callerName}</p>
+                                    <p className="text-sm font-bold text-white truncate">{callerName}</p>
                                     {callerPhone && (
                                       <a
                                         href={`tel:${callerPhone}`}
-                                        className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                        className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                                         title="Call citizen"
                                       >
                                         <Phone className="w-3.5 h-3.5" /> Call Now
@@ -994,7 +994,7 @@ export default function StaffDashboard() {
                               </div>
 
                               {/* Exact Incident Location Directions */}
-                              <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                              <div className="bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-2">
                                 <div className="flex items-center gap-2 text-emerald-400">
                                   <MapPin className="w-4 h-4" />
                                   <p className="text-xs font-bold uppercase tracking-wider">Citizen Query Location</p>
@@ -1020,7 +1020,7 @@ export default function StaffDashboard() {
 
                               {/* Simulated Directions block */}
                               {routingSim && (
-                                <div className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 space-y-4">
+                                <div className="bg-slate-950/40 p-3.5 sm:p-4 rounded-2xl border border-white/5 space-y-3 sm:space-y-4">
                                   <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2">
                                     <span className="text-slate-400 font-bold uppercase tracking-wider">Estimated Dispatch</span>
                                     <span className="font-black text-red-400">{routingSim.eta} ({routingSim.distance})</span>
@@ -1053,21 +1053,21 @@ export default function StaffDashboard() {
 
               {/* HOSPITAL SETTINGS TAB */}
               {hospitalTab === 'settings' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                   {/* Left Side: Hospital Facility Manager Form */}
-                  <div className="lg:col-span-2 bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl">
+                  <div className="lg:col-span-2 bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
                     <h2 className="font-extrabold text-base text-red-405 flex items-center gap-2 mb-5">
                       <Building2 className="w-5 h-5" /> Facility details registry
                     </h2>
 
                     <div className="space-y-4">
                       {selectedFacility && (
-                        <div className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 text-xs">
+                        <div className="bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-white/5 text-xs">
                           <span className="text-slate-500 font-bold">LINKED POINT ID:</span> <span className="font-mono text-slate-350">{selectedFacility.id}</span>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
                           <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Hospital / Facility Name</label>
                           <input
@@ -1101,7 +1101,7 @@ export default function StaffDashboard() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                         <div>
                           <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Latitude Coordinate</label>
                           <input
@@ -1136,7 +1136,7 @@ export default function StaffDashboard() {
                       </div>
 
                       <div className="pt-2 text-right">
-                        <Button onClick={handleSaveFacility} loading={facSaving} className="bg-red-650 hover:bg-red-700 text-white font-bold px-6">
+                        <Button onClick={handleSaveFacility} loading={facSaving} className="w-full sm:w-auto bg-red-650 hover:bg-red-700 text-white font-bold px-6">
                           <CheckCircle2 className="w-4 h-4" /> Save Facility Details
                         </Button>
                       </div>
@@ -1144,7 +1144,7 @@ export default function StaffDashboard() {
                   </div>
 
                   {/* Right Side: Disease Ambulance Numbers Management */}
-                  <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
+                  <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-5 sm:space-y-6">
                     <div>
                       <h2 className="font-extrabold text-sm text-red-405 flex items-center gap-2 mb-1.5">
                         <HeartPulse className="w-4 h-4" /> Ambulance & Specialities
@@ -1153,7 +1153,7 @@ export default function StaffDashboard() {
                     </div>
 
                     {/* Form */}
-                    <form onSubmit={handleAddAmbulanceContact} className="space-y-3 bg-slate-950/40 p-4 rounded-2xl border border-white/5">
+                    <form onSubmit={handleAddAmbulanceContact} className="space-y-3 bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-white/5">
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Register Specialty Hotline</p>
                       <div>
                         <input
@@ -1223,10 +1223,10 @@ export default function StaffDashboard() {
 
           {/* BMC DASHBOARD VIEW */}
           {role === 'bmc' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Left Column: Complaints list */}
               <div className="lg:col-span-2 space-y-4">
-                <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl">
+                <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <h2 className="font-extrabold text-base text-amber-400 flex items-center gap-2">
                       <Building className="w-5 h-5" /> Civic Complaint Logs
@@ -1337,7 +1337,7 @@ export default function StaffDashboard() {
 
               {/* Right Column: Resolution modal or privacy verification checks */}
               <div className="space-y-4">
-                <div className="bg-slate-900 border border-white/5 rounded-3xl p-6 shadow-xl space-y-5">
+                <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl space-y-4 sm:space-y-5">
                   <h3 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">
                     Operations Inspector
                   </h3>

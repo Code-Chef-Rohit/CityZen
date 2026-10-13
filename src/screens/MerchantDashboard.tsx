@@ -179,18 +179,18 @@ export default function MerchantDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
-      <header className="bg-emerald-950/40 backdrop-blur-md border-b border-emerald-500/20 px-6 py-4 flex items-center justify-between">
+      <header className="bg-emerald-950/40 backdrop-blur-md border-b border-emerald-500/20 px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <Building className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-extrabold text-lg text-emerald-300">City Zen Merchant Portal</h1>
+            <h1 className="font-extrabold text-base sm:text-lg text-emerald-300">City Zen Merchant Portal</h1>
             <p className="text-xs text-emerald-400/70">Hospital Service Provider Dashboard</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex flex-col text-right hidden sm:block">
             <span className="text-xs font-bold text-white">{profile?.full_name || 'Hospital Merchant'}</span>
             <span className="text-[10px] text-emerald-300/80 font-mono flex items-center justify-end gap-1">
@@ -198,13 +198,13 @@ export default function MerchantDashboard() {
             </span>
           </div>
 
-          <div className="bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+          <div className="bg-emerald-950/80 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
             Active Role: Merchant
           </div>
 
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 rounded-xl text-xs text-red-400 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -212,10 +212,10 @@ export default function MerchantDashboard() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left column: Hospital Facility details form */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-slate-900/60 border border-white/5 rounded-3xl p-6 shadow-xl backdrop-blur-md">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md">
             {selectedHospital ? (
               <div>
                 <div className="flex justify-between items-center mb-5">
@@ -225,22 +225,22 @@ export default function MerchantDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-slate-950/40 p-4 rounded-2xl border border-white/5">
+                  <div className="bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-white/5">
                     <p className="text-xs text-slate-400 font-bold">LINKED HOSPITAL NAME</p>
-                    <p className="text-lg font-black text-white mt-1">{selectedHospital.name}</p>
+                    <p className="text-base sm:text-lg font-black text-white mt-1">{selectedHospital.name}</p>
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-emerald-500" /> Location Coordinates: {selectedHospital.lat}, {selectedHospital.lng}
+                      <MapPin className="w-3 h-3 text-emerald-500 shrink-0" /> Location Coordinates: {selectedHospital.lat}, {selectedHospital.lng}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Total Bed Capacity</label>
                       <input
                         type="number"
                         value={bedsTotal}
                         onChange={(e) => setBedsTotal(Number(e.target.value))}
-                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-white"
                       />
                     </div>
                     <div>
@@ -249,19 +249,19 @@ export default function MerchantDashboard() {
                         type="number"
                         value={bedsAvailable}
                         onChange={(e) => setBedsAvailable(Number(e.target.value))}
-                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-white"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Contact Hotline</label>
                       <input
                         type="text"
                         value={phoneText}
                         onChange={(e) => setPhoneText(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-white"
                       />
                     </div>
                     <div>
@@ -270,7 +270,7 @@ export default function MerchantDashboard() {
                         type="text"
                         value={addressText}
                         onChange={(e) => setAddressText(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-white"
                       />
                     </div>
                   </div>
@@ -281,7 +281,7 @@ export default function MerchantDashboard() {
                       rows={3}
                       value={specialties}
                       onChange={(e) => setSpecialties(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                      className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-emerald-500 resize-none text-white"
                       placeholder="e.g. Cardiology, Intensive Care, Neonatology, Emergency Medicine"
                     />
                   </div>
@@ -319,7 +319,7 @@ export default function MerchantDashboard() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Total Bed Capacity</label>
                       <input
@@ -340,7 +340,7 @@ export default function MerchantDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Latitude Coordinate</label>
                       <input
@@ -363,7 +363,7 @@ export default function MerchantDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Contact Hotline Number</label>
                       <input
@@ -414,8 +414,8 @@ export default function MerchantDashboard() {
         </div>
 
         {/* Right column: Emergency Alert queue */}
-        <div className="space-y-6">
-          <div className="bg-slate-900/60 border border-white/5 rounded-3xl p-6 shadow-xl backdrop-blur-md flex flex-col h-full justify-between">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md flex flex-col h-full justify-between">
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-base text-red-400 flex items-center gap-2">
@@ -433,7 +433,7 @@ export default function MerchantDashboard() {
                   </div>
                 ) : (
                   emergencyAlerts.map(alert => (
-                    <div key={alert.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-4 space-y-3">
+                    <div key={alert.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-3.5 sm:p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-extrabold bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full uppercase">
                           {alert.type}
@@ -448,7 +448,7 @@ export default function MerchantDashboard() {
                         <p><strong className="text-white">Log:</strong> {alert.notes || 'No description provided'}</p>
                       </div>
 
-                      <div className="flex gap-2 pt-1.5 border-t border-white/5">
+                      <div className="flex flex-wrap sm:flex-nowrap gap-2 pt-1.5 border-t border-white/5">
                         {alert.status === 'active' && (
                           <button
                             onClick={() => handleUpdateAlertStatus(alert.id, 'dispatched')}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -377,56 +377,56 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       )}
 
       {/* Main Analytics Cards */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Total Citizens */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
-              <Users className="w-6 h-6" />
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 shadow">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Citizens</p>
-              <p className="text-2xl font-black text-white mt-0.5">{metrics.totalUsers}</p>
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Total Citizens</p>
+              <p className="text-xl sm:text-2xl font-black text-white mt-0.5 truncate">{metrics.totalUsers}</p>
             </div>
           </div>
 
           {/* Active Complaints */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow">
-            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
-              <AlertCircle className="w-6 h-6" />
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 shadow">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 shrink-0">
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Complaints</p>
-              <p className="text-2xl font-black text-white mt-0.5">{metrics.activeComplaints}</p>
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Active Complaints</p>
+              <p className="text-xl sm:text-2xl font-black text-white mt-0.5 truncate">{metrics.activeComplaints}</p>
             </div>
           </div>
 
           {/* Total Unpaid Invoice Amount */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <CreditCard className="w-6 h-6" />
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 shadow">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+              <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Unpaid Bills</p>
-              <p className="text-lg font-black text-emerald-400 mt-1">{formatINR(metrics.totalUnpaidAmount)}</p>
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Total Unpaid Bills</p>
+              <p className="text-base sm:text-lg font-black text-emerald-400 mt-1 truncate">{formatINR(metrics.totalUnpaidAmount)}</p>
             </div>
           </div>
 
           {/* Active SOS alerts */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow">
-            <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
-              <Siren className="w-6 h-6 animate-pulse" />
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center gap-2.5 sm:gap-4 shadow">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400 shrink-0">
+              <Siren className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Emergency SOS</p>
-              <p className="text-2xl font-black text-red-400 mt-0.5">{metrics.activeEmergencies}</p>
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Active SOS Alarms</p>
+              <p className="text-xl sm:text-2xl font-black text-red-400 mt-0.5 truncate">{metrics.activeEmergencies}</p>
             </div>
           </div>
         </div>
 
         {/* Tab Selector Section */}
-        <div className="bg-slate-900/60 border border-white/5 rounded-3xl p-6 shadow-xl backdrop-blur-md">
-          <div className="flex gap-2 p-1 bg-slate-950 rounded-xl mb-6 max-w-lg">
+        <div className="bg-slate-900/60 border border-white/5 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-xl backdrop-blur-md">
+          <div className="flex gap-1.5 p-1 bg-slate-950 rounded-2xl mb-4 sm:mb-6 overflow-x-auto no-scrollbar scrollbar-none w-full max-w-xl">
             {([
               { id: 'users', label: 'User Roles', icon: Users },
               { id: 'complaints', label: 'Complaints', icon: AlertCircle },
@@ -438,11 +438,12 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`flex-1 min-w-[105px] sm:min-w-0 flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     activeTab === t.id ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" /> {t.label}
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t.label}</span>
                 </button>
               );
             })}
@@ -514,136 +515,274 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                            joinedStr.includes(q);
                   });
 
+                  if (filteredUsers.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-slate-500">
+                        <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                        <p className="font-semibold text-xs text-slate-300">No matching user accounts found</p>
+                        <p className="text-[10px] text-slate-500 mt-1">If newly registered, click the Sync button above to refresh user records.</p>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="pb-3">User Profile Name</th>
-                          <th className="pb-3">Joined Date</th>
-                          <th className="pb-3">Email Address</th>
-                          <th className="pb-3">Role Authority</th>
-                          <th className="pb-3">Ward</th>
-                          <th className="pb-3">Linked Utilities</th>
-                          <th className="pb-3">Status</th>
-                          <th className="pb-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.length === 0 ? (
-                          <tr>
-                            <td colSpan={8} className="py-8 text-center text-slate-500">
-                              <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                              <p className="font-semibold text-xs text-slate-300">No matching user accounts found</p>
-                              <p className="text-[10px] text-slate-500 mt-1">If newly registered, click the Sync button above to refresh user records.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredUsers.map(u => {
-                            const userBills = bills.filter(b => b.user_id === u.id);
+                    <div>
+                      {/* Responsive Mobile Cards View (< md) */}
+                      <div className="md:hidden space-y-3">
+                        {filteredUsers.map(u => {
+                          const userBills = bills.filter(b => b.user_id === u.id);
                           const unpaidTotal = userBills.filter(b => b.status === 'unpaid').reduce((sum, b) => sum + Number(b.amount), 0);
-                          const billTypes = Array.from(new Set(userBills.map(b => b.type)));
+                          const isPrimaryOwner = u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648';
 
                           return (
-                            <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                              <td className="py-3 font-semibold text-white">
-                                {u.full_name || 'Anonymous User'}
-                                <span className="block text-[10px] text-slate-400 font-normal">{u.phone || 'No phone'}</span>
-                              </td>
-                              <td className="py-3 text-slate-300 font-medium">
-                                <div className="flex items-center gap-1.5 text-xs text-slate-200">
-                                  <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                                  <span>{u.created_at ? formatDate(u.created_at) : 'N/A'}</span>
-                                </div>
-                                <span className="block text-[10px] text-slate-400 font-normal pl-5">
-                                  {u.created_at ? timeAgo(u.created_at) : ''}
-                                </span>
-                              </td>
-                              <td className="py-3 text-slate-300 font-medium">{u.email || 'N/A'}</td>
-                              <td className="py-3">
-                                {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
-                                  <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse">
-                                    Primary Owner
-                                  </span>
-                                ) : u.id !== profile?.id ? (
-                                  <select
-                                    value={u.role}
-                                    onChange={(e) => handleChangeUserRole(u.id, e.target.value as any)}
-                                    className={`bg-slate-900 border rounded-xl px-2 py-1 text-[10px] font-bold uppercase focus:outline-none focus:border-orange-500 cursor-pointer ${
-                                      u.role === 'admin' ? 'text-orange-400 border-orange-500/25 bg-orange-500/10' :
-                                      u.role === 'police' ? 'text-blue-400 border-blue-500/25 bg-blue-500/10' :
-                                      u.role === 'hospital' ? 'text-red-400 border-red-500/25 bg-red-500/10' :
-                                      u.role === 'bmc' ? 'text-amber-400 border-amber-500/25 bg-amber-500/10' :
-                                      'text-emerald-400 border-emerald-500/25 bg-emerald-500/10'
-                                    }`}
-                                  >
-                                    <option value="citizen">Citizen</option>
-                                    <option value="police">Police</option>
-                                    <option value="hospital">Hospital</option>
-                                    <option value="bmc">BMC</option>
-                                    <option value="admin">Super Admin</option>
-                                  </select>
-                                ) : (
-                                  <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
-                                    Super Admin
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 text-slate-300">{u.ward ? `Ward ${u.ward}` : 'Not set'}</td>
-                              <td className="py-3 text-slate-300">
-                                {userBills.length > 0 ? (
-                                  <div>
-                                    <span className="capitalize font-semibold text-slate-200">{billTypes.join(', ')}</span>
-                                    <span className="block text-[10px] text-red-400">Due: {formatINR(unpaidTotal)}</span>
+                            <div key={u.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-4 space-y-3 shadow-md">
+                              {/* Top Bar: Name, Avatar, Status */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center font-black text-xs shrink-0 border border-orange-500/20">
+                                    {u.full_name ? u.full_name.charAt(0).toUpperCase() : 'U'}
                                   </div>
-                                ) : (
-                                  <span className="text-slate-500">None linked</span>
-                                )}
-                              </td>
-                              <td className="py-3">
-                                <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
-                                  u.blocked ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                }`}>
-                                  {u.blocked ? 'Blocked' : 'Active'}
-                                </span>
-                              </td>
-                              <td className="py-3 text-right">
-                                {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
-                                  <span className="text-[10px] text-orange-400 font-bold italic pr-2">Primary Owner</span>
-                                ) : u.id !== profile?.id ? (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      onClick={() => handleToggleBlock(u.id, !!u.blocked)}
-                                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${
-                                        u.blocked
-                                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/25'
-                                          : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/25'
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-sm text-white truncate">{u.full_name || 'Anonymous User'}</p>
+                                    <p className="text-xs text-slate-400">{u.phone || 'No phone'}</p>
+                                  </div>
+                                </div>
+                                <div className="shrink-0">
+                                  {isPrimaryOwner ? (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                                      Owner
+                                    </span>
+                                  ) : u.blocked ? (
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase bg-red-500/10 text-red-400 border border-red-500/20">
+                                      Blocked
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Details Grid */}
+                              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 rounded-xl p-3 border border-white/5">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Email</span>
+                                  <span className="text-slate-300 font-medium truncate block text-xs" title={u.email}>{u.email || 'N/A'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Ward</span>
+                                  <span className="text-slate-300 font-medium text-xs">{u.ward ? `Ward ${u.ward}` : 'Not set'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Joined Date</span>
+                                  <div className="flex items-center gap-1 text-slate-300 font-medium text-xs">
+                                    <Calendar className="w-3 h-3 text-orange-400 shrink-0" />
+                                    <span>{u.created_at ? formatDate(u.created_at) : 'N/A'}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Utilities Due</span>
+                                  {userBills.length > 0 ? (
+                                    <span className="text-red-400 font-semibold text-xs">{formatINR(unpaidTotal)}</span>
+                                  ) : (
+                                    <span className="text-slate-500 text-xs">None</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Role Selector & Actions Bar */}
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Role:</span>
+                                  {isPrimaryOwner ? (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                                      Primary Owner
+                                    </span>
+                                  ) : u.id !== profile?.id ? (
+                                    <select
+                                      value={u.role}
+                                      onChange={(e) => handleChangeUserRole(u.id, e.target.value as any)}
+                                      className={`bg-slate-900 border rounded-xl px-2 py-1 text-[10px] font-bold uppercase focus:outline-none focus:border-orange-500 cursor-pointer ${
+                                        u.role === 'admin' ? 'text-orange-400 border-orange-500/25 bg-orange-500/10' :
+                                        u.role === 'police' ? 'text-blue-400 border-blue-500/25 bg-blue-500/10' :
+                                        u.role === 'hospital' ? 'text-red-400 border-red-500/25 bg-red-500/10' :
+                                        u.role === 'bmc' ? 'text-amber-400 border-amber-500/25 bg-amber-500/10' :
+                                        'text-emerald-400 border-emerald-500/25 bg-emerald-500/10'
                                       }`}
                                     >
-                                      {u.blocked ? 'Unblock' : 'Block'}
-                                    </button>
-                                    <button
-                                      onClick={() => { setSelectedUserToResetPW(u); setNewAdminResetPassword(''); }}
-                                      className="px-2.5 py-1 rounded-xl text-[10px] font-bold border border-white/10 bg-slate-850 hover:bg-slate-800 text-slate-300 transition-colors cursor-pointer"
-                                    >
-                                      Reset PW
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteUser(u.id)}
-                                      className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                      title="Delete User Account"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px] text-slate-500 font-semibold italic pr-2">Your Account</span>
-                                )}
-                              </td>
-                            </tr>
+                                      <option value="citizen">Citizen</option>
+                                      <option value="police">Police</option>
+                                      <option value="hospital">Hospital</option>
+                                      <option value="bmc">BMC</option>
+                                      <option value="admin">Super Admin</option>
+                                    </select>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                                      Super Admin
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 ml-auto">
+                                  <button
+                                    onClick={() => { setSelectedUserToResetPW(u); setNewAdminResetPassword(''); }}
+                                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                                  >
+                                    Reset PW
+                                  </button>
+                                  {!isPrimaryOwner && u.id !== profile?.id && (
+                                    <>
+                                      <button
+                                        onClick={() => handleToggleBlock(u.id, !!u.blocked)}
+                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                                          u.blocked 
+                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
+                                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                                        }`}
+                                      >
+                                        {u.blocked ? 'Unblock' : 'Block'}
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUser(u.id)}
+                                        className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                        title="Delete User"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           );
-                        }))}
-                      </tbody>
-                    </table>
+                        })}
+                      </div>
+
+                      {/* Desktop Table View (>= md) */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-[850px] text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
+                              <th className="pb-3">User Profile Name</th>
+                              <th className="pb-3">Joined Date</th>
+                              <th className="pb-3">Email Address</th>
+                              <th className="pb-3">Role Authority</th>
+                              <th className="pb-3">Ward</th>
+                              <th className="pb-3">Linked Utilities</th>
+                              <th className="pb-3">Status</th>
+                              <th className="pb-3 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredUsers.map(u => {
+                              const userBills = bills.filter(b => b.user_id === u.id);
+                              const unpaidTotal = userBills.filter(b => b.status === 'unpaid').reduce((sum, b) => sum + Number(b.amount), 0);
+                              const billTypes = Array.from(new Set(userBills.map(b => b.type)));
+
+                              return (
+                                <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 font-semibold text-white">
+                                    {u.full_name || 'Anonymous User'}
+                                    <span className="block text-[10px] text-slate-400 font-normal">{u.phone || 'No phone'}</span>
+                                  </td>
+                                  <td className="py-3 text-slate-300 font-medium">
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-200">
+                                      <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                      <span>{u.created_at ? formatDate(u.created_at) : 'N/A'}</span>
+                                    </div>
+                                    <span className="block text-[10px] text-slate-400 font-normal pl-5">
+                                      {u.created_at ? timeAgo(u.created_at) : ''}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-slate-300 font-medium">{u.email || 'N/A'}</td>
+                                  <td className="py-3">
+                                    {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
+                                      <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse">
+                                        Primary Owner
+                                      </span>
+                                    ) : u.id !== profile?.id ? (
+                                      <select
+                                        value={u.role}
+                                        onChange={(e) => handleChangeUserRole(u.id, e.target.value as any)}
+                                        className={`bg-slate-900 border rounded-xl px-2 py-1 text-[10px] font-bold uppercase focus:outline-none focus:border-orange-500 cursor-pointer ${
+                                          u.role === 'admin' ? 'text-orange-400 border-orange-500/25 bg-orange-500/10' :
+                                          u.role === 'police' ? 'text-blue-400 border-blue-500/25 bg-blue-500/10' :
+                                          u.role === 'hospital' ? 'text-red-400 border-red-500/25 bg-red-500/10' :
+                                          u.role === 'bmc' ? 'text-amber-400 border-amber-500/25 bg-amber-500/10' :
+                                          'text-emerald-400 border-emerald-500/25 bg-emerald-500/10'
+                                        }`}
+                                      >
+                                        <option value="citizen">Citizen</option>
+                                        <option value="police">Police</option>
+                                        <option value="hospital">Hospital</option>
+                                        <option value="bmc">BMC</option>
+                                        <option value="admin">Super Admin</option>
+                                      </select>
+                                    ) : (
+                                      <span className="inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                                        Super Admin
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 text-slate-300">{u.ward ? `Ward ${u.ward}` : 'Not set'}</td>
+                                  <td className="py-3 text-slate-300">
+                                    {userBills.length > 0 ? (
+                                      <div>
+                                        <span className="capitalize font-semibold text-slate-200">{billTypes.join(', ')}</span>
+                                        <span className="block text-[10px] text-red-400">Due: {formatINR(unpaidTotal)}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-500">None linked</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3">
+                                    <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                                      u.blocked ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    }`}>
+                                      {u.blocked ? 'Blocked' : 'Active'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-right">
+                                    {u.email === 'rohitranjanpatra8@gmail.com' || u.phone === '7735550648' ? (
+                                      <span className="text-[10px] text-orange-400 font-bold italic pr-2">Primary Owner</span>
+                                    ) : u.id !== profile?.id ? (
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button
+                                          onClick={() => handleToggleBlock(u.id, !!u.blocked)}
+                                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${
+                                            u.blocked
+                                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/25'
+                                              : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/25'
+                                          }`}
+                                        >
+                                          {u.blocked ? 'Unblock' : 'Block'}
+                                        </button>
+                                        <button
+                                          onClick={() => { setSelectedUserToResetPW(u); setNewAdminResetPassword(''); }}
+                                          className="px-2.5 py-1 rounded-xl text-[10px] font-bold border border-white/10 bg-slate-850 hover:bg-slate-800 text-slate-300 transition-colors cursor-pointer"
+                                        >
+                                          Reset PW
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteUser(u.id)}
+                                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                          title="Delete User Account"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 font-semibold italic pr-2">Your Account</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   );
                 })()}
 
@@ -665,29 +804,21 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                     !c.description?.startsWith('[ML_CLUSTER_OVERLOAD:')
                   );
 
+                  if (masters.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-slate-500">
+                        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                        <p className="font-semibold text-xs text-slate-300">No complaints reported or matching search</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Complaints filed by citizens will appear here with live ML deduplication & BMC resolution proof.</p>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="pb-3">Complaint Details</th>
-                          <th className="pb-3 text-center">Consolidated Reports Count</th>
-                          <th className="pb-3">Filed By (Citizens)</th>
-                          <th className="pb-3">Department</th>
-                          <th className="pb-3">Location</th>
-                          <th className="pb-3 text-right">Lifecycle Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {masters.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="py-8 text-center text-slate-500">
-                              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                              <p className="font-semibold text-xs text-slate-300">No complaints reported or matching search</p>
-                              <p className="text-[10px] text-slate-500 mt-1">Complaints filed by citizens will appear here with live ML deduplication & BMC resolution proof.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          masters.map(c => {
+                    <div>
+                      {/* Responsive Mobile Cards View (< md) */}
+                      <div className="md:hidden space-y-3">
+                        {masters.map(c => {
                           const children = complaints.filter(x => 
                             x.description && (
                               x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
@@ -701,71 +832,105 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                           const citizenNames = [getUserName(c.user_id), ...children.map(x => getUserName(x.user_id))].join(', ');
 
                           return (
-                            <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                              <td className="py-3 pr-2">
-                                <p className="font-semibold text-white flex flex-wrap items-center gap-1.5">
-                                  {c.title}
+                            <div key={c.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-4 space-y-3 shadow-md">
+                              {/* Header Badges */}
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    {c.category}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded text-[9px] font-bold text-slate-400 bg-slate-900 border border-white/5 capitalize">
+                                    {c.department || 'Civic'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                    reportCount > 1 
+                                      ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 animate-pulse' 
+                                      : 'bg-slate-800 text-slate-400'
+                                  }`}>
+                                    {reportCount} {reportCount === 1 ? 'report' : 'reports'}
+                                  </span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
+                                  c.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                  c.status === 'in_progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                  c.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                  'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                }`}>
+                                  {c.status.replace('_', ' ')}
+                                </span>
+                              </div>
+
+                              {/* Title & ML Score */}
+                              <div className="space-y-1">
+                                <h3 className="font-bold text-sm text-white">{c.title}</h3>
+                                {c.ml_verification_score && (
+                                  <span className="inline-block text-[9px] bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                    {c.ml_verification_score}% Authenticity Verified
+                                  </span>
+                                )}
+                                <p className="text-xs text-slate-400 leading-relaxed">{cleanDesc}</p>
+                              </div>
+
+                              {/* Photos if any */}
+                              {(c.photo_url || c.resolution_photo_url) && (
+                                <div className="flex flex-wrap gap-2 pt-1">
                                   {c.photo_url && (
                                     <button 
                                       onClick={() => setPreviewPhoto(c.photo_url)}
-                                      className="text-[9px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
+                                      className="text-[10px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2.5 py-1 rounded-xl border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 font-bold"
                                     >
-                                      <Camera className="w-2.5 h-2.5" /> Citizen Photo
+                                      <Camera className="w-3 h-3" /> Citizen Photo
                                     </button>
                                   )}
                                   {c.resolution_photo_url && (
                                     <button 
                                       onClick={() => setPreviewPhoto(c.resolution_photo_url)}
-                                      className="text-[9px] bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
+                                      className="text-[10px] bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 px-2.5 py-1 rounded-xl border border-emerald-500/20 cursor-pointer transition-colors flex items-center gap-1 font-bold"
                                     >
-                                      <CheckCircle2 className="w-2.5 h-2.5" /> BMC Proof Photo
-                                    </button>
-                                  )}
-                                  {c.ml_verification_score && (
-                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
-                                      {c.ml_verification_score}% Authenticity Verified
-                                    </span>
-                                  )}
-                                </p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 max-w-sm truncate">{cleanDesc}</p>
-                                {c.status === 'resolved' && c.resolution_proof && (
-                                  <p className="text-[10px] text-emerald-400 mt-1 italic">
-                                    BMC Proof: "{c.resolution_proof}"
-                                  </p>
-                                )}
-                              </td>
-                              <td className="py-3 text-center">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                  reportCount > 1 
-                                    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 animate-pulse' 
-                                    : 'bg-slate-800 text-slate-400 border border-slate-700/50'
-                                }`}>
-                                  {reportCount} {reportCount === 1 ? 'report' : 'reports'}
-                                </span>
-                              </td>
-                              <td className="py-3 text-slate-300 max-w-xs truncate" title={citizenNames}>
-                                {citizenNames}
-                              </td>
-                              <td className="py-3 text-slate-300 capitalize">{c.category} ({c.department || 'Civic'})</td>
-                              <td className="py-3 text-slate-300">
-                                <div className="space-y-1">
-                                  <span>{c.location_text || 'MG Road'}</span>
-                                  {c.lat && c.lng && (
-                                    <button
-                                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`, '_blank')}
-                                      className="text-[9px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 px-2 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                    >
-                                      <Navigation className="w-2.5 h-2.5" /> Guide Me
+                                      <CheckCircle2 className="w-3 h-3" /> BMC Proof Photo
                                     </button>
                                   )}
                                 </div>
-                              </td>
-                              <td className="py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
+                              )}
+
+                              {/* BMC Proof note */}
+                              {c.status === 'resolved' && c.resolution_proof && (
+                                <div className="p-2.5 bg-emerald-500/5 rounded-xl border border-emerald-500/15 text-xs text-emerald-300">
+                                  <span className="font-bold block text-[9px] text-emerald-400 uppercase tracking-wider mb-0.5">BMC Resolution Proof</span>
+                                  "{c.resolution_proof}"
+                                </div>
+                              )}
+
+                              {/* Details: Citizens & Location */}
+                              <div className="bg-slate-900/60 rounded-xl p-3 border border-white/5 space-y-2 text-xs">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Filed By</span>
+                                  <span className="text-slate-300 font-medium">{citizenNames}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Location</span>
+                                    <span className="text-slate-300 font-medium truncate block">{c.location_text || 'MG Road'}</span>
+                                  </div>
+                                  {c.lat && c.lng && (
+                                    <button
+                                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`, '_blank')}
+                                      className="text-[10px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 px-2.5 py-1 rounded-xl border border-emerald-500/20 font-bold flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                                    >
+                                      <Navigation className="w-3 h-3" /> Guide Me
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Actions Bar */}
+                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Status:</span>
                                   <select
                                     value={c.status}
                                     onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value as any, childIds)}
-                                    className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1 text-[10px] font-bold focus:outline-none focus:border-orange-500 cursor-pointer text-slate-200"
+                                    className="bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-orange-500 cursor-pointer text-slate-200 w-full max-w-[140px]"
                                   >
                                     <option value="submitted">Submitted</option>
                                     <option value="assigned">Assigned</option>
@@ -773,20 +938,136 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                                     <option value="resolved">Resolved</option>
                                     <option value="rejected">Rejected</option>
                                   </select>
-                                  <button
-                                    onClick={() => handleDeleteComplaint(c.id, childIds)}
-                                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                    title="Delete Complaint and linked duplicates"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
                                 </div>
-                              </td>
-                            </tr>
+                                <button
+                                  onClick={() => handleDeleteComplaint(c.id, childIds)}
+                                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer shrink-0"
+                                  title="Delete Complaint"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
                           );
-                        }))}
-                      </tbody>
-                    </table>
+                        })}
+                      </div>
+
+                      {/* Desktop Table View (>= md) */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-[850px] text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
+                              <th className="pb-3">Complaint Details</th>
+                              <th className="pb-3 text-center">Consolidated Reports Count</th>
+                              <th className="pb-3">Filed By (Citizens)</th>
+                              <th className="pb-3">Department</th>
+                              <th className="pb-3">Location</th>
+                              <th className="pb-3 text-right">Lifecycle Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {masters.map(c => {
+                              const children = complaints.filter(x => 
+                                x.description && (
+                                  x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
+                                  x.description.includes(`[ML_CLUSTER_OVERLOAD:${c.id}`)
+                                )
+                              );
+                              const childIds = children.map(x => x.id);
+                              const reportCount = 1 + children.length;
+                              const cleanDesc = c.description ?? 'No description';
+                              const getUserName = (uid: string) => users.find(u => u.id === uid)?.full_name ?? 'Anonymous';
+                              const citizenNames = [getUserName(c.user_id), ...children.map(x => getUserName(x.user_id))].join(', ');
+
+                              return (
+                                <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 pr-2">
+                                    <p className="font-semibold text-white flex flex-wrap items-center gap-1.5">
+                                      {c.title}
+                                      {c.photo_url && (
+                                        <button 
+                                          onClick={() => setPreviewPhoto(c.photo_url)}
+                                          className="text-[9px] bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
+                                        >
+                                          <Camera className="w-2.5 h-2.5" /> Citizen Photo
+                                        </button>
+                                      )}
+                                      {c.resolution_photo_url && (
+                                        <button 
+                                          onClick={() => setPreviewPhoto(c.resolution_photo_url)}
+                                          className="text-[9px] bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 cursor-pointer transition-colors flex items-center gap-1 shrink-0 font-bold"
+                                        >
+                                          <CheckCircle2 className="w-2.5 h-2.5" /> BMC Proof Photo
+                                        </button>
+                                      )}
+                                      {c.ml_verification_score && (
+                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                          {c.ml_verification_score}% Authenticity Verified
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 max-w-sm truncate">{cleanDesc}</p>
+                                    {c.status === 'resolved' && c.resolution_proof && (
+                                      <p className="text-[10px] text-emerald-400 mt-1 italic">
+                                        BMC Proof: "{c.resolution_proof}"
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="py-3 text-center">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                      reportCount > 1 
+                                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20 animate-pulse' 
+                                        : 'bg-slate-800 text-slate-400 border border-slate-700/50'
+                                    }`}>
+                                      {reportCount} {reportCount === 1 ? 'report' : 'reports'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-slate-300 max-w-xs truncate" title={citizenNames}>
+                                    {citizenNames}
+                                  </td>
+                                  <td className="py-3 text-slate-300 capitalize">{c.category} ({c.department || 'Civic'})</td>
+                                  <td className="py-3 text-slate-300">
+                                    <div className="space-y-1">
+                                      <span>{c.location_text || 'MG Road'}</span>
+                                      {c.lat && c.lng && (
+                                        <button
+                                          onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`, '_blank')}
+                                          className="text-[9px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 px-2 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                        >
+                                          <Navigation className="w-2.5 h-2.5" /> Guide Me
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <select
+                                        value={c.status}
+                                        onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value as any, childIds)}
+                                        className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1 text-[10px] font-bold focus:outline-none focus:border-orange-500 cursor-pointer text-slate-200"
+                                      >
+                                        <option value="submitted">Submitted</option>
+                                        <option value="assigned">Assigned</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="rejected">Rejected</option>
+                                      </select>
+                                      <button
+                                        onClick={() => handleDeleteComplaint(c.id, childIds)}
+                                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                        title="Delete Complaint and linked duplicates"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   );
                 })()}
 
@@ -801,47 +1082,74 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                            user?.email?.toLowerCase().includes(query);
                   });
 
+                  if (filteredBills.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-slate-500">
+                        <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                        <p className="font-semibold text-xs text-slate-300">No utility bills found</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Water, electricity, property tax, and waste invoices will be listed here.</p>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="pb-3">Citizen (Owner)</th>
-                          <th className="pb-3">Biller Details</th>
-                          <th className="pb-3">Biller Type</th>
-                          <th className="pb-3">Amount Due</th>
-                          <th className="pb-3">Due Date</th>
-                          <th className="pb-3">Status</th>
-                          <th className="pb-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredBills.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="py-8 text-center text-slate-500">
-                              <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                              <p className="font-semibold text-xs text-slate-300">No utility bills found</p>
-                              <p className="text-[10px] text-slate-500 mt-1">Water, electricity, property tax, and waste invoices will be listed here.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredBills.map(b => {
+                    <div>
+                      {/* Responsive Mobile Cards View (< md) */}
+                      <div className="md:hidden space-y-3">
+                        {filteredBills.map(b => {
                           const user = users.find(u => u.id === b.user_id);
+
                           return (
-                            <tr key={b.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                              <td className="py-3 font-bold text-slate-200">
-                                {user ? user.full_name : 'Unknown Citizen'}
-                                <span className="block text-[10px] text-slate-400 font-normal">{user?.email || user?.phone || 'No Contact'}</span>
-                              </td>
-                              <td className="py-3 font-semibold text-white">{b.period || 'Utility Service'}</td>
-                              <td className="py-3 text-slate-300 capitalize">{b.type}</td>
-                              <td className="py-3 text-slate-300 font-bold">{formatINR(Number(b.amount))}</td>
-                              <td className="py-3 text-slate-400">{b.due_date}</td>
-                              <td className="py-3">
+                            <div key={b.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-4 space-y-3 shadow-md">
+                              {/* Header Badges */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                    {b.type}
+                                  </span>
+                                  <span className="text-xs font-semibold text-white">{b.period || 'Utility Service'}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
+                                  b.status === 'paid' 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                }`}>
+                                  {b.status}
+                                </span>
+                              </div>
+
+                              {/* Citizen Details */}
+                              <div className="flex items-center gap-2.5 bg-slate-900/60 rounded-xl p-3 border border-white/5">
+                                <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                                  {user?.full_name?.charAt(0).toUpperCase() || 'C'}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-xs text-white truncate">{user ? user.full_name : 'Unknown Citizen'}</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{user?.email || user?.phone || 'No Contact'}</p>
+                                </div>
+                              </div>
+
+                              {/* Amount & Due Date Grid */}
+                              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-900/40 rounded-xl p-2.5 border border-white/5">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Amount Due</span>
+                                  <span className={`text-sm font-black ${b.status === 'paid' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatINR(Number(b.amount))}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Due Date</span>
+                                  <span className="text-slate-300 font-medium text-xs">{b.due_date || 'N/A'}</span>
+                                </div>
+                              </div>
+
+                              {/* Actions Bar */}
+                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
                                 <div className="flex items-center gap-2">
                                   <select
                                     value={b.status}
                                     onChange={(e) => handleUpdateBillStatus(b.id, e.target.value)}
-                                    className={`border rounded-xl px-2 py-0.5 text-[10px] font-bold ${
+                                    className={`border rounded-xl px-2.5 py-1 text-xs font-bold cursor-pointer ${
                                       b.status === 'paid' 
                                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                         : 'bg-red-500/10 text-red-400 border-red-500/20'
@@ -854,26 +1162,92 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                                   {b.status === 'unpaid' && (
                                     <button
                                       onClick={() => { setSelectedBillToClear(b); setDeductAmount(''); }}
-                                      className="px-2 py-0.5 border border-orange-500/20 bg-orange-500/10 text-orange-400 hover:bg-orange-500/25 rounded-xl text-[9px] font-bold transition-all cursor-pointer"
+                                      className="px-2.5 py-1 border border-orange-500/20 bg-orange-500/10 text-orange-400 hover:bg-orange-500/25 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
                                     >
                                       Deduct Balance
                                     </button>
                                   )}
                                 </div>
-                              </td>
-                              <td className="py-3 text-right">
                                 <button
                                   onClick={() => handleDeleteBill(b.id)}
                                   className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Bill"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                           );
-                        }))}
-                      </tbody>
-                    </table>
+                        })}
+                      </div>
+
+                      {/* Desktop Table View (>= md) */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-[750px] text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
+                              <th className="pb-3">Citizen (Owner)</th>
+                              <th className="pb-3">Biller Details</th>
+                              <th className="pb-3">Biller Type</th>
+                              <th className="pb-3">Amount Due</th>
+                              <th className="pb-3">Due Date</th>
+                              <th className="pb-3">Status</th>
+                              <th className="pb-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredBills.map(b => {
+                              const user = users.find(u => u.id === b.user_id);
+                              return (
+                                <tr key={b.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 font-bold text-slate-200">
+                                    {user ? user.full_name : 'Unknown Citizen'}
+                                    <span className="block text-[10px] text-slate-400 font-normal">{user?.email || user?.phone || 'No Contact'}</span>
+                                  </td>
+                                  <td className="py-3 font-semibold text-white">{b.period || 'Utility Service'}</td>
+                                  <td className="py-3 text-slate-300 capitalize">{b.type}</td>
+                                  <td className="py-3 text-slate-300 font-bold">{formatINR(Number(b.amount))}</td>
+                                  <td className="py-3 text-slate-400">{b.due_date}</td>
+                                  <td className="py-3">
+                                    <div className="flex items-center gap-2">
+                                      <select
+                                        value={b.status}
+                                        onChange={(e) => handleUpdateBillStatus(b.id, e.target.value)}
+                                        className={`border rounded-xl px-2 py-0.5 text-[10px] font-bold ${
+                                          b.status === 'paid' 
+                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                            : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                        }`}
+                                      >
+                                        <option value="unpaid">Unpaid</option>
+                                        <option value="paid">Paid</option>
+                                      </select>
+
+                                      {b.status === 'unpaid' && (
+                                        <button
+                                          onClick={() => { setSelectedBillToClear(b); setDeductAmount(''); }}
+                                          className="px-2 py-0.5 border border-orange-500/20 bg-orange-500/10 text-orange-400 hover:bg-orange-500/25 rounded-xl text-[9px] font-bold transition-all cursor-pointer"
+                                        >
+                                          Deduct Balance
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 text-right">
+                                    <button
+                                      onClick={() => handleDeleteBill(b.id)}
+                                      className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   );
                 })()}
 
@@ -888,82 +1262,196 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
                            user?.full_name?.toLowerCase().includes(query);
                   });
 
+                  if (filteredEmergencies.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-slate-500">
+                        <Siren className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                        <p className="font-semibold text-xs text-slate-300">No emergency SOS requests triggered</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Live police, ambulance, and disaster SOS alarms will be monitored here.</p>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="pb-3">Emergency Alert</th>
-                          <th className="pb-3">Citizen Name</th>
-                          <th className="pb-3">Location Coordinates</th>
-                          <th className="pb-3">Dispatch Notes</th>
-                          <th className="pb-3">Triggered Time</th>
-                          <th className="pb-3">Status</th>
-                          <th className="pb-3 text-right">Resolution</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredEmergencies.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="py-8 text-center text-slate-500">
-                              <Siren className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                              <p className="font-semibold text-xs text-slate-300">No emergency SOS requests triggered</p>
-                              <p className="text-[10px] text-slate-500 mt-1">Live police, ambulance, and disaster SOS alarms will be monitored here.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredEmergencies.map(e => {
+                    <div>
+                      {/* Responsive Mobile Cards View (< md) */}
+                      <div className="md:hidden space-y-3">
+                        {filteredEmergencies.map(e => {
                           const user = users.find(u => u.id === e.user_id);
+
                           return (
-                            <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                              <td className="py-3 font-semibold text-red-400 uppercase tracking-wider">{e.type}</td>
-                              <td className="py-3 font-bold text-slate-200">
-                                {user ? user.full_name : 'Unknown Citizen'}
-                                <span className="block text-[10px] text-slate-400 font-normal">{user?.phone || 'No phone'}</span>
-                              </td>
-                              <td className="py-3 text-slate-300">{e.location_text || 'Ward 12'}</td>
-                              <td className="py-3 text-slate-300 max-w-sm truncate">{e.notes || 'No description'}</td>
-                              <td className="py-3 text-slate-400">{new Date(e.created_at).toLocaleTimeString()}</td>
-                              <td className="py-3">
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border ${
-                                  e.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' :
-                                  e.status === 'dispatched' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                  'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                }`}>
-                                  {e.status}
+                            <div key={e.id} className="bg-slate-950/60 border border-white/5 rounded-2xl p-4 space-y-3 shadow-md">
+                              {/* Header: Alert Type & Status */}
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
+                                  {e.type} ALERT
                                 </span>
-                              </td>
-                              <td className="py-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border ${
+                                    e.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' :
+                                    e.status === 'dispatched' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  }`}>
+                                    {e.status}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500">
+                                    {new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Citizen Profile Details */}
+                              <div className="bg-slate-900/60 rounded-xl p-3 border border-white/5 flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Citizen Profile</span>
+                                  <p className="font-bold text-xs text-white truncate">{user ? user.full_name : 'Unknown Citizen'}</p>
+                                </div>
+                                {user?.phone ? (
+                                  <a
+                                    href={`tel:${user.phone}`}
+                                    className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-[10px] font-bold flex items-center gap-1 shrink-0"
+                                    title="Call Citizen"
+                                  >
+                                    <Phone className="w-3 h-3" /> {user.phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-slate-500 italic">No phone</span>
+                                )}
+                              </div>
+
+                              {/* Location & Navigation */}
+                              <div className="bg-slate-900/40 rounded-xl p-3 border border-white/5 space-y-1.5 text-xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Location</span>
+                                    <span className="text-slate-300 font-medium truncate block">{e.location_text || 'Ward 12'}</span>
+                                  </div>
+                                  {e.lat && e.lng && (
+                                    <button
+                                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`, '_blank')}
+                                      className="text-[10px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/25 px-2.5 py-1 rounded-xl border border-emerald-500/20 font-bold flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                                    >
+                                      <Navigation className="w-3 h-3" /> Guide Me
+                                    </button>
+                                  )}
+                                </div>
+                                {e.lat && e.lng && (
+                                  <p className="text-[10px] font-mono text-slate-400">
+                                    GPS: {Number(e.lat).toFixed(4)}, {Number(e.lng).toFixed(4)}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Notes */}
+                              {e.notes && (
+                                <p className="text-xs text-slate-400 italic bg-slate-950/40 p-2.5 rounded-xl border border-white/5">
+                                  "{e.notes}"
+                                </p>
+                              )}
+
+                              {/* Actions Bar */}
+                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                                <div>
                                   {e.status !== 'resolved' ? (
                                     <button
                                       onClick={() => handleResolveEmergency(e.id)}
-                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                                     >
-                                      Resolve
+                                      Resolve SOS
                                     </button>
                                   ) : (
                                     <button
                                       onClick={() => handleRedoEmergency(e.id)}
-                                      className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                      className="px-3 py-1.5 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                                       title="Redo SOS dispatch request"
                                     >
                                       Redo
                                     </button>
                                   )}
-                                  <button
-                                    onClick={() => handleDeleteEmergency(e.id)}
-                                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                    title="Delete SOS Dispatch"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
                                 </div>
-                              </td>
-                            </tr>
+                                <button
+                                  onClick={() => handleDeleteEmergency(e.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete SOS Dispatch"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
                           );
-                        }))}
-                      </tbody>
-                    </table>
+                        })}
+                      </div>
+
+                      {/* Desktop Table View (>= md) */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-[750px] text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/10 text-slate-400 font-bold uppercase text-[10px]">
+                              <th className="pb-3">Emergency Alert</th>
+                              <th className="pb-3">Citizen Name</th>
+                              <th className="pb-3">Location Coordinates</th>
+                              <th className="pb-3">Dispatch Notes</th>
+                              <th className="pb-3">Triggered Time</th>
+                              <th className="pb-3">Status</th>
+                              <th className="pb-3 text-right">Resolution</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredEmergencies.map(e => {
+                              const user = users.find(u => u.id === e.user_id);
+                              return (
+                                <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 font-semibold text-red-400 uppercase tracking-wider">{e.type}</td>
+                                  <td className="py-3 font-bold text-slate-200">
+                                    {user ? user.full_name : 'Unknown Citizen'}
+                                    <span className="block text-[10px] text-slate-400 font-normal">{user?.phone || 'No phone'}</span>
+                                  </td>
+                                  <td className="py-3 text-slate-300">{e.location_text || 'Ward 12'}</td>
+                                  <td className="py-3 text-slate-300 max-w-sm truncate">{e.notes || 'No description'}</td>
+                                  <td className="py-3 text-slate-400">{new Date(e.created_at).toLocaleTimeString()}</td>
+                                  <td className="py-3">
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border ${
+                                      e.status === 'active' ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' :
+                                      e.status === 'dispatched' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    }`}>
+                                      {e.status}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {e.status !== 'resolved' ? (
+                                        <button
+                                          onClick={() => handleResolveEmergency(e.id)}
+                                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          Resolve
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => handleRedoEmergency(e.id)}
+                                          className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/70 border border-red-500/20 text-red-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                          title="Redo SOS dispatch request"
+                                        >
+                                          Redo
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleDeleteEmergency(e.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                        title="Delete SOS Dispatch"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   );
                 })()}
               </div>
