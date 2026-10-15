@@ -254,17 +254,19 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         });
         mapRef.current = map;
 
-        const primaryOsmUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-        const fallbackOsmUrl = 'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png';
+        // Reliable public map tiles that do not require API keys or display watermarks
+        const osmFranceUrl = 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png';
+        const esriStreetUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
 
-        const tileLayer = L.tileLayer(primaryOsmUrl, {
+        const tileLayer = L.tileLayer(osmFranceUrl, {
           maxZoom: 19,
-          attribution: '&copy; OpenStreetMap contributors'
+          subdomains: ['a', 'b', 'c'],
+          attribution: '&copy; OpenStreetMap contributors, ESRI'
         });
 
         tileLayer.on('tileerror', () => {
-          if (tileLayer._url !== fallbackOsmUrl) {
-            tileLayer.setUrl(fallbackOsmUrl);
+          if (tileLayer._url !== esriStreetUrl) {
+            tileLayer.setUrl(esriStreetUrl);
           }
         });
 

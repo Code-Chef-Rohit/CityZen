@@ -1,5 +1,5 @@
 // CityZen React PWA Service Worker
-const CACHE_NAME = 'cityzen-react-v1.0.0';
+const CACHE_NAME = 'cityzen-react-v1.2.0';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
