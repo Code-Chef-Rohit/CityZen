@@ -1,5 +1,12 @@
 # 🏙️ CityZen — Smart Municipal Engagement & Governance Platform
 
+[![Live Web Application](https://img.shields.io/badge/Netlify_App-Live_Production-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://cityzen-one.netlify.app/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+
+> 🌐 **Live Production Portal:** [https://cityzen-one.netlify.app/](https://cityzen-one.netlify.app/)
+
 CityZen is a production-grade, real-time municipal operating system and civic engagement platform tailored for smart cities. It unifies citizens, first responders (Police, Hospitals, BMC, Fire), local health facilities, and municipal administrators into a single, high-performance ecosystem.
 
 ---
@@ -15,6 +22,8 @@ CityZen is a production-grade, real-time municipal operating system and civic en
 * **Utility Bills & Civic Invoices**: Real-time breakdown of water, electricity, sanitation, and municipal tax invoices with instant simulated payment processing and downloadable receipts.
 * **Civic Complaint Filing**: Interactive report submission with automatic GPS locking, camera photo upload, and instant ML verification.
 * **Strict Unique Phone Gate**: Enforces valid 10-digit mobile number uniqueness across the system to prevent duplicate or fraudulent registrations.
+* **3-Day Anti-Churn Deletion Restriction**: Enforces a strict 3-day restriction period after account creation during which deletion is blocked to prevent fraudulent identity manipulation.
+* **7-Day Grace Period Scheduled Deletion**: Once eligible, deletion enters a mandatory 7-day waiting period. Citizens receive an official confirmation email, view live countdown telemetry on their profile, and can cancel the request at any time with one click.
 
 ---
 
@@ -31,15 +40,18 @@ CityZen is a production-grade, real-time municipal operating system and civic en
 * **Live Emergency Dispatch Queue**: Displays incoming SOS alarms with citizen full name, phone number, exact GPS coordinates, and timestamp.
 * **Turn-by-Turn GPS Navigation**: Integrated **"Guide Me"** action launches turn-by-turn Google Maps routing directly to the citizen's distress location.
 * **BMC Resolution Proof Logging**: BMC supervisors must upload a photo of the completed repair (e.g. patched pothole, repaired street lamp) along with field notes before closing a complaint.
-* **Consolidated Cluster Auto-Resolution**: When BMC resolves a master complaint, all linked duplicate tickets are automatically marked resolved, and every filing citizen receives a notification with the BMC proof notes.
+* **Consolidated Cluster Auto-Resolution**: When BMC resolves a master complaint, all linked duplicate tickets are automatically marked resolved, and every filing citizen receives an automated official email and in-app notice with BMC proof notes.
 * **Hospital Beds & Ambulance Directory**: Real-time capacity manager for total beds, ICU units, and specialized emergency contact numbers.
 
 ---
 
 ### 4. ⚡ Super Admin Control Center
 * **Primary Owner Safeguard**: The root administrator account (`rohitranjanpatra8@gmail.com` / `7735550648`) is permanently protected from demotion or deletion by secondary administrators.
-* **User Authority Management**: Promote or reassign roles across Citizen, Police, Hospital, BMC, and Admin, or suspend fraudulent accounts.
-* **Utility Invoice Auditing**: Real-time search, invoice balance deduction, and payment verification.
+* **User Authority Management**: Promote or reassign roles across Citizen, Police, Hospital, BMC, and Admin with automatic background EmailJS dispatch.
+* **Automated Municipal Email Gateway**: Background SMTP relay with custom official communiqué styling (`Sender: CityZen Admin`, Subject format `[OFFICIAL NOTICE] CityZen Admin Update: [NEW ROLE] Clearance Granted`, reference number, role designation, authorized capabilities & login link).
+* **Account Deletion Telemetry & Timing Modification**: Super Administrators can view user deletion requests in real time, inspect remaining grace periods, and adjust or reschedule execution dates (`+1d`, `+3d`, `+7d`, `+14d`, custom datetime-local) or revoke deletion requests.
+* **Super Admin Immediate Deletion Override**: Super Administrators have direct authority to immediately delete any account on the spot, bypassing the 7-day waiting period.
+* **Utility Invoice Auditing**: Real-time search, invoice balance deduction, and payment verification with automated citizen receipts.
 * **Direct Password Reset**: Administrative password overrides via secure PostgreSQL security-definer RPC functions.
 * **Live View Switcher**: Instant switching between Super Admin Control Center and Citizen View for live end-to-end verification.
 
@@ -172,6 +184,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   language text DEFAULT 'en',
   blocked boolean NOT NULL DEFAULT false,
   email text DEFAULT '',
+  deletion_requested_at timestamp with time zone,
+  deletion_scheduled_at timestamp with time zone,
+  deletion_status text CHECK (deletion_status IN ('scheduled', 'cancelled', 'executed')),
+  deletion_reason text,
   created_at timestamp with time zone DEFAULT now()
 );
 
@@ -297,20 +313,49 @@ CREATE POLICY "notifications_policy" ON public.notifications FOR ALL TO authenti
 
 ---
 
-## 🔒 Security & Role-Based Permissions
+## 🔒 Security & Lifecycle Governance Policies
 
 1. **Row Level Security (RLS)**: Protects user records while allowing authorized municipal staff and super admins to audit and resolve civic operations without recursive query lockouts.
 2. **Atomic Phone Uniqueness**: Database triggers standardize and validate phone numbers on every write, preventing duplicate registrations.
-3. **Primary Owner Immunity**: Enforces root administrator privileges and prevents accidental self-demotion or malicious takeover.
+3. **Primary Owner Immunity**: Enforces root administrator privileges (`rohitranjanpatra8@gmail.com` / `7735550648`) and prevents accidental self-demotion or malicious takeover.
+4. **3-Day Anti-Churn Registration Lock**: Newly opened accounts cannot be deleted within 3 days of creation. Prevents malicious churn, spam cycles, and volatile identity manipulation.
+5. **7-Day Grace Period Scheduled Deletion**: Once past the 3-day lock, deletion enters a mandatory 7-day waiting period. Citizens receive automated official confirmation emails, view real-time countdown telemetry on their profile, and can cancel the request with one click.
+6. **Super Administrator Immediate Purge Override**: Super Admins possess direct override capabilities to immediately purge accounts and associated records without waiting.
+7. **Admin Timing Telemetry & Rescheduling**: Super Admins can audit all scheduled deletions, view exact requested timestamps and remaining grace periods, and modify or reschedule execution timing (`+1d`, `+3d`, `+7d`, `+14d`, custom datetime-local) with automated citizen email notifications.
+
+---
+
+## 📧 Automated Municipal Email Gateway
+
+CityZen incorporates an automated background email dispatch engine using **EmailJS SMTP relay**:
+
+* **Service ID**: `service_xlxsj8f`
+* **Template ID**: `template_bnczuvh`
+* **Public Key**: `l8ZDaCW7jP2JEQfDN`
+* **Automated Official Notice Formatting**:
+  * **Sender**: `CityZen Admin`
+  * **Subject**: `[OFFICIAL NOTICE] CityZen Admin Update: [NEW ROLE] Clearance Granted`
+  * **Content Architecture**:
+    * Official Communiqué Ref Number & Date (e.g. `BMC/CZ-AUTH/2026/08-XXXXXX`)
+    * New Assigned Role & Designation (e.g. `Super Administrator`, `Law Enforcement Dispatcher`, etc.)
+    * Authorized Capabilities & Operational Permissions
+    * Direct Secure Login Link to CityZen Portal
+* **Automated Across All Municipal Personas**: Grievance status resolutions, utility bill payments & deductions, emergency SOS closures, and account deletion schedules dispatch instantly in the background without opening external mail clients.
 
 ---
 
 ## 📦 Production Build & Deployment
 
-To validate and build the production bundle:
+### 1. Web Production Build (Netlify / Cloud Platforms)
 ```bash
 npm run build
 ```
+The application is live and hosted at:
+> 🌐 **Production URL:** [https://cityzen-one.netlify.app/](https://cityzen-one.netlify.app/)
 
-Deployable to any modern web platform (Vercel, Netlify, Cloudflare Pages, AWS Amplify).
-Ensure the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` environment variables are configured in your hosting platform.
+### 2. Desktop Application Synchronized Build
+To compile TypeScript, build the web distribution, and automatically sync to the local desktop application:
+```bash
+npm run build:desktop
+```
+*(Automatically syncs production assets directly to `C:\Users\SAMSUNG\OneDrive\Desktop\CityZen App`)*.
