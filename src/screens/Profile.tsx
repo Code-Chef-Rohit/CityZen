@@ -43,7 +43,6 @@ export function Notifications({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'bill' | 'emergency' | 'complaint'>('all');
-  const [testingNotif, setTestingNotif] = useState(false);
 
   const load = async () => {
     if (!profile?.id) return;
@@ -99,39 +98,6 @@ export function Notifications({
     } else if (n.type === 'complaint') {
       onNavigate({ name: 'complaints' });
     }
-  };
-
-  const sendTestNotification = async () => {
-    if (!profile?.id) return;
-    setTestingNotif(true);
-    const testTypes: NotificationType[] = ['bill', 'emergency', 'complaint', 'government'];
-    const randomType = testTypes[Math.floor(Math.random() * testTypes.length)];
-    
-    let title = 'Municipal Announcement';
-    let message = 'Ward water pressure and sanitation grid operating at 100% efficiency.';
-
-    if (randomType === 'bill') {
-      title = 'Utility Bill Due Reminder';
-      message = 'Your TPCODL electricity invoice for August 2026 is ready. Pay via UPI for instant 2% rebate.';
-    } else if (randomType === 'emergency') {
-      title = 'Ambulance Dispatch En Route';
-      message = 'Emergency unit AMB-04 has been dispatched to Sector 12 with oxygen telemetry active.';
-    } else if (randomType === 'complaint') {
-      title = 'Pothole Grievance Resolved';
-      message = 'BMC Ward Engineers completed asphalt restoration at Master Canteen road.';
-    }
-
-    await supabase.from('notifications').insert({
-      user_id: profile.id,
-      title,
-      message,
-      type: randomType,
-      read: false
-    });
-
-    await load();
-    onRefreshCount?.();
-    setTestingNotif(false);
   };
 
   const filtered = notifications.filter((n) => {
@@ -194,16 +160,6 @@ export function Notifications({
             </button>
           ))}
         </div>
-
-        <button
-          onClick={sendTestNotification}
-          disabled={testingNotif}
-          className="shrink-0 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100 transition-all cursor-pointer disabled:opacity-50 ml-auto"
-          title="Send a real-time test notification to this account"
-        >
-          <Sparkles className="w-3 h-3 text-emerald-500" />
-          <span>{testingNotif ? 'Sending...' : '+ Test Alert'}</span>
-        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-2.5 pb-24 lg:pb-6">
@@ -222,7 +178,7 @@ export function Notifications({
             <p className="text-xs text-ink-400 dark:text-slate-400 mt-1 max-w-xs mx-auto">
               {filter === 'unread' 
                 ? 'All alerts are marked as read. You are completely up to date!' 
-                : 'No alerts match this filter. Use the "+ Test Alert" button above to verify live alerts.'}
+                : 'No alerts match this filter.'}
             </p>
           </div>
         ) : (
