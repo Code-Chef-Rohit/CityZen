@@ -88,17 +88,17 @@ export function getEmailGatewayConfig(): EmailGatewayConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Auto-migrate legacy empty or placeholder configs
-      if (!parsed.emailjsPublicKey || parsed.emailjsPublicKey.trim() === '' || parsed.emailjsPublicKey === 'user_live_xxx') {
+      // Auto-migrate legacy or outdated configs so verified keys are always used
+      if (parsed.emailjsPublicKey !== 'l8ZDaCW7jP2JEQfDN') {
         parsed.emailjsPublicKey = DEFAULT_EMAIL_CONFIG.emailjsPublicKey;
       }
-      if (!parsed.emailjsServiceId || parsed.emailjsServiceId === 'service_cityzen') {
+      if (parsed.emailjsServiceId !== 'service_xlxsj8f') {
         parsed.emailjsServiceId = DEFAULT_EMAIL_CONFIG.emailjsServiceId;
       }
-      if (!parsed.emailjsTemplateId || parsed.emailjsTemplateId === 'template_role_update') {
+      if (parsed.emailjsTemplateId !== 'template_bnczuvh') {
         parsed.emailjsTemplateId = DEFAULT_EMAIL_CONFIG.emailjsTemplateId;
       }
-      if (!parsed.senderName || parsed.senderName.includes('BMC') || parsed.senderName.includes('Municipal Authority')) {
+      if (!parsed.senderName) {
         parsed.senderName = 'CityZen Admin';
       }
       return { ...DEFAULT_EMAIL_CONFIG, ...parsed };
@@ -173,20 +173,26 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       recipient: data.userEmail,
       email: data.userEmail,
       user_email: data.userEmail,
-      reply_to: config.senderEmail,
       from_name: config.senderName,
       subject: data.subject,
       message: data.body,
       message_body: data.body,
       content: data.body,
+      body: data.body,
+      official_content: data.body,
+      details: data.body,
+      login_link: window.location.origin,
+      portal_url: window.location.origin,
       new_role: data.newRole.toUpperCase(),
+      role: data.newRole.toUpperCase(),
       role_title: data.roleTitle,
+      designation: `${data.roleTitle} (${data.clearance})`,
       clearance: data.clearance,
       responsibilities: data.responsibilities,
       permissions_list: data.permissions.join(', '),
+      authorized_capabilities: data.permissions.map(p => `• ${p}`).join('\n'),
       ref_number: data.refNumber,
       dispatch_id: dispatchId,
-      portal_url: window.location.origin,
       date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
     },
   };
@@ -222,7 +228,7 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       } else {
         const errText = await res.text();
         console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS Cloud API Notice (${res.status}): ${errText}`;
+        apiResponseMsg = `EmailJS API (${res.status}): ${errText}`;
       }
     } catch (e: any) {
       console.warn('EmailJS transmission error:', e.message);
@@ -255,7 +261,7 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       recipientName: data.userName,
       role: data.newRole,
       refNumber: data.refNumber,
-      status: transmittedViaApi ? 'delivered' : 'transmitted',
+      status: transmittedViaApi ? 'delivered' : 'failed',
       method: apiResponseMsg || 'CityZen System Background Dispatch',
       subject: data.subject,
     };
@@ -266,14 +272,14 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
   }
 
   return {
-    success: true,
-    status: transmittedViaApi ? 'delivered' : 'transmitted',
+    success: transmittedViaApi,
+    status: transmittedViaApi ? 'delivered' : 'failed',
     dispatchId,
     timestamp,
     method: apiResponseMsg || 'CityZen System Background Dispatch (no-reply@cityzen.odisha.gov.in)',
     message: transmittedViaApi
       ? `Official communique transmitted automatically to ${data.userEmail} via EmailJS Cloud (Ref: ${data.refNumber}).`
-      : `Official communique transmitted automatically to ${data.userEmail} by CityZen Municipal System (Ref: ${data.refNumber}).`,
+      : `Email dispatch failed: ${apiResponseMsg || 'Network or API error'}.`,
   };
 }
 

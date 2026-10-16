@@ -597,13 +597,32 @@ CityZen Smart Municipal Governance Platform`;
           subject: emailSubject,
           body: emailBody,
         }).then((res) => {
-          showToast(`Official communique automatically transmitted to ${recipientEmail} via EmailJS.`, 'success');
+          if (res.status === 'delivered') {
+            showToast(`Official communique sent to ${recipientEmail} via EmailJS. (Check Spam/Promotions if not in Inbox)`, 'success');
+          } else {
+            console.error("EmailJS dispatch warning:", res);
+            showToast(`Role updated, but email notice: ${res.method || res.message}`, 'error');
+          }
         }).catch((err) => {
           console.warn("Automated email background error:", err);
-          showToast(`Role updated in database. Automated mail notice: ${err?.message || 'relayed'}`, 'info');
+          showToast(`Role updated. Automated mail notice: ${err?.message || 'failed'}`, 'error');
         });
+
+        // Also transmit an Admin Audit Copy to the logged-in admin's email so they get the confirmation too
+        if (profile?.email && profile.email.includes('@') && profile.email.toLowerCase() !== recipientEmail.toLowerCase()) {
+          sendAutomatedCitizenNoticeEmail({
+            userId: profile.id,
+            userEmail: profile.email,
+            userName: profile.full_name || 'Super Admin',
+            title: `Role Authority Changed: ${recipientName} designated as ${newRole.toUpperCase()}`,
+            subject: `[ADMIN AUDIT COPY] Role Update: ${recipientName} -> ${newRole.toUpperCase()}`,
+            message: `Official Admin Audit Notification:\n\nUser: ${recipientName} (${recipientEmail})\nNew Role: ${newRole.toUpperCase()} (${roleDetails.title})\nReference: ${refNumber}\nTimestamp: ${new Date().toLocaleString()}\n\nCityZen Super Admin Control Center`,
+            category: 'government',
+            refNumber,
+          }).catch(e => console.warn("Admin audit email error:", e));
+        }
       } else {
-        showToast(`Role updated to ${newRole.toUpperCase()} for ${recipientName} (In-App notification recorded).`, 'success');
+        showToast(`Role updated to ${newRole.toUpperCase()} for ${recipientName} (No email on profile; In-App notification recorded).`, 'info');
       }
 
     } catch (e: any) {
