@@ -41,7 +41,7 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
   });
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title="Explore Services" subtitle="Browse all city services" onBack={onBack} />
 
       <div className="px-4 py-3">
@@ -479,7 +479,7 @@ export function ServiceDetail({
   const nameLower = service.name.toLowerCase();
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title={service.name} subtitle={service.category} onBack={onBack} />
       
       <div className="px-5 py-4 space-y-6 pb-24 max-h-[85vh] overflow-y-auto">

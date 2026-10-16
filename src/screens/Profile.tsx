@@ -133,7 +133,11 @@ export function Notifications({
   const unreadTotal = notifications.filter(n => !n.read).length;
 
   return (
-    <Screen>
+    <Screen 
+      fullHeight 
+      className="max-w-4xl mx-auto" 
+      innerClassName="flex flex-col overflow-hidden shadow-2xl rounded-none sm:rounded-3xl"
+    >
       <ScreenHeader
         title="Alerts & Notices"
         subtitle={`${unreadTotal > 0 ? `${unreadTotal} unread · ` : ''}${notifications.length} total notices`}
@@ -163,14 +167,14 @@ export function Notifications({
         }
       />
 
-      {/* Filter Chips Bar */}
-      <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border-b border-ink-100 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-        <div className="flex gap-1.5">
+      {/* Filter Chips Bar - pinned directly below header */}
+      <div className="px-3 sm:px-4 py-2.5 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-ink-100 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div className="flex gap-1.5 shrink-0">
           {(['all', 'unread', 'bill', 'emergency', 'complaint'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer whitespace-nowrap border ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
                 filter === f
                   ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50'
@@ -184,7 +188,7 @@ export function Notifications({
         <button
           onClick={sendTestNotification}
           disabled={testingNotif}
-          className="shrink-0 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100 transition-all cursor-pointer disabled:opacity-50"
+          className="shrink-0 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100 transition-all cursor-pointer disabled:opacity-50 ml-auto"
           title="Send a real-time test notification to this account"
         >
           <Sparkles className="w-3 h-3 text-emerald-500" />
@@ -192,7 +196,7 @@ export function Notifications({
         </button>
       </div>
 
-      <div className="px-4 py-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-2.5 pb-24 lg:pb-6">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -235,11 +239,11 @@ export function Notifications({
                   <div className="flex-1 min-w-0 pr-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <h4 className={`text-xs sm:text-sm leading-snug truncate ${!n.read ? 'font-black text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
+                        <h4 className={`text-xs sm:text-sm leading-snug break-words [overflow-wrap:anywhere] ${!n.read ? 'font-black text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
                           {n.title}
                         </h4>
                         {!n.read && (
-                          <span className="px-1.5 py-0.2 bg-red-500 text-white rounded text-[8px] font-extrabold uppercase">
+                          <span className="shrink-0 px-1.5 py-0.5 bg-red-500 text-white rounded text-[8px] font-extrabold uppercase">
                             NEW
                           </span>
                         )}
@@ -255,20 +259,22 @@ export function Notifications({
                     </div>
                     
                     {n.message && (
-                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed break-words [overflow-wrap:anywhere]">
                         {n.message}
                       </p>
                     )}
                     
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] text-ink-400 dark:text-slate-500 font-medium font-mono">
-                        {timeAgo(n.created_at)}
-                      </span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-ink-100 dark:bg-slate-800 text-ink-600 dark:text-slate-400">
-                        {n.type}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 mt-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-ink-400 dark:text-slate-500 font-medium font-mono">
+                          {timeAgo(n.created_at)}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-ink-100 dark:bg-slate-800 text-ink-600 dark:text-slate-400">
+                          {n.type}
+                        </span>
+                      </div>
                       {['bill', 'emergency', 'complaint'].includes(n.type) && (
-                        <span className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold group-hover:underline ml-auto flex items-center gap-0.5">
+                        <span className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold group-hover:underline flex items-center gap-0.5 ml-auto">
                           Open service →
                         </span>
                       )}
@@ -438,7 +444,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
   const userEmail = session?.user?.email || profile?.email || 'citizen@cityzen.gov';
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title="My Profile" subtitle="Account & Civic Identity" onBack={onBack} />
 
       {/* Top Profile Card */}

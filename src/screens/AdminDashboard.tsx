@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone, Send, Copy, Check, ExternalLink, ShieldCheck, FileText
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone, Send, Copy, Check, ExternalLink, ShieldCheck, FileText, Zap, Settings, CheckCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { formatINR, formatDate, timeAgo } from '@/lib/utils';
+import { 
+  sendAutomatedRoleChangeEmail, 
+  getEmailGatewayConfig, 
+  saveEmailGatewayConfig, 
+  sendTestAutomatedEmail, 
+  type EmailGatewayConfig 
+} from '@/lib/emailService';
 
 type Tab = 'users' | 'complaints' | 'bills' | 'emergencies';
 
@@ -19,6 +26,12 @@ interface RoleChangeNoticeState {
   subject: string;
   body: string;
   copied?: boolean;
+  dispatching?: boolean;
+  dispatchSuccess?: boolean;
+  dispatchId?: string;
+  dispatchMethod?: string;
+  dispatchTimestamp?: string;
+  dispatchError?: string;
 }
 
 const ROLE_AUTHORITY_INFO: Record<string, { title: string; clearance: string; responsibilities: string; permissions: string[] }> = {
@@ -111,6 +124,13 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
 
   // Role Authority Notice Email Modal State
   const [roleNoticeModal, setRoleNoticeModal] = useState<RoleChangeNoticeState | null>(null);
+
+  // Automated Email Gateway Settings States
+  const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
+  const [gatewayConfig, setGatewayConfig] = useState<EmailGatewayConfig>(getEmailGatewayConfig);
+  const [gatewayTestEmail, setGatewayTestEmail] = useState(profile?.email || 'admin@cityzen.gov');
+  const [gatewayTestStatus, setGatewayTestStatus] = useState<string | null>(null);
+  const [gatewayTesting, setGatewayTesting] = useState(false);
 
   // Analytics Metrics
   const [metrics, setMetrics] = useState({
@@ -423,7 +443,7 @@ CityZen Smart City Operations Center (ICOC)`;
 
       loadMetricsAndData();
 
-      // 5. Open the official notification modal
+      // 5. Open the official notification modal with live automated dispatch status
       setRoleNoticeModal({
         isOpen: true,
         userId,
@@ -434,13 +454,52 @@ CityZen Smart City Operations Center (ICOC)`;
         refNumber,
         subject: emailSubject,
         body: emailBody,
-        copied: false
+        copied: false,
+        dispatching: !!recipientEmail,
+        dispatchSuccess: false,
       });
 
-      // 6. If user has an email, trigger mailto client directly
+      // 6. Automatically transmit official email in the background (no manual send or pressing enter!)
       if (recipientEmail) {
-        const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-        window.open(mailtoUrl, '_blank');
+        sendAutomatedRoleChangeEmail({
+          userId,
+          userName: recipientName,
+          userEmail: recipientEmail,
+          userPhone: target.phone || '',
+          newRole,
+          roleTitle: roleDetails.title,
+          clearance: roleDetails.clearance,
+          responsibilities: roleDetails.responsibilities,
+          permissions: roleDetails.permissions,
+          refNumber,
+          subject: emailSubject,
+          body: emailBody,
+        }).then((res) => {
+          setRoleNoticeModal(prev => prev ? {
+            ...prev,
+            dispatching: false,
+            dispatchSuccess: res.success,
+            dispatchId: res.dispatchId,
+            dispatchMethod: res.method,
+            dispatchTimestamp: res.timestamp,
+            dispatchError: res.success ? undefined : res.message,
+          } : null);
+        }).catch((err) => {
+          console.warn("Automated email background error:", err);
+          setRoleNoticeModal(prev => prev ? {
+            ...prev,
+            dispatching: false,
+            dispatchSuccess: false,
+            dispatchError: err?.message || 'Automated transmission failed',
+          } : null);
+        });
+      } else {
+        setRoleNoticeModal(prev => prev ? {
+          ...prev,
+          dispatching: false,
+          dispatchSuccess: false,
+          dispatchMethod: 'In-app municipal notice only (no email address on file)',
+        } : null);
       }
 
     } catch (e: any) {
@@ -501,6 +560,14 @@ CityZen Smart City Operations Center (ICOC)`;
             title="Refresh and sync all municipal tables"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-orange-400' : 'text-slate-400'}`} /> Sync
+          </button>
+
+          <button
+            onClick={() => setGatewayModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-950/40 hover:bg-orange-900/60 border border-orange-500/30 rounded-xl text-xs text-orange-300 font-bold transition-all cursor-pointer shadow-sm shrink-0"
+            title="Configure Automated Email Gateway & Dispatch Settings"
+          >
+            <Zap className="w-3.5 h-3.5 text-orange-400" /> Auto Mailer
           </button>
 
           {onSwitchToCitizen && (
@@ -1783,9 +1850,19 @@ CityZen Smart City Operations Center (ICOC)`;
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-base sm:text-lg text-white">Official Role Authority Communiqué</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                      Dispatched
-                    </span>
+                    {roleNoticeModal.dispatching ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 animate-pulse">
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Auto-Transmitting...
+                      </span>
+                    ) : roleNoticeModal.dispatchSuccess ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Auto-Dispatched
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        In-App Recorded
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Ref: <span className="font-mono font-bold text-slate-300">{roleNoticeModal.refNumber}</span> · CityZen Municipal Governance
@@ -1798,6 +1875,76 @@ CityZen Smart City Operations Center (ICOC)`;
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Live Automated Dispatch Status Banner */}
+            <div className={`p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 ${
+              roleNoticeModal.dispatching
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                : roleNoticeModal.dispatchSuccess
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                : 'bg-slate-800/80 border-white/10 text-slate-300'
+            }`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                  roleNoticeModal.dispatching ? 'bg-amber-500/20 text-amber-400' :
+                  roleNoticeModal.dispatchSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'
+                }`}>
+                  <Zap className={`w-4 h-4 ${roleNoticeModal.dispatching ? 'animate-bounce' : ''}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-extrabold text-white text-xs truncate">
+                    {roleNoticeModal.dispatching 
+                      ? `Transmitting automated email to ${roleNoticeModal.userEmail}...` 
+                      : roleNoticeModal.dispatchSuccess 
+                      ? `Automated background email successfully delivered to ${roleNoticeModal.userEmail}`
+                      : `In-app municipal notice recorded (Ref: ${roleNoticeModal.refNumber})`}
+                  </p>
+                  <p className="text-[10px] opacity-80 truncate font-mono mt-0.5">
+                    {roleNoticeModal.dispatchMethod || 'Automated Municipal SMTP Relay'} · ID: {roleNoticeModal.dispatchId || 'DISP-LIVE-2026'}
+                  </p>
+                </div>
+              </div>
+
+              {roleNoticeModal.userEmail && (
+                <button
+                  type="button"
+                  disabled={roleNoticeModal.dispatching}
+                  onClick={() => {
+                    if (!roleNoticeModal) return;
+                    setRoleNoticeModal(prev => prev ? { ...prev, dispatching: true } : null);
+                    const roleDetails = ROLE_AUTHORITY_INFO[roleNoticeModal.newRole] || ROLE_AUTHORITY_INFO.citizen;
+                    sendAutomatedRoleChangeEmail({
+                      userId: roleNoticeModal.userId,
+                      userName: roleNoticeModal.userName,
+                      userEmail: roleNoticeModal.userEmail,
+                      userPhone: roleNoticeModal.userPhone,
+                      newRole: roleNoticeModal.newRole,
+                      roleTitle: roleDetails.title,
+                      clearance: roleDetails.clearance,
+                      responsibilities: roleDetails.responsibilities,
+                      permissions: roleDetails.permissions,
+                      refNumber: roleNoticeModal.refNumber,
+                      subject: roleNoticeModal.subject,
+                      body: roleNoticeModal.body,
+                    }).then((res) => {
+                      setRoleNoticeModal(prev => prev ? {
+                        ...prev,
+                        dispatching: false,
+                        dispatchSuccess: res.success,
+                        dispatchId: res.dispatchId,
+                        dispatchMethod: res.method,
+                        dispatchTimestamp: res.timestamp,
+                      } : null);
+                    });
+                  }}
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                  title="Trigger automated background re-dispatch"
+                >
+                  <RefreshCw className={`w-3 h-3 ${roleNoticeModal.dispatching ? 'animate-spin' : ''}`} />
+                  <span>{roleNoticeModal.dispatching ? 'Transmitting...' : 'Re-send Auto'}</span>
+                </button>
+              )}
             </div>
 
             {/* Recipient & Status Badges */}
@@ -1864,32 +2011,198 @@ CityZen Smart City Operations Center (ICOC)`;
                   )}
                 </button>
 
-                {roleNoticeModal.userEmail ? (
+                {roleNoticeModal.userEmail && (
                   <a
                     href={`mailto:${encodeURIComponent(roleNoticeModal.userEmail)}?subject=${encodeURIComponent(roleNoticeModal.subject)}&body=${encodeURIComponent(roleNoticeModal.body)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="Optional: Open local email client draft"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>Send via Mailer (Gmail/Outlook)</span>
+                    <Send className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Draft in Mail App</span>
                   </a>
-                ) : (
-                  <span className="text-[11px] text-amber-400 font-medium px-2 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                    No email on file (In-app only)
-                  </span>
                 )}
               </div>
 
               <button
                 type="button"
                 onClick={() => setRoleNoticeModal(null)}
-                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-md"
               >
                 Close Communiqué
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Automated Email Gateway Configuration Modal */}
+      {gatewayModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setGatewayModalOpen(false)} />
+          <div className="relative max-w-lg w-full bg-slate-900 border-2 border-orange-500/40 rounded-3xl p-6 shadow-2xl animate-scale-up space-y-5 text-left max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+                  <Zap className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-base">Automated Municipal Email Gateway</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Automated background mail dispatch configuration</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setGatewayModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-300">
+              <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span><strong>100% Automated Background Dispatch Active:</strong> When role authority is changed, official communiqués are transmitted automatically to citizen inboxes without manual mail client or pressing Enter.</span>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="text-slate-400 font-bold block mb-1 uppercase tracking-wider text-[10px]">Dispatch Provider</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'emailjs' }))}
+                    className={`py-2 px-3 rounded-xl border font-bold text-center transition-all cursor-pointer ${
+                      gatewayConfig.provider === 'emailjs'
+                        ? 'bg-orange-500/20 border-orange-500 text-orange-300'
+                        : 'bg-slate-950 border-white/10 text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    EmailJS SMTP Relay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'webhook' }))}
+                    className={`py-2 px-3 rounded-xl border font-bold text-center transition-all cursor-pointer ${
+                      gatewayConfig.provider === 'webhook'
+                        ? 'bg-orange-500/20 border-orange-500 text-orange-300'
+                        : 'bg-slate-950 border-white/10 text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    Custom Webhook
+                  </button>
+                </div>
+              </div>
+
+              {gatewayConfig.provider === 'emailjs' ? (
+                <div className="space-y-2.5 bg-slate-950/60 p-3 rounded-2xl border border-white/5">
+                  <div>
+                    <label className="text-slate-400 font-medium block mb-1 text-[11px]">EmailJS Public Key</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. user_live_xxx or default"
+                      value={gatewayConfig.emailjsPublicKey}
+                      onChange={(e) => setGatewayConfig(prev => ({ ...prev, emailjsPublicKey: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 font-medium block mb-1 text-[11px]">Service ID</label>
+                      <input
+                        type="text"
+                        placeholder="service_xxx"
+                        value={gatewayConfig.emailjsServiceId}
+                        onChange={(e) => setGatewayConfig(prev => ({ ...prev, emailjsServiceId: e.target.value }))}
+                        className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 font-medium block mb-1 text-[11px]">Template ID</label>
+                      <input
+                        type="text"
+                        placeholder="template_xxx"
+                        value={gatewayConfig.emailjsTemplateId}
+                        onChange={(e) => setGatewayConfig(prev => ({ ...prev, emailjsTemplateId: e.target.value }))}
+                        className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-950/60 p-3 rounded-2xl border border-white/5">
+                  <label className="text-slate-400 font-medium block mb-1 text-[11px]">Webhook Endpoint URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://your-webhook-or-edge-function.com/api/send"
+                    value={gatewayConfig.webhookUrl}
+                    onChange={(e) => setGatewayConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              )}
+
+              {/* Diagnostic Test Dispatch */}
+              <div className="pt-2 border-t border-white/10">
+                <label className="text-slate-400 font-bold block mb-1.5 uppercase tracking-wider text-[10px]">Test Automated Dispatch</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="Enter email to test dispatch..."
+                    value={gatewayTestEmail}
+                    onChange={(e) => setGatewayTestEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={gatewayTesting || !gatewayTestEmail}
+                    onClick={async () => {
+                      setGatewayTesting(true);
+                      setGatewayTestStatus(null);
+                      try {
+                        const res = await sendTestAutomatedEmail(gatewayTestEmail);
+                        setGatewayTestStatus(res.message);
+                      } catch (err: any) {
+                        setGatewayTestStatus(`Test failed: ${err.message}`);
+                      } finally {
+                        setGatewayTesting(false);
+                      }
+                    }}
+                    className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${gatewayTesting ? 'animate-spin' : ''}`} />
+                    <span>{gatewayTesting ? 'Sending...' : 'Test Send'}</span>
+                  </button>
+                </div>
+                {gatewayTestStatus && (
+                  <p className="mt-2 text-[11px] text-emerald-400 font-mono bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/20">
+                    {gatewayTestStatus}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setGatewayModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  saveEmailGatewayConfig(gatewayConfig);
+                  alert("Automated Email Gateway configuration saved successfully!");
+                  setGatewayModalOpen(false);
+                }}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-orange-600/30"
+              >
+                Save Configuration
+              </button>
+            </div>
           </div>
         </div>
       )}

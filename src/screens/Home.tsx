@@ -144,7 +144,7 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
   const firstName = rawName.trim().split(' ')[0] || 'Citizen';
 
   return (
-    <div className="min-h-[100dvh] md:min-h-0 md:h-[calc(100vh-3rem)] w-full md:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 pb-24 md:shadow-2xl md:my-6 md:rounded-3xl overflow-y-auto border-0 md:border md:border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100">
+    <div className="min-h-[100dvh] lg:min-h-0 lg:h-[calc(100vh-5.5rem)] w-full lg:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 pb-24 lg:pb-8 lg:shadow-2xl lg:my-3 lg:rounded-3xl overflow-y-auto border-0 lg:border lg:border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100">
       {/* Hero header */}
       <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800 text-white px-4 sm:px-6 pt-8 sm:pt-12 pb-16 sm:pb-20 overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -357,11 +357,11 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
         ) : (
           <div className="space-y-2.5">
             {notifications.map((n) => (
-              <div key={n.id} className="bg-white rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+              <div key={n.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   n.type === 'emergency' ? 'bg-error-500/10' :
-                  n.type === 'bill' ? 'bg-secondary-100' :
-                  n.type === 'complaint' ? 'bg-accent-500/10' : 'bg-primary-100'
+                  n.type === 'bill' ? 'bg-secondary-100 dark:bg-secondary-950/40' :
+                  n.type === 'complaint' ? 'bg-accent-500/10' : 'bg-primary-100 dark:bg-primary-950/40'
                 }`}>
                   {n.type === 'emergency' ? <Siren className="w-4 h-4 text-error-500" /> :
                    n.type === 'bill' ? <Droplets className="w-4 h-4 text-secondary-500" /> :
@@ -369,9 +369,9 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
                    <Bell className="w-4 h-4 text-primary-600" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-ink-800 text-sm">{n.title}</p>
-                  <p className="text-xs text-ink-500 line-clamp-2">{n.message}</p>
-                  <p className="text-[10px] text-ink-400 mt-1">{timeAgo(n.created_at)}</p>
+                  <p className="font-semibold text-ink-800 dark:text-slate-100 text-sm break-words">{n.title}</p>
+                  <p className="text-xs text-ink-500 dark:text-slate-400 line-clamp-2 break-words [overflow-wrap:anywhere]">{n.message}</p>
+                  <p className="text-[10px] text-ink-400 dark:text-slate-500 mt-1 font-mono">{timeAgo(n.created_at)}</p>
                 </div>
               </div>
             ))}

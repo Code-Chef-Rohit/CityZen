@@ -4,19 +4,30 @@ import { cn } from '@/lib/utils';
 interface ScreenProps {
   children: ReactNode;
   className?: string;
+  innerClassName?: string;
   noBottomPad?: boolean;
+  fullHeight?: boolean;
 }
 
-export function Screen({ children, className, noBottomPad }: ScreenProps) {
+export function Screen({ children, className, innerClassName, noBottomPad, fullHeight }: ScreenProps) {
   return (
     <div
       className={cn(
-        'w-full min-h-[100dvh] bg-ink-50 dark:bg-slate-950 text-ink-800 dark:text-slate-100 animate-fade-in max-w-7xl mx-auto px-0 sm:px-4 lg:px-6 py-0 lg:py-4',
-        !noBottomPad && 'pb-24 lg:pb-8',
+        'w-full bg-ink-50 dark:bg-slate-950 text-ink-800 dark:text-slate-100 animate-fade-in max-w-7xl mx-auto px-0 sm:px-4 lg:px-6',
+        fullHeight 
+          ? 'h-[100dvh] lg:h-[calc(100vh-4rem)] flex flex-col py-0 lg:py-3 overflow-hidden' 
+          : 'min-h-[calc(100dvh-4rem)] py-0 lg:py-4',
+        !noBottomPad && !fullHeight && 'pb-24 lg:pb-8',
         className,
       )}
     >
-      <div className="w-full bg-white dark:bg-slate-900 border-0 lg:border lg:border-slate-200/80 dark:lg:border-slate-800/80 lg:rounded-3xl lg:shadow-2xl overflow-hidden min-h-[82vh] flex flex-col justify-between">
+      <div 
+        className={cn(
+          'w-full bg-white dark:bg-slate-900 border-0 lg:border lg:border-slate-200/80 dark:lg:border-slate-800/80 lg:rounded-3xl lg:shadow-xl flex flex-col justify-start',
+          fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'min-h-[75vh]',
+          innerClassName
+        )}
+      >
         {children}
       </div>
     </div>
@@ -32,7 +43,7 @@ interface HeaderProps {
 
 export function ScreenHeader({ title, subtitle, onBack, right }: HeaderProps) {
   return (
-    <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-ink-100 dark:border-slate-800 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center gap-3 transition-colors">
+    <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-ink-100 dark:border-slate-800 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center gap-3 transition-colors shrink-0">
       {onBack && (
         <button
           onClick={onBack}

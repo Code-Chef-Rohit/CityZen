@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/Modal';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { formatINR, formatDate } from '@/lib/utils';
 import type { Bill, BillType } from '@/lib/types';
 import {
@@ -25,6 +26,18 @@ const typeConfig: Record<BillType, { icon: typeof Droplets; color: string; bg: s
   property: { icon: Landmark, color: 'text-primary-600 dark:text-primary-400', bg: 'bg-primary-100 dark:bg-primary-950/40', label: 'Property Tax' },
   waste: { icon: Leaf, color: 'text-emerald-500', bg: 'bg-emerald-500/10 dark:bg-emerald-950/40', label: 'Municipal Waste' },
 };
+
+export function getBillConfig(type?: string) {
+  if (type && type in typeConfig) {
+    return typeConfig[type as BillType];
+  }
+  return {
+    icon: Landmark,
+    color: 'text-primary-600 dark:text-primary-400',
+    bg: 'bg-primary-100 dark:bg-primary-950/40',
+    label: type ? String(type).charAt(0).toUpperCase() + String(type).slice(1) : 'Utility Bill'
+  };
+}
 
 const billers = [
   { id: 'tata_power', label: 'Tata Power (Electricity)', type: 'electricity' as const, name: 'Tata Power Distribution' },
@@ -267,18 +280,32 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
     const paidAt = new Date().toISOString();
     const txnReference = paymentDetails?.txnId || `BBPS-${Math.floor(100000000 + Math.random() * 900000000)}`;
     
-    await supabase.from('bills').update({ status: 'paid', paid_at: paidAt }).eq('id', bill.id);
+    try {
+      await supabase.from('bills').update({ status: 'paid', paid_at: paidAt }).eq('id', bill.id);
+    } catch (err) {
+      console.warn('Bill status update error in Supabase:', err);
+    }
     
-    // Play payment success chime
-    playPaymentChime();
+    // Play payment success chime safely
+    try {
+      playPaymentChime();
+    } catch (chimeErr) {
+      console.debug('Chime playback error:', chimeErr);
+    }
 
-    await supabase.from('notifications').insert({
-      user_id: session.user.id,
-      title: 'Payment Successful 🎉',
-      message: `Your ${typeConfig[bill.type].label} bill of ${formatINR(Number(bill.amount))} was paid successfully (${paymentDetails?.method ? paymentDetails.method.toUpperCase() : 'UPI'} Ref: ${txnReference}). Official e-tax receipt generated.`,
-      type: 'bill',
-      read: false
-    });
+    try {
+      const billLabel = getBillConfig(bill.type).label;
+      const safeAmt = Number(bill.amount) || 0;
+      await supabase.from('notifications').insert({
+        user_id: session.user.id,
+        title: 'Payment Successful 🎉',
+        message: `Your ${billLabel} bill of ${formatINR(safeAmt)} was paid successfully (${paymentDetails?.method ? paymentDetails.method.toUpperCase() : 'UPI'} Ref: ${txnReference}). Official e-tax receipt generated.`,
+        type: 'bill',
+        read: false
+      });
+    } catch (notifErr) {
+      console.warn('Notification insert error in Supabase:', notifErr);
+    }
 
     const paidBillObj = { ...bill, status: 'paid' as const, paid_at: paidAt };
     setPayBill(null);
@@ -287,7 +314,7 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
   };
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader
         title="Bills & Utility Invoices"
         subtitle="Real-time Municipal Payment Gateway"
@@ -400,7 +427,7 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
         ) : (
           <div className="space-y-3">
             {filtered.map((bill) => {
-              const cfg = typeConfig[bill.type] || typeConfig.electricity;
+              const cfg = getBillConfig(bill.type);
               return (
                 <div key={bill.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center gap-3">
@@ -409,7 +436,7 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-slate-900 dark:text-white text-sm">{cfg.label} Bill</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{bill.period}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{bill.period || 'General Municipal Utility'}</p>
                     </div>
                     
                     <div className="text-right flex items-center gap-2.5">
@@ -460,12 +487,16 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
 
       {/* Payment modal */}
       <Modal open={!!payBill} onClose={() => setPayBill(null)} title="Secure Payment Gateway">
-        {payBill && <PaymentFlow bill={payBill} onPaid={(details) => handlePaidSuccess(payBill, details)} />}
+        <ErrorBoundary fallbackTitle="Payment Gateway Notice" onReset={() => setPayBill(null)}>
+          {payBill && <PaymentFlow bill={payBill} onPaid={(details) => handlePaidSuccess(payBill, details)} />}
+        </ErrorBoundary>
       </Modal>
 
       {/* Payment Receipt Modal */}
       <Modal open={!!viewReceiptBill} onClose={() => setViewReceiptBill(null)} title="Official Payment Receipt">
-        {viewReceiptBill && <ReceiptCard bill={viewReceiptBill} userName={profile?.full_name || 'Citizen'} userEmail={session?.user?.email} />}
+        <ErrorBoundary fallbackTitle="Receipt Display Notice" onReset={() => setViewReceiptBill(null)}>
+          {viewReceiptBill && <ReceiptCard bill={viewReceiptBill} userName={profile?.full_name || 'Citizen'} userEmail={session?.user?.email} />}
+        </ErrorBoundary>
       </Modal>
 
       {/* Add Bill Modal */}
@@ -640,10 +671,14 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
 function ReceiptCard({ bill, userName, userEmail }: { bill: Bill; userName: string; userEmail?: string }) {
   const txnId = `TXN-${Math.floor(100000000 + Math.random() * 900000000)}`;
   const paidDate = bill.paid_at ? new Date(bill.paid_at).toLocaleString() : new Date().toLocaleString();
-  const cfg = typeConfig[bill.type] || typeConfig.electricity;
+  const cfg = getBillConfig(bill.type);
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (e) {
+      console.warn('Print not supported:', e);
+    }
   };
 
   return (
@@ -679,7 +714,7 @@ function ReceiptCard({ bill, userName, userEmail }: { bill: Bill; userName: stri
           </div>
           <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
             <span className="text-slate-400 font-medium">Billing Period Note:</span>
-            <span className="font-medium text-slate-800 dark:text-slate-200">{bill.period}</span>
+            <span className="font-medium text-slate-800 dark:text-slate-200">{bill.period || 'General Municipal Utility'}</span>
           </div>
           <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
             <span className="text-slate-400 font-medium">Settled Timestamp:</span>
@@ -690,7 +725,7 @@ function ReceiptCard({ bill, userName, userEmail }: { bill: Bill; userName: stri
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Amount Paid in Full</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatINR(Number(bill.amount))}</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatINR(Number(bill.amount) || 0)}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
             <CheckCircle2 className="w-6 h-6" />
@@ -711,6 +746,14 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
   const [method, setMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
   const [processing, setProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Device detection: differentiates mobile from laptop/desktop
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  useEffect(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const mobilePattern = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    setIsMobileDevice(mobilePattern.test(ua));
+  }, []);
 
   // UPI Sub-modes: 'qr' (Show scannable QR) vs 'scanner' (In-app camera scanner)
   const [upiSubTab, setUpiSubTab] = useState<'qr' | 'scanner'>('qr');
@@ -743,72 +786,120 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
   const [selectedBank, setSelectedBank] = useState('sbi');
 
   // Active VPA calculation
-  const currentPayee = showCustomVpaInput && isValidVpa(customVpa)
+  const currentPayee = (showCustomVpaInput && isValidVpa(customVpa))
     ? { vpa: customVpa.trim(), name: 'Custom Registered UPI Payee' }
-    : DEFAULT_MUNICIPAL_VPAS[selectedVpaIndex] || DEFAULT_MUNICIPAL_VPAS[0];
+    : (DEFAULT_MUNICIPAL_VPAS[selectedVpaIndex] || DEFAULT_MUNICIPAL_VPAS[0] || { vpa: 'bmc.odisha@sbi', name: 'Bhubaneswar Municipal Corporation' });
+
+  const safeAmount = Number(bill.amount) > 0 ? Number(bill.amount) : 0;
+  const safePeriod = bill.period || 'General Municipal Utility';
 
   // NPCI-compliant UPI URI
   const upiUri = buildNpciUpiUri({
     pa: currentPayee.vpa,
     pn: currentPayee.name,
-    am: Number(bill.amount),
-    tn: `Bill Settlement - ${bill.period}`
+    am: safeAmount,
+    tn: `Bill Settlement - ${safePeriod}`
   });
 
   // Generate offline QR Code whenever URI changes
   useEffect(() => {
     let active = true;
-    generateNpciQrDataUrl(upiUri, 300).then((url) => {
-      if (active) setQrDataUrl(url);
-    });
+    generateNpciQrDataUrl(upiUri, 300)
+      .then((url) => {
+        if (active && url) setQrDataUrl(url);
+      })
+      .catch((err) => {
+        console.warn('QR Code generation notice:', err);
+        if (active) {
+          setQrDataUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`);
+        }
+      });
     return () => {
       active = false;
     };
   }, [upiUri]);
 
-  // Camera Scanner Lifecycle
+  // Camera Scanner Lifecycle with laptop-friendly constraints
   useEffect(() => {
     let stream: MediaStream | null = null;
+    let isCancelled = false;
+
     if (method === 'upi' && upiSubTab === 'scanner') {
       setCameraError(null);
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices
-          .getUserMedia({ video: { facingMode: 'environment' } })
-          .then((s) => {
-            stream = s;
-            if (videoRef.current) {
-              videoRef.current.srcObject = s;
-              setCameraActive(true);
+      const initCamera = async () => {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (!isCancelled) {
+              setCameraActive(false);
+              setCameraError('Camera access is not supported in this browser environment or over insecure connection.');
             }
-          })
-          .catch((err) => {
-            console.warn('Camera access denied or unavailable:', err);
+            return;
+          }
+
+          let s: MediaStream;
+          try {
+            // Prefer rear camera on mobile without throwing OverconstrainedError on laptop webcams
+            s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+          } catch (envErr) {
+            console.warn('Environment camera not found, trying default webcam:', envErr);
+            s = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+
+          if (isCancelled) {
+            s.getTracks().forEach((track) => track.stop());
+            return;
+          }
+
+          stream = s;
+          if (videoRef.current) {
+            videoRef.current.srcObject = s;
+            setCameraActive(true);
+          }
+        } catch (err: any) {
+          console.warn('Camera access denied or unavailable:', err);
+          if (!isCancelled) {
             setCameraActive(false);
-            setCameraError('Camera access not available on this device. You can use the Quick Test Scanner or file upload below.');
-          });
-      } else {
-        setCameraActive(false);
-        setCameraError('Video camera device not supported in this browser context.');
-      }
+            setCameraError('Camera access not available on this device. You can use the Quick Test Scanner below.');
+          }
+        }
+      };
+
+      initCamera();
     } else {
       setCameraActive(false);
     }
 
     return () => {
+      isCancelled = true;
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [method, upiSubTab]);
 
-  const handleCopy = (text: string, type: 'vpa' | 'link') => {
-    navigator.clipboard?.writeText(text);
-    if (type === 'vpa') {
-      setCopiedUpi(true);
-      setTimeout(() => setCopiedUpi(false), 2200);
-    } else {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2200);
+  const handleCopy = async (text: string, type: 'vpa' | 'link') => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      if (type === 'vpa') {
+        setCopiedUpi(true);
+        setTimeout(() => setCopiedUpi(false), 2200);
+      } else {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2200);
+      }
+    } catch (e) {
+      console.warn('Clipboard write notice:', e);
     }
   };
 
@@ -880,13 +971,13 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
       <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold truncate max-w-[200px]">
-            {typeConfig[bill.type]?.label || 'Utility'} · {bill.period}
+            {getBillConfig(bill?.type).label} · {bill?.period || 'General Utility'}
           </span>
-          <span className="text-xs text-slate-400 font-mono">Due {formatDate(bill.due_date)}</span>
+          <span className="text-xs text-slate-400 font-mono">Due {formatDate(bill?.due_date)}</span>
         </div>
         <div className="flex items-baseline justify-between mt-2">
           <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            {formatINR(Number(bill.amount))}
+            {formatINR(Number(bill?.amount) || 0)}
           </p>
           <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" /> BBPS 256-Bit Encrypted
@@ -1056,14 +1147,62 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
                 </div>
               </div>
 
-              {/* Direct UPI App intent button */}
-              <a
-                href={upiUri}
-                className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer text-center"
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>Launch UPI App on Mobile (GPay / PhonePe / Paytm)</span>
-              </a>
+              {/* Direct UPI App intent button (Mobile) vs Desktop Mode (Laptop) */}
+              {isMobileDevice ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      window.location.assign(upiUri);
+                    } catch (e) {
+                      console.warn('Could not launch external UPI application:', e);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer text-center"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>Launch UPI App on Mobile (GPay / PhonePe / Paytm)</span>
+                </button>
+              ) : (
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-left">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        💻 Laptop / Desktop Mode Active
+                        <span className="px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] rounded-md font-mono font-bold">READY</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                        Scan the BharatQR code with GPay, PhonePe, or Paytm on your mobile phone, or switch to Card / NetBanking.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(upiUri, 'link')}
+                      className="py-2 px-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedLink ? 'Link Copied!' : 'Copy Payment Link'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMethod('card');
+                        setPaymentError(null);
+                      }}
+                      className="py-2 px-3 bg-primary-50 dark:bg-primary-950/40 border border-primary-500/20 hover:bg-primary-100 rounded-xl text-xs font-bold text-primary-600 dark:text-primary-400 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-sm"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Pay via Card</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Actions row: Confirm payment or simulate scanner test */}
               <div className="grid grid-cols-2 gap-2 pt-1">

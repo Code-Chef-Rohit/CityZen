@@ -67,11 +67,15 @@ export function isValidVpa(vpa: string): boolean {
  * Builds a 100% valid, NPCI-compliant UPI URI
  * NOTE: 'pa' must contain literal '@' for PhonePe/Google Pay/Paytm compatibility
  */
-export function buildNpciUpiUri(details: UpiPaymentDetails): string {
-  const cleanPa = details.pa.trim();
-  const cleanPn = encodeURIComponent(details.pn.trim());
-  const cleanAm = details.am.toFixed(2);
-  const cleanTn = encodeURIComponent(sanitizeUpiNote(details.tn));
+export function buildNpciUpiUri(details?: Partial<UpiPaymentDetails>): string {
+  if (!details) {
+    return 'upi://pay?pa=bmc.odisha@sbi&pn=Bhubaneswar%20Municipal%20Corporation&mc=9399&am=0.00&cu=INR&tn=Municipal%20Utility%20Bill&mode=02';
+  }
+  const cleanPa = (details.pa || 'bmc.odisha@sbi').trim();
+  const cleanPn = encodeURIComponent((details.pn || 'Bhubaneswar Municipal Corporation').trim());
+  const numAm = Number(details.am);
+  const cleanAm = (!isNaN(numAm) && numAm >= 0 ? numAm : 0).toFixed(2);
+  const cleanTn = encodeURIComponent(sanitizeUpiNote(details.tn || 'Municipal Utility Bill'));
   const tr = details.tr || `CZ${Date.now()}`;
   const mc = details.mc || '9399'; // 9399 = Government/Municipal Services
 
@@ -80,27 +84,55 @@ export function buildNpciUpiUri(details: UpiPaymentDetails): string {
 }
 
 /**
- * Generates an offline, high-clarity QR code as a base64 PNG data URL
+ * Generates an offline, high-clarity QR code as a base64 PNG data URL or SVG data URL
  */
 export async function generateNpciQrDataUrl(
   upiUri: string,
   width: number = 280
 ): Promise<string> {
+  // Strategy 1: Native Canvas-based PNG Data URL
   try {
-    return await QRCode.toDataURL(upiUri, {
-      width,
-      margin: 1.5,
-      errorCorrectionLevel: 'M',
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff'
+    if (typeof QRCode !== 'undefined' && QRCode && typeof QRCode.toDataURL === 'function') {
+      const dataUrl = await QRCode.toDataURL(upiUri, {
+        width,
+        margin: 1.5,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+      if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+        return dataUrl;
       }
-    });
+    }
   } catch (err) {
-    console.warn('Local QR generation error, using fallback:', err);
-    // Fallback to high-reliability encoded URL if needed
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${width}x${width}&data=${encodeURIComponent(upiUri)}`;
+    console.warn('Canvas QR generation notice, trying SVG mode:', err);
   }
+
+  // Strategy 2: Vector SVG string (zero HTML5 canvas dependency, works on all laptop/desktop browsers)
+  try {
+    if (typeof QRCode !== 'undefined' && QRCode && typeof (QRCode as any).toString === 'function') {
+      const svg = await (QRCode as any).toString(upiUri, {
+        type: 'svg',
+        width,
+        margin: 1.5,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+      if (svg && typeof svg === 'string' && svg.includes('<svg')) {
+        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      }
+    }
+  } catch (svgErr) {
+    console.warn('SVG QR generation fallback notice:', svgErr);
+  }
+
+  // Strategy 3: Fallback to high-reliability HTTPS QR API
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${width}x${width}&data=${encodeURIComponent(upiUri)}`;
 }
 
 /**

@@ -513,7 +513,7 @@ export function Emergency({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title="Emergency SOS" subtitle="AI Auto-Triage & Live Beacon" onBack={onBack} />
 
       {/* Main Top Banner with AI Voice & Siren Options */}

@@ -74,7 +74,7 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
   });
 
   return (
-    <Screen>
+    <Screen className="max-w-4xl mx-auto">
       <ScreenHeader
         title="Complaints"
         subtitle={`${displayedComplaints.length} reports`}

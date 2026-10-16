@@ -226,7 +226,12 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
   };
 
   return (
-    <Screen noBottomPad className="flex flex-col h-[100dvh] md:h-[82vh] relative overflow-hidden bg-ink-50 dark:bg-slate-950">
+    <Screen 
+      fullHeight 
+      noBottomPad 
+      className="max-w-4xl mx-auto" 
+      innerClassName="flex flex-col overflow-hidden shadow-2xl rounded-none sm:rounded-3xl"
+    >
       <ScreenHeader
         title="Zen AI"
         subtitle="Neural Intent Engine v2.5 (Softmax MLP)"
@@ -249,8 +254,11 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         }
       />
 
-      {/* Messages Scroll Area */}
-      <div ref={scrollRef} className="flex-1 px-3 sm:px-4 py-4 space-y-4 overflow-y-auto pb-32">
+      {/* Messages Scroll Area - min-h-0 ensures internal scrollbar without outer window push */}
+      <div 
+        ref={scrollRef} 
+        className="flex-1 min-h-0 px-3 sm:px-4 py-3 space-y-3 overflow-y-auto"
+      >
         {messages.map((msg) => (
           <div key={msg.id} className={cn('flex gap-2.5', msg.role === 'user' && 'flex-row-reverse')}>
             <div className={cn(
@@ -260,9 +268,9 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
               {msg.role === 'ai' ? <Sparkles className="w-4 h-4 text-white" /> : <span className="text-xs font-bold text-ink-600 dark:text-slate-300">You</span>}
             </div>
 
-            <div className={cn('max-w-[85%] sm:max-w-[78%]', msg.role === 'user' && 'flex flex-col items-end')}>
+            <div className={cn('max-w-[85%] sm:max-w-[78%] min-w-0', msg.role === 'user' && 'flex flex-col items-end')}>
               <div className={cn(
-                'px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-sm',
+                'px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-sm break-words [overflow-wrap:anywhere]',
                 msg.role === 'ai' 
                   ? 'bg-white dark:bg-slate-900 text-ink-800 dark:text-slate-100 rounded-tl-sm border border-slate-100 dark:border-slate-800' 
                   : 'bg-primary-600 text-white rounded-tr-sm font-medium',
@@ -318,33 +326,33 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
         )}
       </div>
 
-      {/* Quick Action Suggestion Chips Bar */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 px-3 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+      {/* Quick Action Suggestion Chips Bar - pinned directly above input bar */}
+      <div className="bg-slate-50/90 dark:bg-slate-950/70 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
         {QUICK_SUGGESTIONS.map((s) => (
           <button
             key={s.label}
             onClick={() => send(s.query)}
-            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-950/50 hover:text-primary-600 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700/60 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap transition-all active:scale-95 cursor-pointer shrink-0"
+            className="px-3 py-1 bg-white dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-950/50 hover:text-primary-600 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700/60 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap transition-all active:scale-95 cursor-pointer shrink-0 shadow-2xs"
           >
             {s.label}
           </button>
         ))}
       </div>
 
-      {/* Docked Input bar */}
-      <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-3 safe-area-inset-bottom shrink-0 shadow-2xl">
+      {/* Docked Input bar - firmly anchored at bottom */}
+      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-2.5 sm:p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 shadow-md">
         <div className="flex items-center gap-2">
           <button
             onClick={toggleVoice}
             className={cn(
-              'w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-sm',
+              'w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-sm',
               listening 
                 ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-500/20' 
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
             )}
             title="Speech Voice Search"
           >
-            <Mic className="w-5 h-5" />
+            <Mic className="w-4.5 h-4.5" />
           </button>
           
           <input
@@ -353,20 +361,20 @@ export function ZenAI({ onBack, onNavigate }: { onBack: () => void; onNavigate?:
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send(input)}
-            className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 transition-all"
+            className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 transition-all"
           />
           
           <button
             onClick={() => send(input)}
             disabled={!input.trim()}
-            className="w-11 h-11 rounded-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all cursor-pointer shadow-md"
+            className="w-10 h-10 rounded-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all cursor-pointer shadow-md"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
         
         {listening && (
-          <p className="text-center text-[10px] text-red-500 font-bold mt-1.5 animate-pulse">
+          <p className="text-center text-[10px] text-red-500 font-bold mt-1 animate-pulse">
             🎙️ Listening to your voice... Speak now!
           </p>
         )}
