@@ -184,7 +184,6 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       to_user: data.userEmail,
       reply_to: config.senderEmail || 'no-reply@cityzen.odisha.gov.in',
       from_name: config.senderName || 'CityZen Admin',
-      from_email: config.senderEmail || 'no-reply@cityzen.odisha.gov.in',
       subject: data.subject,
       message: data.body,
       message_body: data.body,
