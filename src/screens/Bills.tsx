@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Droplets, Zap, Leaf, Landmark, CheckCircle2, Clock, Receipt,
   CreditCard, Wallet, Building, X, Plus, Trash2, AlertCircle,
-  Printer, Download, ShieldCheck, ArrowRight, Sparkles, Building2
+  Printer, Download, ShieldCheck, ArrowRight, Sparkles, Building2,
+  QrCode, Camera, Copy, Check, ExternalLink, RefreshCw, Smartphone,
+  ScanLine, Upload, CheckCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -11,6 +13,11 @@ import { Button } from '@/components/Button';
 import { Modal } from '@/components/Modal';
 import { formatINR, formatDate } from '@/lib/utils';
 import type { Bill, BillType } from '@/lib/types';
+import {
+  buildNpciUpiUri, generateNpciQrDataUrl, parseScannedQrPayload,
+  DEFAULT_MUNICIPAL_VPAS, isValidVpa, playPaymentChime, playScannerBeep,
+  sanitizeUpiNote
+} from '@/lib/upiPaymentService';
 
 const typeConfig: Record<BillType, { icon: typeof Droplets; color: string; bg: string; label: string }> = {
   water: { icon: Droplets, color: 'text-secondary-500', bg: 'bg-secondary-100 dark:bg-secondary-950/40', label: 'Water Supply' },
@@ -258,13 +265,19 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
   const handlePaidSuccess = async (bill: Bill, paymentDetails?: { method: string; txnId: string }) => {
     if (!session?.user) return;
     const paidAt = new Date().toISOString();
+    const txnReference = paymentDetails?.txnId || `BBPS-${Math.floor(100000000 + Math.random() * 900000000)}`;
+    
     await supabase.from('bills').update({ status: 'paid', paid_at: paidAt }).eq('id', bill.id);
     
+    // Play payment success chime
+    playPaymentChime();
+
     await supabase.from('notifications').insert({
       user_id: session.user.id,
       title: 'Payment Successful 🎉',
-      message: `Your ${typeConfig[bill.type].label} bill of ${formatINR(Number(bill.amount))} was paid successfully. View your receipt in Bills portal.`,
+      message: `Your ${typeConfig[bill.type].label} bill of ${formatINR(Number(bill.amount))} was paid successfully (${paymentDetails?.method ? paymentDetails.method.toUpperCase() : 'UPI'} Ref: ${txnReference}). Official e-tax receipt generated.`,
       type: 'bill',
+      read: false
     });
 
     const paidBillObj = { ...bill, status: 'paid' as const, paid_at: paidAt };
@@ -697,6 +710,28 @@ function ReceiptCard({ bill, userName, userEmail }: { bill: Bill; userName: stri
 function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method: string; txnId: string }) => void }) {
   const [method, setMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
   const [processing, setProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // UPI Sub-modes: 'qr' (Show scannable QR) vs 'scanner' (In-app camera scanner)
+  const [upiSubTab, setUpiSubTab] = useState<'qr' | 'scanner'>('qr');
+  const [selectedVpaIndex, setSelectedVpaIndex] = useState(0);
+  const [customVpa, setCustomVpa] = useState('');
+  const [showCustomVpaInput, setShowCustomVpaInput] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // In-app Camera Scanner States
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scannedResult, setScannedResult] = useState<{
+    vpa: string;
+    payeeName: string;
+    amount: number;
+    note: string;
+    raw: string;
+  } | null>(null);
 
   // Card form states
   const [cardNumber, setCardNumber] = useState('');
@@ -707,22 +742,116 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
   // Net banking state
   const [selectedBank, setSelectedBank] = useState('sbi');
 
-  const [paymentError, setPaymentError] = useState<string | null>(null);
+  // Active VPA calculation
+  const currentPayee = showCustomVpaInput && isValidVpa(customVpa)
+    ? { vpa: customVpa.trim(), name: 'Custom Registered UPI Payee' }
+    : DEFAULT_MUNICIPAL_VPAS[selectedVpaIndex] || DEFAULT_MUNICIPAL_VPAS[0];
 
-  const payeeAddress = 'cityzen@okaxis';
-  const payeeName = 'City Municipal Corporation';
-  const upiUri = `upi://pay?pa=${payeeAddress}&pn=${encodeURIComponent(payeeName)}&am=${bill.amount}&cu=INR&tn=${encodeURIComponent(`Bill Payment - ${bill.period}`)}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUri)}`;
+  // NPCI-compliant UPI URI
+  const upiUri = buildNpciUpiUri({
+    pa: currentPayee.vpa,
+    pn: currentPayee.name,
+    am: Number(bill.amount),
+    tn: `Bill Settlement - ${bill.period}`
+  });
 
-  const handlePay = () => {
+  // Generate offline QR Code whenever URI changes
+  useEffect(() => {
+    let active = true;
+    generateNpciQrDataUrl(upiUri, 300).then((url) => {
+      if (active) setQrDataUrl(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [upiUri]);
+
+  // Camera Scanner Lifecycle
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    if (method === 'upi' && upiSubTab === 'scanner') {
+      setCameraError(null);
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ video: { facingMode: 'environment' } })
+          .then((s) => {
+            stream = s;
+            if (videoRef.current) {
+              videoRef.current.srcObject = s;
+              setCameraActive(true);
+            }
+          })
+          .catch((err) => {
+            console.warn('Camera access denied or unavailable:', err);
+            setCameraActive(false);
+            setCameraError('Camera access not available on this device. You can use the Quick Test Scanner or file upload below.');
+          });
+      } else {
+        setCameraActive(false);
+        setCameraError('Video camera device not supported in this browser context.');
+      }
+    } else {
+      setCameraActive(false);
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [method, upiSubTab]);
+
+  const handleCopy = (text: string, type: 'vpa' | 'link') => {
+    navigator.clipboard?.writeText(text);
+    if (type === 'vpa') {
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2200);
+    } else {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2200);
+    }
+  };
+
+  // Simulate scanning a barcode / voucher
+  const handleSimulateScan = (voucherType: 'meter' | 'water' | 'bharatqr') => {
+    playScannerBeep();
+    if (voucherType === 'meter') {
+      setScannedResult({
+        vpa: 'tpcdl.smartmeter@sbi',
+        payeeName: 'TP Central Odisha Electricity Clearing',
+        amount: Number(bill.amount),
+        note: `Smart Meter Tariff ${bill.period}`,
+        raw: `upi://pay?pa=tpcdl.smartmeter@sbi&pn=TPCODL&am=${bill.amount}&cu=INR`
+      });
+    } else if (voucherType === 'water') {
+      setScannedResult({
+        vpa: 'watco.odisha@icici',
+        payeeName: 'WATCO Municipal Water Supply',
+        amount: Number(bill.amount),
+        note: `Water Consumer Connection ${bill.period}`,
+        raw: `upi://pay?pa=watco.odisha@icici&pn=WATCO&am=${bill.amount}&cu=INR`
+      });
+    } else {
+      setScannedResult({
+        vpa: 'bmc.odisha@sbi',
+        payeeName: 'Bhubaneswar Municipal Corporation BharatQR',
+        amount: Number(bill.amount),
+        note: `Municipal E-Tax Payment - ${bill.period}`,
+        raw: `00020101021126480010sbi.bmc0112bmc.odisha@sbi520493995303356540${Number(bill.amount).toFixed(2)}5802IN`
+      });
+    }
+  };
+
+  const handlePay = (customTxnId?: string) => {
     setPaymentError(null);
 
     if (method === 'card') {
-      if (cardNumber.replace(/\s/g, '').length < 16) {
+      const cleanNum = cardNumber.replace(/\s/g, '');
+      if (cleanNum.length < 16) {
         setPaymentError('Please enter a valid 16-digit card number.');
         return;
       }
-      if (!cardExpiry.includes('/')) {
+      if (!cardExpiry.includes('/') || cardExpiry.length < 5) {
         setPaymentError('Please enter card expiry in MM/YY format.');
         return;
       }
@@ -731,29 +860,38 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
         return;
       }
       if (!cardName.trim()) {
-        setPaymentError('Please enter cardholder name.');
+        setPaymentError('Please enter cardholder name as printed on card.');
         return;
       }
     }
 
     setProcessing(true);
-    const txnId = `TXN-${Math.floor(100000000 + Math.random() * 900000000)}`;
+    const txnId = customTxnId || `UPI-TXN-${Math.floor(100000000 + Math.random() * 900000000)}`;
 
     setTimeout(() => {
       setProcessing(false);
       onPaid({ method, txnId });
-    }, 1800);
+    }, 1500);
   };
 
   return (
     <div className="space-y-4 text-slate-800 dark:text-white">
-      {/* Bill summary */}
-      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4">
+      {/* Bill summary header */}
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">{typeConfig[bill.type]?.label || 'Utility'} · {bill.period}</span>
-          <span className="text-xs text-slate-400">Due {formatDate(bill.due_date)}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold truncate max-w-[200px]">
+            {typeConfig[bill.type]?.label || 'Utility'} · {bill.period}
+          </span>
+          <span className="text-xs text-slate-400 font-mono">Due {formatDate(bill.due_date)}</span>
         </div>
-        <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-2">{formatINR(Number(bill.amount))}</p>
+        <div className="flex items-baseline justify-between mt-2">
+          <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            {formatINR(Number(bill.amount))}
+          </p>
+          <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3" /> BBPS 256-Bit Encrypted
+          </span>
+        </div>
       </div>
 
       {/* Payment method tabs */}
@@ -764,7 +902,7 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
             method === 'upi' ? 'bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500'
           }`}
         >
-          📲 UPI / QR
+          📲 UPI & Scanner
         </button>
         <button
           onClick={() => { setMethod('card'); setPaymentError(null); }}
@@ -792,44 +930,276 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
         </button>
       </div>
 
+      {/* ========================================================================= */}
+      {/* 1. UPI & SCANNER INTERACTION FLOW                                         */}
+      {/* ========================================================================= */}
       {method === 'upi' && (
-        <div className="space-y-4 text-center">
-          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MOBILE DEEP-LINK REDIRECT</p>
-            <a
-              href={upiUri}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer text-center"
+        <div className="space-y-3.5">
+          {/* Sub-tabs: Display Scannable QR vs In-App Camera Scanner */}
+          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+            <button
+              onClick={() => setUpiSubTab('qr')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                upiSubTab === 'qr'
+                  ? 'bg-white dark:bg-slate-900 text-primary-600 dark:text-primary-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
             >
-              📲 Pay via UPI App (GPay / PhonePe / Paytm)
-            </a>
-            <p className="text-[10px] text-slate-400">
-              Launches GPay, PhonePe, or BHIM app on your phone with pre-filled details to complete transfer directly.
-            </p>
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Show Scannable QR</span>
+            </button>
+            <button
+              onClick={() => setUpiSubTab('scanner')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                upiSubTab === 'scanner'
+                  ? 'bg-white dark:bg-slate-900 text-primary-600 dark:text-primary-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <ScanLine className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Scan QR with Camera</span>
+            </button>
           </div>
 
-          <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800">
-            <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider">DESKTOP SCANNABLE QR CODE</p>
-            <img 
-              src={qrCodeUrl} 
-              alt="UPI Payment QR Code" 
-              className="w-44 h-44 object-contain border border-slate-100 p-2 rounded-xl bg-white shadow-sm"
-            />
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-3">
-              Scan this QR using Google Pay, PhonePe, Paytm, or BHIM on your phone.
-            </p>
-          </div>
+          {/* MODE A: DISPLAY SCANNABLE NPCI QR CODE */}
+          {upiSubTab === 'qr' && (
+            <div className="space-y-3 text-center">
+              {/* Payee VPA Switcher Bar */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-2xl border border-slate-200/50 dark:border-slate-800 text-left">
+                <div className="flex items-center justify-between text-[11px] mb-1.5">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Clearing Payee UPI ID:</span>
+                  <button
+                    onClick={() => setShowCustomVpaInput(!showCustomVpaInput)}
+                    className="text-[10px] text-primary-600 dark:text-primary-400 font-bold hover:underline cursor-pointer"
+                  >
+                    {showCustomVpaInput ? 'Use Default Gateway' : '+ Enter Custom UPI ID'}
+                  </button>
+                </div>
 
-          <Button onClick={handlePay} loading={processing} className="w-full font-bold cursor-pointer">
-            {processing ? 'Verifying UPI Authorization...' : '✅ Confirm Payment Completed'}
-          </Button>
+                {showCustomVpaInput ? (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      placeholder="e.g. yourname@okhdfcbank"
+                      value={customVpa}
+                      onChange={(e) => setCustomVpa(e.target.value.trim())}
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-800 dark:text-white"
+                    />
+                    <p className="text-[9px] text-slate-400">Enter your UPI address to test real phone scanning directly to your handle.</p>
+                  </div>
+                ) : (
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                    {DEFAULT_MUNICIPAL_VPAS.map((vpaObj, i) => (
+                      <button
+                        key={vpaObj.id}
+                        onClick={() => setSelectedVpaIndex(i)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border transition-all cursor-pointer ${
+                          selectedVpaIndex === i
+                            ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                            : 'bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        {vpaObj.vpa}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* High-Resolution QR Card */}
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <p className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                    NPCI Unified BharatQR · 100% Scannable
+                  </p>
+                </div>
+
+                {qrDataUrl ? (
+                  <div className="relative p-2.5 bg-white rounded-2xl border-2 border-slate-900/10 shadow-md">
+                    <img
+                      src={qrDataUrl}
+                      alt="NPCI Compliant UPI QR Code"
+                      className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
+                    />
+                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                      <span className="px-2 py-0.5 rounded-full bg-slate-900/90 text-white text-[9px] font-black uppercase tracking-wider shadow">
+                        BHIM · GPay · PhonePe · Paytm
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-48 h-48 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-2xl flex items-center justify-center text-xs text-slate-400 font-bold">
+                    Generating NPCI QR...
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mt-3 w-full max-w-xs justify-center">
+                  <button
+                    onClick={() => handleCopy(currentPayee.vpa, 'vpa')}
+                    className="flex-1 py-1.5 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedUpi ? 'VPA Copied!' : 'Copy UPI ID'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCopy(upiUri, 'link')}
+                    className="flex-1 py-1.5 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                    <span>{copiedLink ? 'Link Copied!' : 'Copy UPI URL'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct UPI App intent button */}
+              <a
+                href={upiUri}
+                className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer text-center"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Launch UPI App on Mobile (GPay / PhonePe / Paytm)</span>
+              </a>
+
+              {/* Actions row: Confirm payment or simulate scanner test */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button
+                  onClick={() => handlePay()}
+                  loading={processing}
+                  className="w-full font-bold text-xs"
+                >
+                  {processing ? 'Verifying...' : '✅ I Completed Payment'}
+                </Button>
+
+                <button
+                  onClick={() => {
+                    playScannerBeep();
+                    handlePay(`SIM-QR-${Math.floor(100000000 + Math.random() * 900000000)}`);
+                  }}
+                  disabled={processing}
+                  className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer disabled:opacity-50"
+                  title="Simulate instant payment authorization from external scanner"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>⚡ Simulate Scan & Pay</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODE B: IN-APP CAMERA QR SCANNER */}
+          {upiSubTab === 'scanner' && (
+            <div className="space-y-3">
+              <div className="relative bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 aspect-video flex flex-col items-center justify-center shadow-inner">
+                {cameraActive ? (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="p-4 text-center text-slate-400 space-y-2">
+                    <Camera className="w-8 h-8 mx-auto text-slate-500 animate-bounce" />
+                    <p className="text-xs font-bold text-slate-300">Camera Viewfinder Active</p>
+                    <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
+                      {cameraError || 'Point camera towards the payment voucher or BharatQR code to scan.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Animated Targeting Reticle & Sweeping Laser Line */}
+                <div className="absolute inset-8 border-2 border-emerald-500/60 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
+                  <div className="flex justify-between">
+                    <span className="w-3 h-3 border-t-2 border-l-2 border-emerald-400"></span>
+                    <span className="w-3 h-3 border-t-2 border-r-2 border-emerald-400"></span>
+                  </div>
+                  {/* Laser beam */}
+                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_#22d3ee] animate-pulse"></div>
+                  <div className="flex justify-between">
+                    <span className="w-3 h-3 border-b-2 border-l-2 border-emerald-400"></span>
+                    <span className="w-3 h-3 border-b-2 border-r-2 border-emerald-400"></span>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-2 inset-x-0 flex justify-center">
+                  <span className="px-3 py-1 rounded-full bg-slate-900/80 text-emerald-400 text-[10px] font-mono font-bold backdrop-blur-sm border border-emerald-500/30">
+                    SCANNER READY · ALIGN QR WITHIN FRAME
+                  </span>
+                </div>
+              </div>
+
+              {/* Scanned Result Banner */}
+              {scannedResult ? (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 rounded-2xl space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      QR Code Validated & Detected!
+                    </span>
+                    <span className="font-mono text-base font-black text-emerald-700 dark:text-emerald-400">
+                      {formatINR(scannedResult.amount)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5 font-mono">
+                    <p><span className="text-slate-400 font-sans">Payee:</span> {scannedResult.payeeName}</p>
+                    <p><span className="text-slate-400 font-sans">VPA:</span> {scannedResult.vpa}</p>
+                    <p><span className="text-slate-400 font-sans">Note:</span> {scannedResult.note}</p>
+                  </div>
+                  <Button
+                    onClick={() => handlePay(`SCAN-AUTH-${Date.now()}`)}
+                    loading={processing}
+                    className="w-full mt-2 font-bold text-xs"
+                  >
+                    {processing ? 'Clearing Payment...' : `Confirm & Pay ${formatINR(scannedResult.amount)}`}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    Quick Scanner Simulation (Test without physical paper):
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={() => handleSimulateScan('meter')}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      ⚡ TPCODL Meter QR
+                    </button>
+                    <button
+                      onClick={() => handleSimulateScan('water')}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      ⚡ WATCO Water QR
+                    </button>
+                    <button
+                      onClick={() => handleSimulateScan('bharatqr')}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      ⚡ BMC BharatQR
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 2. CARD PAYMENT FLOW                                                      */}
+      {/* ========================================================================= */}
       {method === 'card' && (
         <div className="space-y-4">
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
-            <div className="bg-gradient-to-r from-slate-850 to-slate-950 text-white rounded-2xl p-4 font-mono shadow-md relative overflow-hidden border border-white/10">
-              <div className="absolute right-4 top-4 text-xs font-black text-slate-600 italic">VISA</div>
+            {/* Interactive Card Mockup */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-950 text-white rounded-2xl p-4 font-mono shadow-md relative overflow-hidden border border-white/10">
+              <div className="absolute right-4 top-4 text-xs font-black text-slate-400 italic">VISA / RuPay</div>
               <p className="text-[8px] text-slate-400">CARDNUMBER</p>
               <p className="text-sm font-bold tracking-widest mt-1">
                 {cardNumber.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim() || '•••• •••• •••• ••••'}
@@ -847,7 +1217,7 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 block mb-1">Card Number</label>
+              <label className="text-[10px] font-bold text-slate-400 block mb-1">Card Number (16 Digits)</label>
               <input
                 type="text"
                 maxLength={19}
@@ -888,10 +1258,10 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 block mb-1">Cardholder Name</label>
+              <label className="text-[10px] font-bold text-slate-400 block mb-1">Cardholder Full Name</label>
               <input
                 type="text"
-                placeholder="e.g. JOHN DOE"
+                placeholder="e.g. SOUBHAGYA PRADHAN"
                 value={cardName}
                 onChange={(e) => setCardName(e.target.value)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:border-primary-500 text-slate-800 dark:text-white"
@@ -906,12 +1276,15 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
             </div>
           )}
 
-          <Button onClick={handlePay} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
+          <Button onClick={() => handlePay()} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
             {processing ? 'Processing Card Auth...' : `Authorize & Pay ${formatINR(Number(bill.amount))}`}
           </Button>
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 3. NET BANKING FLOW                                                       */}
+      {/* ========================================================================= */}
       {method === 'netbanking' && (
         <div className="space-y-4">
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
@@ -924,14 +1297,16 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
                 { id: 'axis', label: 'Axis Bank' },
                 { id: 'pnb', label: 'Punjab National Bank' },
                 { id: 'canara', label: 'Canara Bank' },
-              ].map(b => (
+                { id: 'bob', label: 'Bank of Baroda' },
+                { id: 'odisha_gramya', label: 'Odisha Gramya Bank' },
+              ].map((b) => (
                 <button
                   key={b.id}
                   onClick={() => setSelectedBank(b.id)}
                   className={`p-3 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
-                    selectedBank === b.id 
-                      ? 'bg-primary-600 text-white border-primary-600 shadow-sm' 
-                      : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                    selectedBank === b.id
+                      ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50'
                   }`}
                 >
                   🏦 {b.label}
@@ -940,32 +1315,41 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
             </div>
           </div>
 
-          <Button onClick={handlePay} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
-            {processing ? 'Redirecting to NetBanking Portal...' : `Pay ${formatINR(Number(bill.amount))} via NetBanking`}
+          <Button onClick={() => handlePay()} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
+            {processing ? 'Redirecting to Bank Portal...' : `Pay ${formatINR(Number(bill.amount))} via NetBanking`}
           </Button>
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 4. WALLET FLOW                                                            */}
+      {/* ========================================================================= */}
       {method === 'wallet' && (
         <div className="space-y-4">
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3 text-center">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">SELECT MOBILE WALLET</p>
-            <div className="grid grid-cols-3 gap-2">
-              {['Paytm Wallet', 'Amazon Pay', 'Mobikwik', 'Freecharge', 'PhonePe Wallet', 'Airtel Money'].map(w => (
-                <div key={w} className="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-800 dark:text-white">
-                  👛 {w}
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">SELECT LINKED MOBILE WALLET</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { name: 'Paytm Wallet', balance: '₹4,520' },
+                { name: 'Amazon Pay', balance: '₹2,300' },
+                { name: 'PhonePe Wallet', balance: '₹1,850' },
+                { name: 'Mobikwik Wallet', balance: '₹980' }
+              ].map((w) => (
+                <div key={w.name} className="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-left">
+                  <p className="font-bold text-xs text-slate-800 dark:text-white">👛 {w.name}</p>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">Avail: {w.balance}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <Button onClick={handlePay} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
-            {processing ? 'Authorizing Wallet Balance...' : `Pay ${formatINR(Number(bill.amount))} via Wallet`}
+          <Button onClick={() => handlePay()} loading={processing} size="lg" className="w-full font-bold cursor-pointer">
+            {processing ? 'Debiting Wallet Balance...' : `Pay ${formatINR(Number(bill.amount))} via Wallet`}
           </Button>
         </div>
       )}
 
-      <p className="text-center text-[10px] text-slate-400">CityZen Municipal Payment Gateway Protocol</p>
+      <p className="text-center text-[10px] text-slate-400">CityZen Unified Municipal Payment Gateway Protocol</p>
     </div>
   );
 }

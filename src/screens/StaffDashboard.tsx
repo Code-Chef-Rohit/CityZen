@@ -423,7 +423,8 @@ export default function StaffDashboard() {
             user_id: child.user_id,
             title: 'Consolidated Complaint Resolved by BMC',
             message: `Your report "${child.title}" has been completed. BMC Proof: ${resolutionProofText.trim()}`,
-            type: 'complaint'
+            type: 'complaint',
+            read: false
           });
         }
       }
@@ -433,7 +434,8 @@ export default function StaffDashboard() {
         user_id: selectedComplaint.user_id,
         title: 'Complaint Resolved by BMC',
         message: `Your complaint "${selectedComplaint.title}" has been completed. Proof: ${resolutionProofText.trim()}`,
-        type: 'complaint'
+        type: 'complaint',
+        read: false
       });
 
       setSelectedComplaint(null);

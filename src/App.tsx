@@ -35,11 +35,33 @@ function AppContent() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [adminViewMode, setAdminViewMode] = useState<'admin' | 'citizen'>('admin');
 
-  // Mandatory Phone Gate States
   const [pendingScreen, setPendingScreen] = useState<Screen | null>(null);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneSaving, setPhoneSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  const refreshUnreadCount = async () => {
+    if (!profile?.id) return;
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .eq('read', false);
+      if (!error && count !== null) {
+        setUnreadCount(count);
+      }
+    } catch (e) {
+      console.warn("Notice checking notifications count:", e);
+    }
+  };
+
+  useEffect(() => {
+    refreshUnreadCount();
+    const interval = setInterval(refreshUnreadCount, 10000);
+    return () => clearInterval(interval);
+  }, [profile?.id, screen.name]);
 
   const navigateToScreen = (target: Screen) => {
     const serviceScreens = ['complaints', 'bills', 'emergency', 'zen', 'service'];
@@ -204,7 +226,11 @@ function AppContent() {
 
   return (
     <div className="relative min-h-[100dvh] bg-ink-50 dark:bg-slate-950">
-      <DesktopNavbar currentScreen={screen.name} onNavigate={(s) => navigateToScreen(s as any)} />
+      <DesktopNavbar 
+        currentScreen={screen.name} 
+        onNavigate={(s) => navigateToScreen(s as any)} 
+        unreadCount={unreadCount}
+      />
 
       {screen.name === 'home' && (
         <Home
@@ -226,7 +252,13 @@ function AppContent() {
         />
       )}
       {screen.name === 'emergency' && <Emergency onBack={back} />}
-      {screen.name === 'notifications' && <Notifications onBack={back} />}
+      {screen.name === 'notifications' && (
+        <Notifications 
+          onBack={back} 
+          onNavigate={(s) => navigateToScreen(s)}
+          onRefreshCount={refreshUnreadCount}
+        />
+      )}
       {screen.name === 'zen' && (
         <ZenAI 
           onBack={back} 
@@ -250,7 +282,7 @@ function AppContent() {
 
       {/* Bottom nav — hidden on full-screen overlays */}
       {!['zen', 'complaints', 'bills', 'service', 'profile'].includes(screen.name) && (
-        <BottomNav active={activeTab} onChange={(t) => setScreen(tabMap[t])} />
+        <BottomNav active={activeTab} onChange={(t) => setScreen(tabMap[t])} unreadCount={unreadCount} />
       )}
 
       {/* Phone Number Mandatory Modal */}

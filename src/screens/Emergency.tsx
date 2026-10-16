@@ -489,6 +489,7 @@ export function Emergency({ onBack }: { onBack: () => void }) {
       title: `${type.toUpperCase()} Emergency Dispatched`,
       message: `Emergency services dispatched to your coordinates. Help is en route.`,
       type: 'emergency',
+      read: false
     });
 
     setConfirmType(null);

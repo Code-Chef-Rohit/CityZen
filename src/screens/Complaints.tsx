@@ -639,6 +639,7 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
           ? `Consolidated report filed for "${title.trim()}" at ${location.trim()}.`
           : `Your complaint "${title.trim()}" has been submitted with GPS verification.`,
         type: 'complaint',
+        read: false
       });
 
       setTitle(''); 

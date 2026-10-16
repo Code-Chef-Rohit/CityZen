@@ -119,10 +119,15 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let notifQuery = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(3);
+      if (profile?.id) {
+        notifQuery = supabase.from('notifications').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(3);
+      }
+
       const [billsRes, complaintsRes, notifRes] = await Promise.all([
         supabase.from('bills').select('*').eq('status', 'unpaid').order('due_date', { ascending: true }).limit(3),
         supabase.from('complaints').select('*').order('created_at', { ascending: false }).limit(3),
-        supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(3),
+        notifQuery,
       ]);
       if (cancelled) return;
       setBills(billsRes.data ?? []);
@@ -131,7 +136,7 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [profile?.id]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';

@@ -20,10 +20,20 @@ const typeConfig: Record<NotificationType, { icon: typeof Bell; bg: string; colo
   ai: { icon: Sparkles, bg: 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400', color: 'text-primary-600' },
 };
 
-export function Notifications({ onBack }: { onBack: () => void }) {
+export function Notifications({ 
+  onBack, 
+  onNavigate, 
+  onRefreshCount 
+}: { 
+  onBack: () => void; 
+  onNavigate?: (screen: any) => void;
+  onRefreshCount?: () => void;
+}) {
   const { profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unread' | 'bill' | 'emergency' | 'complaint'>('all');
+  const [testingNotif, setTestingNotif] = useState(false);
 
   const load = async () => {
     if (!profile?.id) return;
@@ -32,7 +42,7 @@ export function Notifications({ onBack }: { onBack: () => void }) {
       .select('*')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(40);
     setNotifications(data ?? []);
     setLoading(false);
   };
@@ -41,34 +51,146 @@ export function Notifications({ onBack }: { onBack: () => void }) {
     load();
   }, [profile?.id]);
 
-  const clearAll = async () => {
+  const markAllAsRead = async () => {
     if (!profile?.id) return;
-    await supabase.from('notifications').delete().eq('user_id', profile.id);
-    load();
+    await supabase.from('notifications').update({ read: true }).eq('user_id', profile.id).eq('read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    onRefreshCount?.();
   };
 
-  const deleteOne = async (id: string) => {
-    await supabase.from('notifications').delete().eq('id', id);
-    load();
+  const clearAll = async () => {
+    if (!profile?.id) return;
+    if (confirm('Are you sure you want to delete all civic alerts?')) {
+      await supabase.from('notifications').delete().eq('user_id', profile.id);
+      setNotifications([]);
+      onRefreshCount?.();
+    }
   };
+
+  const deleteOne = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await supabase.from('notifications').delete().eq('id', id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    onRefreshCount?.();
+  };
+
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.read) {
+      await supabase.from('notifications').update({ read: true }).eq('id', n.id);
+      setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+      onRefreshCount?.();
+    }
+
+    if (!onNavigate) return;
+    if (n.type === 'bill') {
+      onNavigate({ name: 'bills' });
+    } else if (n.type === 'emergency') {
+      onNavigate({ name: 'emergency' });
+    } else if (n.type === 'complaint') {
+      onNavigate({ name: 'complaints' });
+    }
+  };
+
+  const sendTestNotification = async () => {
+    if (!profile?.id) return;
+    setTestingNotif(true);
+    const testTypes: NotificationType[] = ['bill', 'emergency', 'complaint', 'government'];
+    const randomType = testTypes[Math.floor(Math.random() * testTypes.length)];
+    
+    let title = 'Municipal Announcement';
+    let message = 'Ward water pressure and sanitation grid operating at 100% efficiency.';
+
+    if (randomType === 'bill') {
+      title = 'Utility Bill Due Reminder';
+      message = 'Your TPCODL electricity invoice for August 2026 is ready. Pay via UPI for instant 2% rebate.';
+    } else if (randomType === 'emergency') {
+      title = 'Ambulance Dispatch En Route';
+      message = 'Emergency unit AMB-04 has been dispatched to Sector 12 with oxygen telemetry active.';
+    } else if (randomType === 'complaint') {
+      title = 'Pothole Grievance Resolved';
+      message = 'BMC Ward Engineers completed asphalt restoration at Master Canteen road.';
+    }
+
+    await supabase.from('notifications').insert({
+      user_id: profile.id,
+      title,
+      message,
+      type: randomType,
+      read: false
+    });
+
+    await load();
+    onRefreshCount?.();
+    setTestingNotif(false);
+  };
+
+  const filtered = notifications.filter((n) => {
+    if (filter === 'unread') return !n.read;
+    if (filter === 'all') return true;
+    return n.type === filter;
+  });
+
+  const unreadTotal = notifications.filter(n => !n.read).length;
 
   return (
     <Screen>
       <ScreenHeader
         title="Alerts & Notices"
-        subtitle={`${notifications.length} civic notifications`}
+        subtitle={`${unreadTotal > 0 ? `${unreadTotal} unread · ` : ''}${notifications.length} total notices`}
         onBack={onBack}
         right={
-          notifications.length > 0 ? (
-            <button 
-              onClick={clearAll} 
-              className="text-xs font-bold text-red-600 dark:text-red-400 hover:text-red-700 flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Clear all
-            </button>
-          ) : undefined
+          <div className="flex items-center gap-1.5">
+            {unreadTotal > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-950/40 transition-colors cursor-pointer"
+                title="Mark all notifications as read"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Mark read</span>
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button 
+                onClick={clearAll} 
+                className="text-xs font-bold text-red-600 dark:text-red-400 hover:text-red-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                title="Clear all notices"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         }
       />
+
+      {/* Filter Chips Bar */}
+      <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border-b border-ink-100 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1.5">
+          {(['all', 'unread', 'bill', 'emergency', 'complaint'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer whitespace-nowrap border ${
+                filter === f
+                  ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50'
+              }`}
+            >
+              {f === 'unread' ? `Unread (${unreadTotal})` : f}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={sendTestNotification}
+          disabled={testingNotif}
+          className="shrink-0 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-100 transition-all cursor-pointer disabled:opacity-50"
+          title="Send a real-time test notification to this account"
+        >
+          <Sparkles className="w-3 h-3 text-emerald-500" />
+          <span>{testingNotif ? 'Sending...' : '+ Test Alert'}</span>
+        </button>
+      </div>
 
       <div className="px-4 py-4 space-y-3">
         {loading ? (
@@ -77,36 +199,54 @@ export function Notifications({ onBack }: { onBack: () => void }) {
               <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-20 skeleton border border-slate-100 dark:border-slate-800" />
             ))}
           </div>
-        ) : notifications.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-ink-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3.5 text-ink-400 dark:text-slate-400">
               <Bell className="w-8 h-8" />
             </div>
-            <h3 className="font-bold text-ink-800 dark:text-white text-base">No active alerts</h3>
+            <h3 className="font-bold text-ink-800 dark:text-white text-base">No notifications found</h3>
             <p className="text-xs text-ink-400 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-              You are completely up to date with municipal notices, bill receipts, and dispatch updates!
+              {filter === 'unread' 
+                ? 'All alerts are marked as read. You are completely up to date!' 
+                : 'No alerts match this filter. Use the "+ Test Alert" button above to verify live alerts.'}
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {notifications.map((n) => {
+          <div className="space-y-2.5">
+            {filtered.map((n) => {
               const cfg = typeConfig[n.type] || typeConfig.government;
               return (
                 <div
                   key={n.id}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3 relative group"
+                  onClick={() => handleNotificationClick(n)}
+                  className={`w-full bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3 relative group cursor-pointer ${
+                    !n.read 
+                      ? 'border-primary-500/50 bg-primary-50/15 dark:bg-primary-950/20 ring-1 ring-primary-500/20' 
+                      : 'border-slate-100 dark:border-slate-800'
+                  }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
+                  <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 mt-0.5 shadow-sm relative`}>
                     <cfg.icon className="w-5 h-5" />
+                    {!n.read && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+                    )}
                   </div>
                   
                   <div className="flex-1 min-w-0 pr-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-bold text-xs sm:text-sm text-ink-900 dark:text-white leading-snug">
-                        {n.title}
-                      </h4>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h4 className={`text-xs sm:text-sm leading-snug truncate ${!n.read ? 'font-black text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
+                          {n.title}
+                        </h4>
+                        {!n.read && (
+                          <span className="px-1.5 py-0.2 bg-red-500 text-white rounded text-[8px] font-extrabold uppercase">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+
                       <button
-                        onClick={() => deleteOne(n.id)}
+                        onClick={(e) => deleteOne(e, n.id)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95 transition-all cursor-pointer shrink-0 -mt-1 -mr-1"
                         title="Dismiss alert"
                       >
@@ -115,18 +255,23 @@ export function Notifications({ onBack }: { onBack: () => void }) {
                     </div>
                     
                     {n.message && (
-                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed line-clamp-3">
+                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed">
                         {n.message}
                       </p>
                     )}
                     
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] text-ink-400 dark:text-slate-500 font-medium">
+                      <span className="text-[10px] text-ink-400 dark:text-slate-500 font-medium font-mono">
                         {timeAgo(n.created_at)}
                       </span>
                       <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-ink-100 dark:bg-slate-800 text-ink-600 dark:text-slate-400">
                         {n.type}
                       </span>
+                      {['bill', 'emergency', 'complaint'].includes(n.type) && (
+                        <span className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold group-hover:underline ml-auto flex items-center gap-0.5">
+                          Open service →
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
