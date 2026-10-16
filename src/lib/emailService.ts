@@ -21,7 +21,7 @@ export const DEFAULT_EMAIL_CONFIG: EmailGatewayConfig = {
   emailjsTemplateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_bnczuvh',
   emailjsPublicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'l8ZDaCW7jP2JEQfDN',
   webhookUrl: '',
-  senderName: 'CityZen Admin',
+  senderName: 'CityZen Portal',
   senderEmail: 'cityzen.system@gmail.com',
 };
 
@@ -98,8 +98,8 @@ export function getEmailGatewayConfig(): EmailGatewayConfig {
       if (parsed.emailjsTemplateId !== 'template_bnczuvh') {
         parsed.emailjsTemplateId = DEFAULT_EMAIL_CONFIG.emailjsTemplateId;
       }
-      if (!parsed.senderName) {
-        parsed.senderName = 'CityZen Admin';
+      if (!parsed.senderName || parsed.senderName === 'CityZen Admin') {
+        parsed.senderName = 'CityZen Portal';
       }
       if (!parsed.senderEmail || parsed.senderEmail.includes('odisha.gov.in')) {
         parsed.senderEmail = 'cityzen.system@gmail.com';
@@ -186,7 +186,7 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       receiver_email: data.userEmail,
       to_user: data.userEmail,
       reply_to: config.senderEmail || 'cityzen.system@gmail.com',
-      from_name: config.senderName || 'CityZen Admin',
+      from_name: config.senderName || 'CityZen Portal',
       subject: data.subject,
       message: data.body,
       message_body: data.body,

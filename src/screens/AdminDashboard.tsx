@@ -564,9 +564,13 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       }
 
       // 4. Prepare formal municipal dispatch email text (tuned for anti-spam deliverability)
-      const emailSubject = `CityZen Admin Update: ${newRole.toUpperCase()} Clearance Granted (Ref: ${refNumber})`;
+      const emailSubject = `CityZen Account Role Update for ${recipientName}: ${roleDetails.title}`;
       const emailDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-      const emailBody = `Official Communique Ref Number & Date:
+      const emailBody = `Hello ${recipientName},
+
+Your user profile role on the CityZen Portal has been updated by the Municipal Administration.
+
+Official Communique Ref Number & Date:
 Ref Number: ${refNumber}
 Date: ${emailDate}
 
@@ -582,9 +586,11 @@ ${window.location.origin}
 Registered Email: ${recipientEmail || 'your email'}
 
 ---
-Sender: CityZen Admin
+Sender: CityZen Portal Team
 CityZen Smart Municipal Governance Platform
-Notice: You received this official notification because your account is registered on the CityZen Platform. If this update was not requested, please reach out to cityzen.system@gmail.com.`;
+Contact: cityzen.system@gmail.com
+
+This is an automated administrative notification sent to ${recipientEmail || 'your email'} regarding your verified user account on the CityZen platform. If you have any questions or did not expect this change, please contact cityzen.system@gmail.com.`;
 
       loadMetricsAndData();
 
