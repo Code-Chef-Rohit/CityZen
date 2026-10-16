@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Building2, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, ShieldCheck, KeyRound, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -16,6 +16,12 @@ function GoogleIcon({ className }: { className?: string }) {
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
+interface GoogleLinkedAccountInfo {
+  email: string;
+  fullName?: string;
+  linkSent?: boolean;
+}
+
 export function Auth() {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
@@ -28,13 +34,84 @@ export function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Google Account Linking Flow States
+  const [googleAccountDetected, setGoogleAccountDetected] = useState<GoogleLinkedAccountInfo | null>(null);
+  const [sendingSetupLink, setSendingSetupLink] = useState(false);
+
+  const detectGoogleAccount = async (targetEmail: string): Promise<{ isGoogle: boolean; fullName?: string }> => {
+    const cleanEmail = targetEmail.trim().toLowerCase();
+    if (!cleanEmail) return { isGoogle: false };
+
+    // 1. Try dedicated RPC if available
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('check_user_auth_provider', { p_email: cleanEmail });
+      if (!rpcErr && rpcData && typeof rpcData === 'object') {
+        if (rpcData.exists && rpcData.is_google) {
+          return { isGoogle: true, fullName: rpcData.full_name };
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fallback: check via get_all_profiles
+    try {
+      const { data: profiles, error: profErr } = await supabase.rpc('get_all_profiles');
+      if (!profErr && Array.isArray(profiles)) {
+        const match = profiles.find((p: any) => p.email?.toLowerCase().trim() === cleanEmail);
+        if (match) {
+          const isOAuth = 
+            (match.avatar_url && match.avatar_url.includes('googleusercontent.com')) ||
+            match.phone === '' ||
+            !match.phone ||
+            cleanEmail.endsWith('@gmail.com');
+          return { isGoogle: isOAuth, fullName: match.full_name };
+        }
+      }
+    } catch (e) {}
+
+    return { isGoogle: false };
+  };
+
+  const handleSendPasswordSetupLink = async () => {
+    if (!googleAccountDetected?.email) return;
+    setSendingSetupLink(true);
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(googleAccountDetected.email, {
+        redirectTo: window.location.origin
+      });
+      if (resetErr) throw resetErr;
+      setGoogleAccountDetected(prev => prev ? { ...prev, linkSent: true } : null);
+    } catch (e: any) {
+      alert("Could not send setup link: " + (e.message || "Please try again later."));
+    } finally {
+      setSendingSetupLink(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
       if (mode === 'signin') {
-        await signIn(email.trim(), password);
+        setGoogleAccountDetected(null);
+        try {
+          await signIn(email.trim(), password);
+        } catch (authErr: any) {
+          const errMsg = authErr instanceof Error ? authErr.message : String(authErr);
+          // If login fails (e.g. invalid credentials), check if this account was created via Google OAuth!
+          if (errMsg.toLowerCase().includes('invalid login') || errMsg.toLowerCase().includes('credentials')) {
+            const detection = await detectGoogleAccount(email.trim());
+            if (detection.isGoogle) {
+              setGoogleAccountDetected({
+                email: email.trim(),
+                fullName: detection.fullName,
+                linkSent: false
+              });
+              return; // Display Google account notice card instead of generic error
+            }
+          }
+          throw authErr;
+        }
       } else if (mode === 'signup') {
         if (!fullName.trim()) throw new Error('Please enter your full name.');
         const cleanPhone = phone.replace(/\D/g, '').trim();
@@ -263,8 +340,85 @@ export function Auth() {
             </div>
           )}
 
+          {/* Google-Linked Account Alert Card */}
+          {googleAccountDetected && (
+            <div className="bg-gradient-to-b from-blue-950/95 via-slate-900 to-slate-950 border-2 border-blue-500/40 rounded-3xl p-5 shadow-2xl animate-fade-in relative overflow-hidden my-3 space-y-3.5">
+              {/* Glow backdrop */}
+              <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white p-2 flex items-center justify-center shrink-0 shadow-md">
+                  <GoogleIcon className="w-full h-full" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-blue-400">Google Account Detected</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">OAuth</span>
+                  </div>
+                  <p className="text-xs text-white font-bold truncate mt-0.5">
+                    {googleAccountDetected.fullName ? `${googleAccountDetected.fullName} · ` : ''}{googleAccountDetected.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3.5 text-xs text-slate-300 leading-relaxed space-y-2">
+                <p>
+                  This account was registered using <strong>Google Sign-In</strong>.
+                </p>
+                <p className="text-[11px] text-blue-300/90 bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
+                  💡 <strong>How to enable Email & Password login:</strong><br />
+                  To log in with your email and password as well, first verify your email and set a password. After that, you can log in using <strong>Google</strong> OR your <strong>email and password</strong> anytime.
+                </p>
+              </div>
+
+              {googleAccountDetected.linkSent ? (
+                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 text-center font-medium animate-fade-in flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>
+                    Verification link sent! Please check your inbox at <strong className="underline">{googleAccountDetected.email}</strong> to set your password.
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={sendingSetupLink}
+                  onClick={handleSendPasswordSetupLink}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {sendingSetupLink ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      <span>Send Verification & Password Setup Link</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <div className="pt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setGoogleAccountDetected(null); signInWithGoogle(); }}
+                  className="w-full py-2.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-2xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <GoogleIcon className="w-4 h-4" />
+                  <span>Continue with Google Now</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGoogleAccountDetected(null)}
+                  className="text-[11px] text-slate-400 hover:text-white text-center cursor-pointer py-1"
+                >
+                  Dismiss / Try another email
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Error Banner */}
-          {error && (
+          {error && !googleAccountDetected && (
             <div className="text-xs text-red-400 bg-red-500/10 rounded-2xl p-3 border border-red-500/20 font-medium animate-shake">
               ⚠️ {error}
             </div>

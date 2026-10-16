@@ -1,12 +1,83 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone, Send, Copy, Check, ExternalLink, ShieldCheck, FileText
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { formatINR, formatDate, timeAgo } from '@/lib/utils';
 
 type Tab = 'users' | 'complaints' | 'bills' | 'emergencies';
+
+interface RoleChangeNoticeState {
+  isOpen: boolean;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  newRole: string;
+  refNumber: string;
+  subject: string;
+  body: string;
+  copied?: boolean;
+}
+
+const ROLE_AUTHORITY_INFO: Record<string, { title: string; clearance: string; responsibilities: string; permissions: string[] }> = {
+  admin: {
+    title: 'Super Administrator',
+    clearance: 'Level-5 Executive Clearance',
+    responsibilities: 'Full administrative control over city digital infrastructure, citizen registry, role clearance, database auditing, and department overrides.',
+    permissions: [
+      'Superuser access to Admin Control Center',
+      'Assign & revoke municipal officer clearances',
+      'Database audits & emergency dispatch reassignment',
+      'System telemetry & configuration control'
+    ]
+  },
+  police: {
+    title: 'Law Enforcement Dispatcher',
+    clearance: 'Level-3 Security Clearance',
+    responsibilities: 'First responder police control, live cruiser GPS dispatching, citizen emergency distress response, and safety verification.',
+    permissions: [
+      'Police SOS Incident Management & GPS Tracking',
+      'Direct contact & triage of active distress calls',
+      'Real-time cruiser navigation & responder routing',
+      'Official police incident clearance & logging'
+    ]
+  },
+  hospital: {
+    title: 'Emergency Medical Services (EMS) Controller',
+    clearance: 'Level-3 Healthcare Clearance',
+    responsibilities: '24/7 medical trauma dispatch, ambulance navigation, patient vitals monitoring, and hospital bed/ICU allocation.',
+    permissions: [
+      'Hospital & Medical SOS Triage Desk',
+      'Ambulance turn-by-turn live navigation',
+      'Casualty & ICU bed availability status',
+      'Citizen medical notes & handover documentation'
+    ]
+  },
+  bmc: {
+    title: 'Bhubaneswar Municipal Corporation (BMC) Supervisor',
+    clearance: 'Level-2 Municipal Operations Clearance',
+    responsibilities: 'Field supervision of public grievances, road repair orders, streetlight maintenance, solid waste collection, and photo proof verification.',
+    permissions: [
+      'Ward-level ticket assignment & task scheduling',
+      'Uploading resolution proof photos & notes',
+      'Sanitation, drainage & civil works tracking',
+      'Escalation & closure of citizen grievances'
+    ]
+  },
+  citizen: {
+    title: 'Verified Resident Citizen',
+    clearance: 'Level-1 Public Access',
+    responsibilities: 'Resident citizen access to municipal grievance reporting, utility bill payments, DigiLocker vault, and emergency distress services.',
+    permissions: [
+      'Filing geo-tagged civic complaints with photos',
+      'Paying electricity, water, and holding tax bills',
+      '1-Tap Emergency SOS dispatch (Police, Fire, Medical)',
+      'DigiLocker document access & city map explorer'
+    ]
+  }
+};
 
 export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitizen?: () => void }) {
   const { profile, session, signOut, refreshProfile } = useAuth();
@@ -37,6 +108,9 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
   const [resettingPW, setResettingPW] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
+
+  // Role Authority Notice Email Modal State
+  const [roleNoticeModal, setRoleNoticeModal] = useState<RoleChangeNoticeState | null>(null);
 
   // Analytics Metrics
   const [metrics, setMetrics] = useState({
@@ -265,11 +339,15 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
 
   const handleChangeUserRole = async (userId: string, newRole: 'citizen' | 'police' | 'hospital' | 'bmc' | 'admin') => {
     const target = users.find(u => u.id === userId);
+    if (!target) return;
+
     if (target?.email === 'rohitranjanpatra8@gmail.com' || target?.phone === '7735550648') {
       alert("Security Violation: You do not have permission to modify the owner's role authority!");
       return;
     }
+
     try {
+      // 1. Update profiles table
       const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
@@ -279,8 +357,92 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       if (!data || data.length === 0) {
         throw new Error("Row update was rejected by Row-Level Security. Please ensure you have run the migration script in your Supabase SQL Editor to allow admins to edit profiles.");
       }
+
+      // 2. Fetch role authority details
+      const roleDetails = ROLE_AUTHORITY_INFO[newRole] || ROLE_AUTHORITY_INFO.citizen;
+      const refNumber = `BMC/CZ-AUTH/2026/08-${Math.floor(100000 + Math.random() * 900000)}`;
+      const recipientName = target.full_name || 'Designated Officer';
+      const recipientEmail = target.email || '';
+
+      // 3. Insert official notification into notifications table for target user
+      try {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: `🏛️ Authority Granted: Designated as ${newRole.toUpperCase()}`,
+          message: `Your CityZen municipal security clearance and operational role have been formally updated to ${newRole.toUpperCase()} (${roleDetails.title}) by the Municipal Administration. You now have access to: ${roleDetails.responsibilities}. Please log in to your department dashboard.`,
+          type: 'government',
+          read: false
+        });
+      } catch (notifErr) {
+        console.warn("Could not insert notification into database:", notifErr);
+      }
+
+      // 4. Prepare formal municipal dispatch email text
+      const emailSubject = `[OFFICIAL NOTICE] CityZen Municipal Role Authority Update: ${newRole.toUpperCase()} Clearance Granted`;
+      const emailBody = `GOVERNMENT OF ODISHA · BHUBANESWAR MUNICIPAL CORPORATION (BMC)
+OFFICE OF THE MUNICIPAL COMMISSIONER & CHIEF DIGITAL CONTROLLER
+CITYZEN SMART MUNICIPAL GOVERNANCE PLATFORM
+
+REF NO: ${refNumber}
+DATE: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+TO: ${recipientName} (${recipientEmail || 'Registered Citizen'})
+SUBJECT: Formal Notification of Municipal Role Authority & Security Clearance Update
+
+Dear ${recipientName},
+
+This official administrative communiqué confirms that your operational role and security clearance on the CityZen Smart Municipal Governance Platform have been formally updated by the Super Administrator.
+
+══════════════════════════════════════════════════
+ASSIGNED ROLE: ${newRole.toUpperCase()}
+DESIGNATION: ${roleDetails.title}
+SECURITY CLEARANCE: ${roleDetails.clearance}
+══════════════════════════════════════════════════
+
+OPERATIONAL JURISDICTION & SCOPE:
+${roleDetails.responsibilities}
+
+AUTHORIZED CAPABILITIES & PERMISSIONS:
+${roleDetails.permissions.map(p => `• ${p}`).join('\n')}
+
+LOGIN & ACCESS INSTRUCTIONS:
+1. Open the CityZen Portal: ${window.location.origin}
+2. Sign in using your registered credentials (${recipientEmail || 'your email'})
+3. Your specialized ${newRole.toUpperCase()} department operations dashboard is now active.
+
+COMPLIANCE & GOVERNANCE NOTICE:
+All municipal officers and designated personnel must adhere to the Odisha Municipal Corporation Act, 2003, and the Digital Data Protection & Municipal Security Guidelines. Any misuse of emergency dispatch tools, citizen telemetry, or administrative overrides is subject to audit.
+
+For queries or technical support, contact the Municipal IT Directorate:
+Email: rohitranjanpatra8@gmail.com · Helpline: 0674-243-1253
+Bhubaneswar Municipal Corporation, Odisha, India
+
+Yours faithfully,
+Municipal Commissioner & Super Administrator
+CityZen Smart City Operations Center (ICOC)`;
+
       loadMetricsAndData();
-      alert(`User role updated successfully to ${newRole.toUpperCase()}!`);
+
+      // 5. Open the official notification modal
+      setRoleNoticeModal({
+        isOpen: true,
+        userId,
+        userName: recipientName,
+        userEmail: recipientEmail,
+        userPhone: target.phone || '',
+        newRole,
+        refNumber,
+        subject: emailSubject,
+        body: emailBody,
+        copied: false
+      });
+
+      // 6. If user has an email, trigger mailto client directly
+      if (recipientEmail) {
+        const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+        window.open(mailtoUrl, '_blank');
+      }
+
     } catch (e: any) {
       alert("Failed to update user role: " + e.message);
     }
@@ -1605,6 +1767,133 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
           </div>
         </div>
       )}
+
+      {/* Role Authority Formal Communiqué Modal */}
+      {roleNoticeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setRoleNoticeModal(null)} />
+          <div className="relative max-w-2xl w-full bg-slate-900 border-2 border-orange-500/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_50px_rgba(249,115,22,0.2)] animate-slide-up space-y-4 max-h-[90vh] flex flex-col overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base sm:text-lg text-white">Official Role Authority Communiqué</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      Dispatched
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Ref: <span className="font-mono font-bold text-slate-300">{roleNoticeModal.refNumber}</span> · CityZen Municipal Governance
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRoleNoticeModal(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Recipient & Status Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 bg-slate-950/70 border border-white/5 rounded-2xl text-xs shrink-0">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Designated Personnel</p>
+                <p className="font-extrabold text-white text-sm mt-0.5">{roleNoticeModal.userName}</p>
+                <p className="text-slate-400 font-mono text-[11px] mt-0.5 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                  {roleNoticeModal.userEmail || 'No email registered'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Granted Authority Scope</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider border ${
+                    roleNoticeModal.newRole === 'admin' ? 'bg-orange-500/20 text-orange-300 border-orange-500/40' :
+                    roleNoticeModal.newRole === 'police' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                    roleNoticeModal.newRole === 'hospital' ? 'bg-red-500/20 text-red-300 border-red-500/40' :
+                    roleNoticeModal.newRole === 'bmc' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                    'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  }`}>
+                    {roleNoticeModal.newRole}
+                  </span>
+                  <span className="text-[11px] text-slate-300 font-medium">
+                    {ROLE_AUTHORITY_INFO[roleNoticeModal.newRole]?.clearance || 'Level-1'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" /> In-App Notification Recorded
+                </p>
+              </div>
+            </div>
+
+            {/* Formatted Communiqué Document View */}
+            <div className="flex-1 overflow-y-auto bg-slate-950/90 border border-white/10 rounded-2xl p-4 font-mono text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap select-text">
+              {roleNoticeModal.body}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 shrink-0 border-t border-white/10">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(roleNoticeModal.body);
+                    setRoleNoticeModal(prev => prev ? { ...prev, copied: true } : null);
+                    setTimeout(() => {
+                      setRoleNoticeModal(prev => prev ? { ...prev, copied: false } : null);
+                    }, 2500);
+                  }}
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"
+                >
+                  {roleNoticeModal.copied ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-400">Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Formal Notice</span>
+                    </>
+                  )}
+                </button>
+
+                {roleNoticeModal.userEmail ? (
+                  <a
+                    href={`mailto:${encodeURIComponent(roleNoticeModal.userEmail)}?subject=${encodeURIComponent(roleNoticeModal.subject)}&body=${encodeURIComponent(roleNoticeModal.body)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Send via Mailer (Gmail/Outlook)</span>
+                  </a>
+                ) : (
+                  <span className="text-[11px] text-amber-400 font-medium px-2 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                    No email on file (In-app only)
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRoleNoticeModal(null)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close Communiqué
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
