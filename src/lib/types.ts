@@ -12,6 +12,10 @@ export interface Profile {
   blocked?: boolean;
   email?: string;
   created_at: string;
+  deletion_requested_at?: string | null;
+  deletion_scheduled_at?: string | null;
+  deletion_status?: 'scheduled' | 'cancelled' | null;
+  deletion_reason?: string | null;
 }
 
 export type ComplaintCategory = 'water' | 'electricity' | 'waste' | 'roads' | 'streetlight' | 'other';

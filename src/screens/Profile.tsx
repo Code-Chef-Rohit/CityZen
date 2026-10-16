@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Siren, Bell, Droplets, AlertCircle, Car, Sparkles, CheckCheck,
   Trash2, User, LogOut, Globe, MapPin, Shield, ChevronRight, Lock, Mail, Phone,
-  FileText, History, KeyRound, Check
+  FileText, History, KeyRound, Check, Clock, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -10,6 +10,16 @@ import { Screen, ScreenHeader } from '@/components/Screen';
 import { Modal } from '@/components/Modal';
 import { timeAgo } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/lib/types';
+import {
+  checkAccountCreationLock,
+  formatDeletionCountdown,
+  getActiveDeletionSchedule,
+  scheduleCitizenAccountDeletion,
+  cancelCitizenAccountDeletion,
+  type DeletionScheduleEntry,
+  DELETION_REGISTRATION_LOCK_DAYS,
+  DELETION_WAIT_DAYS
+} from '@/lib/deletionService';
 
 const typeConfig: Record<NotificationType, { icon: typeof Bell; bg: string; color: string }> = {
   emergency: { icon: Siren, bg: 'bg-error-500/10 text-error-500 dark:bg-error-500/20', color: 'text-error-500' },
@@ -325,6 +335,27 @@ export function Profile({ onBack }: { onBack: () => void }) {
   const [mySOS, setMySOS] = useState<any[]>([]);
   const [activeHistoryTab, setActiveHistoryTab] = useState<'bills' | 'complaints' | 'sos' | null>(null);
 
+  // Deletion Schedule & Restriction States
+  const [activeDeletion, setActiveDeletion] = useState<DeletionScheduleEntry | null>(null);
+  const [cancellingDeletion, setCancellingDeletion] = useState(false);
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const [showLockedModal, setShowLockedModal] = useState<{
+    isLocked: boolean;
+    daysRemaining: number;
+    hoursRemaining: number;
+    unlockDate: Date;
+    message: string;
+  } | null>(null);
+  const [deletionReason, setDeletionReason] = useState('');
+  const [schedulingDeletion, setSchedulingDeletion] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      const sched = getActiveDeletionSchedule(profile, session?.user?.user_metadata);
+      setActiveDeletion(sched);
+    }
+  }, [profile, session]);
+
   const loadUserHistory = async () => {
     if (!profile?.id) return;
     const [billsRes, complaintsRes, sosRes] = await Promise.all([
@@ -427,18 +458,87 @@ export function Profile({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!window.confirm("WARNING: Are you sure you want to delete your profile? This action is permanent and your account will be removed forever.")) {
+  const handleCancelDeletion = async () => {
+    if (!profile?.id) return;
+    if (!window.confirm("Do you want to cancel your scheduled account deletion? Your account will remain active and no data will be lost.")) {
       return;
     }
+    setCancellingDeletion(true);
     try {
-      const { error } = await supabase.rpc('delete_current_user');
-      if (error) throw error;
-      alert('Your account has been deleted successfully.');
-      await signOut();
+      const res = await cancelCitizenAccountDeletion({
+        userId: profile.id,
+        userName: profile.full_name || 'Citizen',
+        userEmail: userEmail,
+      });
+      if (res.success) {
+        setActiveDeletion(null);
+        alert(res.message);
+        refreshProfile();
+      }
     } catch (err: any) {
-      alert(`Failed to delete profile: ${err.message || err}`);
+      alert(`Failed to cancel deletion: ${err.message || err}`);
+    } finally {
+      setCancellingDeletion(false);
     }
+  };
+
+  const handleConfirmScheduledDeletion = async () => {
+    if (!profile?.id) return;
+    setSchedulingDeletion(true);
+    try {
+      const createdAt = profile.created_at || session?.user?.created_at;
+      const res = await scheduleCitizenAccountDeletion({
+        userId: profile.id,
+        userName: profile.full_name || 'Citizen',
+        userEmail: userEmail,
+        createdAt,
+        reason: deletionReason || 'Citizen requested account closure',
+      });
+
+      if (!res.success) {
+        alert(res.message);
+        setShowDeletionModal(false);
+        return;
+      }
+
+      setShowDeletionModal(false);
+      const sched = getActiveDeletionSchedule(profile, {
+        deletion_status: 'scheduled',
+        deletion_scheduled_at: res.scheduledAt,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_reason: deletionReason,
+      });
+      setActiveDeletion(sched);
+      alert(res.message);
+      refreshProfile();
+    } catch (err: any) {
+      alert(`Failed to schedule account deletion: ${err.message || err}`);
+    } finally {
+      setSchedulingDeletion(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!profile?.id) return;
+
+    // 1. If deletion already scheduled, notify user
+    if (activeDeletion) {
+      alert(`An account deletion is already queued for ${new Date(activeDeletion.scheduledAt).toLocaleString('en-IN')}. You can cancel it using the banner on your profile.`);
+      return;
+    }
+
+    // 2. Check 3-day registration restriction lock
+    const createdAt = profile.created_at || session?.user?.created_at;
+    const lock = checkAccountCreationLock(createdAt);
+
+    if (lock.isLocked) {
+      setShowLockedModal(lock);
+      return;
+    }
+
+    // 3. User is eligible (account older than 3 days): Open 7-day scheduled deletion dialog
+    setDeletionReason('');
+    setShowDeletionModal(true);
   };
 
   const userEmail = session?.user?.email || profile?.email || 'citizen@cityzen.gov';
@@ -446,6 +546,50 @@ export function Profile({ onBack }: { onBack: () => void }) {
   return (
     <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title="My Profile" subtitle="Account & Civic Identity" onBack={onBack} />
+
+      {/* Active Deletion Notice Banner (Grace Period) */}
+      {activeDeletion && (
+        <div className="mx-4 mt-3 mb-1 bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-4 text-ink-900 dark:text-white shadow-md relative overflow-hidden animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-500 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-bold text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                  Account Deletion Scheduled
+                </h3>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
+                  {formatDeletionCountdown(activeDeletion.scheduledAt).text}
+                </span>
+              </div>
+              <p className="text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed">
+                Your account is queued for permanent erasure on{' '}
+                <strong className="text-red-600 dark:text-red-400">
+                  {new Date(activeDeletion.scheduledAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </strong>
+                . During this 7-day grace period, all services remain active and you may revoke this request at any time.
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={handleCancelDeletion}
+                  disabled={cancellingDeletion}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  {cancellingDeletion ? 'Restoring Account...' : 'Cancel Deletion Request & Keep Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Profile Card */}
       <div className="px-4 pt-4 pb-2">
@@ -783,6 +927,118 @@ export function Profile({ onBack }: { onBack: () => void }) {
           >
             Close
           </button>
+        </div>
+      </Modal>
+
+      {/* 3-Day Account Creation Lock Modal */}
+      <Modal 
+        open={!!showLockedModal} 
+        onClose={() => setShowLockedModal(null)} 
+        title="Account Deletion Restricted"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-amber-900 dark:text-amber-200">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300">
+                3-Day Security Policy Active
+              </h4>
+              <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-1 leading-relaxed">
+                Under CityZen municipal digital governance standards, newly created citizen accounts cannot be deleted within <strong>3 days</strong> of opening.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-ink-50 dark:bg-slate-800/70 border border-ink-100 dark:border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-ink-500 dark:text-slate-400 font-medium">Time Remaining:</span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                {showLockedModal ? `${showLockedModal.daysRemaining}d ${showLockedModal.hoursRemaining}h remaining` : ''}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-ink-100 dark:border-slate-700/60 pt-2">
+              <span className="text-ink-500 dark:text-slate-400 font-medium">Eligible on:</span>
+              <span className="font-medium text-ink-800 dark:text-slate-200">
+                {showLockedModal?.unlockDate.toLocaleString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-ink-400 dark:text-slate-400 leading-relaxed">
+            This restriction ensures verified grievance records and municipal utility identity consistency. Once the 3-day window passes, you will be able to submit a deletion request with a 7-day grace period.
+          </p>
+
+          <button
+            onClick={() => setShowLockedModal(null)}
+            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+          >
+            Understood
+          </button>
+        </div>
+      </Modal>
+
+      {/* 7-Day Scheduled Deletion Confirmation Modal */}
+      <Modal
+        open={showDeletionModal}
+        onClose={() => setShowDeletionModal(false)}
+        title="Schedule Account Deletion (7-Day Wait)"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Mandatory 7-Day Waiting Period</span>
+            </div>
+            <p className="text-[11px] text-ink-700 dark:text-slate-300 leading-relaxed">
+              When you submit a deletion request, CityZen enforces a <strong>7-day grace period</strong> before your profile and authentication records are permanently erased:
+            </p>
+            <ul className="list-disc pl-5 text-[11px] space-y-1 text-ink-600 dark:text-slate-300">
+              <li>Your account data remains intact during these 7 days.</li>
+              <li>You can log in at any time to cancel this request and restore your profile.</li>
+              <li>After 7 days, all personal data, filed complaints, and utility links will be permanently deleted.</li>
+            </ul>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 mb-1.5 block">
+              Reason for Deletion (Optional)
+            </label>
+            <select
+              value={deletionReason}
+              onChange={(e) => setDeletionReason(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-ink-50 dark:bg-slate-800 border border-ink-200 dark:border-slate-700 rounded-xl text-xs text-ink-900 dark:text-white focus:outline-none focus:border-red-400"
+            >
+              <option value="">Select a reason...</option>
+              <option value="Relocated outside Bhubaneswar">Relocated outside Bhubaneswar</option>
+              <option value="Duplicate account created">Duplicate account created</option>
+              <option value="Privacy and data protection preference">Privacy and data protection preference</option>
+              <option value="Other civic or technical reason">Other civic or technical reason</option>
+            </select>
+          </div>
+
+          <div className="flex gap-2.5 pt-2">
+            <button
+              onClick={() => setShowDeletionModal(false)}
+              className="flex-1 py-2.5 bg-ink-100 dark:bg-slate-800 hover:bg-ink-200 dark:hover:bg-slate-700 rounded-xl font-semibold text-xs text-ink-600 dark:text-slate-300 transition-colors cursor-pointer"
+            >
+              Keep Account
+            </button>
+            <button
+              onClick={handleConfirmScheduledDeletion}
+              disabled={schedulingDeletion}
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+            >
+              {schedulingDeletion ? 'Scheduling...' : 'Confirm 7-Day Wait'}
+            </button>
+          </div>
         </div>
       </Modal>
     </Screen>
