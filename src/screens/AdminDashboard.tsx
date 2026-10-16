@@ -563,8 +563,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         console.warn("Could not insert notification into database:", notifErr);
       }
 
-      // 4. Prepare formal municipal dispatch email text
-      const emailSubject = `[OFFICIAL NOTICE] CityZen Admin Update: ${newRole.toUpperCase()} Clearance Granted`;
+      // 4. Prepare formal municipal dispatch email text (tuned for anti-spam deliverability)
+      const emailSubject = `CityZen Admin Update: ${newRole.toUpperCase()} Clearance Granted (Ref: ${refNumber})`;
       const emailDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
       const emailBody = `Official Communique Ref Number & Date:
 Ref Number: ${refNumber}
@@ -583,7 +583,8 @@ Registered Email: ${recipientEmail || 'your email'}
 
 ---
 Sender: CityZen Admin
-CityZen Smart Municipal Governance Platform`;
+CityZen Smart Municipal Governance Platform
+Notice: You received this official notification because your account is registered on the CityZen Platform. If this update was not requested, please reach out to cityzen.system@gmail.com.`;
 
       loadMetricsAndData();
 
