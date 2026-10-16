@@ -538,7 +538,17 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       const roleDetails = ROLE_AUTHORITY_INFO[newRole] || ROLE_AUTHORITY_INFO.citizen;
       const refNumber = `BMC/CZ-AUTH/2026/08-${Math.floor(100000 + Math.random() * 900000)}`;
       const recipientName = target.full_name || 'Designated Officer';
-      const recipientEmail = target.email || '';
+      let recipientEmail = (target.email || '').trim();
+
+      // If user profile does not have an email, prompt admin to provide it so the notice definitely reaches them
+      if (!recipientEmail || !recipientEmail.includes('@')) {
+        const manualEmail = window.prompt(`User "${recipientName}" does not have an email address recorded on their profile. Please enter their email address so their official role clearance letter reaches them:`, '');
+        if (manualEmail && manualEmail.includes('@')) {
+          recipientEmail = manualEmail.trim();
+          target.email = recipientEmail;
+          supabase.from('profiles').update({ email: recipientEmail }).eq('id', userId).then();
+        }
+      }
 
       // 3. Insert official notification into notifications table for target user
       try {
@@ -581,7 +591,7 @@ CityZen Smart Municipal Governance Platform`;
       setRoleNoticeModal(null);
       showToast(`Designating ${recipientName} as ${newRole.toUpperCase()}...`, 'info');
 
-      // 6. Automatically transmit official email in the background (no manual send or pressing enter!)
+      // 6. Automatically transmit official email directly to the user whose role changed
       if (recipientEmail) {
         sendAutomatedRoleChangeEmail({
           userId,
@@ -598,31 +608,17 @@ CityZen Smart Municipal Governance Platform`;
           body: emailBody,
         }).then((res) => {
           if (res.status === 'delivered') {
-            showToast(`Official communique sent to ${recipientEmail} via EmailJS. (Check Spam/Promotions if not in Inbox)`, 'success');
+            showToast(`Official clearance communique delivered to ${recipientEmail} (${recipientName}).`, 'success');
           } else {
-            console.error("EmailJS dispatch warning:", res);
-            showToast(`Role updated, but email notice: ${res.method || res.message}`, 'error');
+            console.error("EmailJS dispatch notice:", res);
+            showToast(`Role updated. Email dispatch status: ${res.method || res.message}`, 'error');
           }
         }).catch((err) => {
           console.warn("Automated email background error:", err);
-          showToast(`Role updated. Automated mail notice: ${err?.message || 'failed'}`, 'error');
+          showToast(`Role updated. Automated mail error: ${err?.message || 'failed'}`, 'error');
         });
-
-        // Also transmit an Admin Audit Copy to the logged-in admin's email so they get the confirmation too
-        if (profile?.email && profile.email.includes('@') && profile.email.toLowerCase() !== recipientEmail.toLowerCase()) {
-          sendAutomatedCitizenNoticeEmail({
-            userId: profile.id,
-            userEmail: profile.email,
-            userName: profile.full_name || 'Super Admin',
-            title: `Role Authority Changed: ${recipientName} designated as ${newRole.toUpperCase()}`,
-            subject: `[ADMIN AUDIT COPY] Role Update: ${recipientName} -> ${newRole.toUpperCase()}`,
-            message: `Official Admin Audit Notification:\n\nUser: ${recipientName} (${recipientEmail})\nNew Role: ${newRole.toUpperCase()} (${roleDetails.title})\nReference: ${refNumber}\nTimestamp: ${new Date().toLocaleString()}\n\nCityZen Super Admin Control Center`,
-            category: 'government',
-            refNumber,
-          }).catch(e => console.warn("Admin audit email error:", e));
-        }
       } else {
-        showToast(`Role updated to ${newRole.toUpperCase()} for ${recipientName} (No email on profile; In-App notification recorded).`, 'info');
+        showToast(`Role updated to ${newRole.toUpperCase()} for ${recipientName} (No recipient email provided; In-App notification recorded).`, 'info');
       }
 
     } catch (e: any) {
