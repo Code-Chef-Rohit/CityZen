@@ -453,48 +453,26 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       }
 
       // 4. Prepare formal municipal dispatch email text
-      const emailSubject = `[OFFICIAL NOTICE] CityZen Municipal Role Authority Update: ${newRole.toUpperCase()} Clearance Granted`;
-      const emailBody = `GOVERNMENT OF ODISHA · BHUBANESWAR MUNICIPAL CORPORATION (BMC)
-OFFICE OF THE MUNICIPAL COMMISSIONER & CHIEF DIGITAL CONTROLLER
-CITYZEN SMART MUNICIPAL GOVERNANCE PLATFORM
+      const emailSubject = `[OFFICIAL NOTICE] CityZen Admin Update: ${newRole.toUpperCase()} Clearance Granted`;
+      const emailDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      const emailBody = `Official Communique Ref Number & Date:
+Ref Number: ${refNumber}
+Date: ${emailDate}
 
-REF NO: ${refNumber}
-DATE: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+New Assigned Role & Designation:
+Assigned Role: ${newRole.toUpperCase()}
+Designation: ${roleDetails.title} (${roleDetails.clearance})
 
-TO: ${recipientName} (${recipientEmail || 'Registered Citizen'})
-SUBJECT: Formal Notification of Municipal Role Authority & Security Clearance Update
-
-Dear ${recipientName},
-
-This official administrative communiqué confirms that your operational role and security clearance on the CityZen Smart Municipal Governance Platform have been formally updated by the Super Administrator.
-
-══════════════════════════════════════════════════
-ASSIGNED ROLE: ${newRole.toUpperCase()}
-DESIGNATION: ${roleDetails.title}
-SECURITY CLEARANCE: ${roleDetails.clearance}
-══════════════════════════════════════════════════
-
-OPERATIONAL JURISDICTION & SCOPE:
-${roleDetails.responsibilities}
-
-AUTHORIZED CAPABILITIES & PERMISSIONS:
+Authorized Capabilities & Permissions:
 ${roleDetails.permissions.map(p => `• ${p}`).join('\n')}
 
-LOGIN & ACCESS INSTRUCTIONS:
-1. Open the CityZen Portal: ${window.location.origin}
-2. Sign in using your registered credentials (${recipientEmail || 'your email'})
-3. Your specialized ${newRole.toUpperCase()} department operations dashboard is now active.
+Login Link to CityZen Portal:
+${window.location.origin}
+Registered Email: ${recipientEmail || 'your email'}
 
-COMPLIANCE & GOVERNANCE NOTICE:
-All municipal officers and designated personnel must adhere to the Odisha Municipal Corporation Act, 2003, and the Digital Data Protection & Municipal Security Guidelines. Any misuse of emergency dispatch tools, citizen telemetry, or administrative overrides is subject to audit.
-
-For queries or technical support, contact the Municipal IT Directorate:
-Email: rohitranjanpatra8@gmail.com · Helpline: 0674-243-1253
-Bhubaneswar Municipal Corporation, Odisha, India
-
-Yours faithfully,
-Municipal Commissioner & Super Administrator
-CityZen Smart City Operations Center (ICOC)`;
+---
+Sender: CityZen Admin
+CityZen Smart Municipal Governance Platform`;
 
       loadMetricsAndData();
 

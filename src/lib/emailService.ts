@@ -21,7 +21,7 @@ export const DEFAULT_EMAIL_CONFIG: EmailGatewayConfig = {
   emailjsTemplateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_bnczuvh',
   emailjsPublicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'l8ZDaCW7jP2JEQfDN',
   webhookUrl: '',
-  senderName: 'CityZen Municipal Authority System (BMC)',
+  senderName: 'CityZen Admin',
   senderEmail: 'no-reply@cityzen.odisha.gov.in',
 };
 
@@ -97,6 +97,9 @@ export function getEmailGatewayConfig(): EmailGatewayConfig {
       }
       if (!parsed.emailjsTemplateId || parsed.emailjsTemplateId === 'template_role_update') {
         parsed.emailjsTemplateId = DEFAULT_EMAIL_CONFIG.emailjsTemplateId;
+      }
+      if (!parsed.senderName || parsed.senderName.includes('BMC') || parsed.senderName.includes('Municipal Authority')) {
+        parsed.senderName = 'CityZen Admin';
       }
       return { ...DEFAULT_EMAIL_CONFIG, ...parsed };
     }
