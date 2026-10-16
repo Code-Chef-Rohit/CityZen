@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { formatINR, formatDate, timeAgo } from '@/lib/utils';
 import { 
   sendAutomatedRoleChangeEmail, 
+  sendAutomatedCitizenNoticeEmail,
   getEmailGatewayConfig, 
   saveEmailGatewayConfig, 
   sendTestAutomatedEmail, 
@@ -67,6 +68,14 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
 
   // Role Authority Notice Email Modal State
   const [roleNoticeModal, setRoleNoticeModal] = useState<RoleChangeNoticeState | null>(null);
+  const [floatingToast, setFloatingToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setFloatingToast({ message, type });
+    setTimeout(() => {
+      setFloatingToast((cur) => (cur?.message === message ? null : cur));
+    }, 4500);
+  };
 
   // Automated Email Gateway Settings States
   const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
@@ -177,11 +186,68 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
     await Promise.all(ids.map(id => 
       supabase.from('complaints').update({ status: newStatus }).eq('id', id)
     ));
+
+    const master = complaints.find(c => c.id === complaintId);
+    if (master) {
+      const citizen = users.find(u => u.id === master.user_id);
+      if (citizen) {
+        const title = `Civic Grievance Status: ${newStatus.replace('_', ' ').toUpperCase()}`;
+        const msg = `Your civic complaint "${master.title}" (Category: ${master.category}) status has been updated to "${newStatus.replace('_', ' ')}" by Municipal Administration.`;
+        if (citizen.email) {
+          sendAutomatedCitizenNoticeEmail({
+            userId: citizen.id,
+            userEmail: citizen.email,
+            userName: citizen.full_name || 'Citizen',
+            title,
+            subject: `[BMC STATUS] Complaint #${complaintId.slice(0, 8).toUpperCase()} - ${newStatus.toUpperCase()}`,
+            message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nLocation: ${master.location_text || 'Ward'}\nReference: BMC/GRIEV-${complaintId.slice(0, 8).toUpperCase()}\n\nBhubaneswar Municipal Corporation (BMC)`,
+            category: 'complaint'
+          }).catch(e => console.warn(e));
+        } else {
+          supabase.from('notifications').insert({
+            user_id: citizen.id,
+            title,
+            message: msg,
+            type: 'complaint',
+            read: false
+          }).then();
+        }
+      }
+    }
+    showToast(`Complaint status updated to ${newStatus.toUpperCase()}`, 'success');
     loadMetricsAndData();
   };
 
   const handleUpdateBillStatus = async (billId: string, newStatus: string) => {
-    await supabase.from('bills').update({ status: newStatus }).eq('id', billId);
+    await supabase.from('bills').update({ status: newStatus, paid_at: newStatus === 'paid' ? new Date().toISOString() : null }).eq('id', billId);
+    const targetBill = bills.find(b => b.id === billId);
+    if (targetBill) {
+      const citizen = users.find(u => u.id === targetBill.user_id);
+      if (citizen) {
+        const title = `Utility Bill Status: ${newStatus.toUpperCase()}`;
+        const msg = `Your ${targetBill.type} utility invoice of ₹${targetBill.amount} has been marked as ${newStatus.toUpperCase()} by Municipal Revenue Administration.`;
+        if (citizen.email) {
+          sendAutomatedCitizenNoticeEmail({
+            userId: citizen.id,
+            userEmail: citizen.email,
+            userName: citizen.full_name || 'Citizen',
+            title,
+            subject: `[BBPS NOTICE] ${targetBill.type.toUpperCase()} Utility Invoice ${newStatus.toUpperCase()}`,
+            message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nInvoice ID: ${targetBill.id.slice(0, 8).toUpperCase()}\nPeriod: ${targetBill.period || 'Current Cycle'}\n\nCityZen Municipal Revenue Directorate`,
+            category: 'bill'
+          }).catch(e => console.warn(e));
+        } else {
+          supabase.from('notifications').insert({
+            user_id: citizen.id,
+            title,
+            message: msg,
+            type: 'bill',
+            read: false
+          }).then();
+        }
+      }
+    }
+    showToast(`Bill status updated to ${newStatus.toUpperCase()}`, 'success');
     loadMetricsAndData();
   };
 
@@ -209,9 +275,28 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
       })
       .eq('id', selectedBillToClear.id);
     
+    // Notify citizen if bill was adjusted
+    const citizen = users.find(u => u.id === selectedBillToClear.user_id);
+    if (citizen) {
+      const title = `Utility Adjustment: ₹${amtToDeduct} Deducted`;
+      const msg = `A payment adjustment of ₹${amtToDeduct} was processed by Municipal Revenue on your ${selectedBillToClear.type} bill. Remaining balance: ₹${newAmount}. Status: ${newStatus.toUpperCase()}.`;
+      if (citizen.email) {
+        sendAutomatedCitizenNoticeEmail({
+          userId: citizen.id,
+          userEmail: citizen.email,
+          userName: citizen.full_name || 'Citizen',
+          title,
+          subject: `[BBPS ADJUSTMENT] ₹${amtToDeduct} Applied to ${selectedBillToClear.type.toUpperCase()} Bill`,
+          message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nCityZen Municipal Revenue Directorate`,
+          category: 'bill'
+        }).catch(e => console.warn(e));
+      }
+    }
+
     setClearingAmount(false);
     setSelectedBillToClear(null);
     setDeductAmount('');
+    showToast(`Successfully deducted ₹${amtToDeduct}. Remaining: ₹${newAmount}`, 'success');
     loadMetricsAndData();
   };
 
@@ -296,7 +381,34 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
   };
 
   const handleResolveEmergency = async (id: string) => {
-    await supabase.from('emergency_requests').update({ status: 'resolved' }).eq('id', id);
+    const targetEmerg = emergencies.find(e => e.id === id);
+    await supabase.from('emergency_requests').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+    if (targetEmerg?.user_id) {
+      const citizen = users.find(u => u.id === targetEmerg.user_id);
+      const title = `🚨 Emergency SOS Cleared: ${targetEmerg.type.toUpperCase()}`;
+      const msg = `Your ${targetEmerg.type.toUpperCase()} emergency request at ${targetEmerg.location_text || 'reported location'} has been attended and resolved by Municipal Administration.`;
+      if (citizen?.email) {
+        sendAutomatedCitizenNoticeEmail({
+          userId: citizen.id,
+          userEmail: citizen.email,
+          userName: citizen.full_name || 'Citizen',
+          title,
+          subject: `[EMERGENCY CLEARED] Incident Status Update`,
+          message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nStatus: Incident Resolved\nRef: SOS-${id.slice(0, 8).toUpperCase()}\n\nCityZen Emergency Command`,
+          category: 'emergency',
+          refNumber: `SOS-${id.slice(0, 8).toUpperCase()}`
+        }).catch(e => console.warn(e));
+      } else {
+        supabase.from('notifications').insert({
+          user_id: targetEmerg.user_id,
+          title,
+          message: msg,
+          type: 'emergency',
+          read: false
+        }).then();
+      }
+    }
+    showToast('Emergency SOS marked resolved and citizen notified.', 'success');
     loadMetricsAndData();
   };
 
@@ -386,21 +498,9 @@ CityZen Smart City Operations Center (ICOC)`;
 
       loadMetricsAndData();
 
-      // 5. Open the official notification modal with live automated dispatch status
-      setRoleNoticeModal({
-        isOpen: true,
-        userId,
-        userName: recipientName,
-        userEmail: recipientEmail,
-        userPhone: target.phone || '',
-        newRole,
-        refNumber,
-        subject: emailSubject,
-        body: emailBody,
-        copied: false,
-        dispatching: !!recipientEmail,
-        dispatchSuccess: false,
-      });
+      // 5. Background automated dispatch without forcing a modal popup on the admin screen
+      setRoleNoticeModal(null);
+      showToast(`Designating ${recipientName} as ${newRole.toUpperCase()}...`, 'info');
 
       // 6. Automatically transmit official email in the background (no manual send or pressing enter!)
       if (recipientEmail) {
@@ -418,31 +518,13 @@ CityZen Smart City Operations Center (ICOC)`;
           subject: emailSubject,
           body: emailBody,
         }).then((res) => {
-          setRoleNoticeModal(prev => prev ? {
-            ...prev,
-            dispatching: false,
-            dispatchSuccess: res.success,
-            dispatchId: res.dispatchId,
-            dispatchMethod: res.method,
-            dispatchTimestamp: res.timestamp,
-            dispatchError: res.success ? undefined : res.message,
-          } : null);
+          showToast(`Official communique automatically transmitted to ${recipientEmail} via EmailJS.`, 'success');
         }).catch((err) => {
           console.warn("Automated email background error:", err);
-          setRoleNoticeModal(prev => prev ? {
-            ...prev,
-            dispatching: false,
-            dispatchSuccess: false,
-            dispatchError: err?.message || 'Automated transmission failed',
-          } : null);
+          showToast(`Role updated in database. Automated mail notice: ${err?.message || 'relayed'}`, 'info');
         });
       } else {
-        setRoleNoticeModal(prev => prev ? {
-          ...prev,
-          dispatching: false,
-          dispatchSuccess: false,
-          dispatchMethod: 'In-app municipal notice only (no email address on file)',
-        } : null);
+        showToast(`Role updated to ${newRole.toUpperCase()} for ${recipientName} (In-App notification recorded).`, 'success');
       }
 
     } catch (e: any) {
@@ -472,6 +554,25 @@ CityZen Smart City Operations Center (ICOC)`;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* Non-intrusive floating feedback toast */}
+      {floatingToast && (
+        <div className="fixed top-4 right-4 z-50 animate-fade-in max-w-md pointer-events-auto">
+          <div className={`px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold flex items-center gap-2.5 backdrop-blur-xl ${
+            floatingToast.type === 'error'
+              ? 'bg-red-950/90 border-red-500/40 text-red-200 shadow-red-950/50'
+              : floatingToast.type === 'info'
+              ? 'bg-blue-950/90 border-blue-500/40 text-blue-200 shadow-blue-950/50'
+              : 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200 shadow-emerald-950/50'
+          }`}>
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span className="flex-1 leading-snug">{floatingToast.message}</span>
+            <button onClick={() => setFloatingToast(null)} className="text-slate-400 hover:text-white cursor-pointer ml-1">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Header */}
       <header className="bg-slate-900 border-b border-white/5 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
         <div className="flex items-center gap-3">

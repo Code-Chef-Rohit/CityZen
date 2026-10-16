@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/Button';
 import { formatINR } from '@/lib/utils';
 import type { EmergencyRequest, Complaint, Profile, HospitalAmbulanceContact } from '@/lib/types';
+import { sendAutomatedCitizenNoticeEmail } from '@/lib/emailService';
 
 export default function StaffDashboard() {
   const { profile, session, signOut } = useAuth();
@@ -126,9 +127,10 @@ export default function StaffDashboard() {
     };
   }, [role, profile?.id]);
 
-  // 1. Police Actions
+  // 1. Police / Hospital Emergency Resolution
   const handleResolveEmergency = async (id: string) => {
     if (window.confirm("Mark this emergency SOS dispatch as fully resolved?")) {
+      const targetEmerg = emergencies.find(e => e.id === id);
       const { error } = await supabase
         .from('emergency_requests')
         .update({ status: 'resolved', resolved_at: new Date().toISOString() })
@@ -136,6 +138,35 @@ export default function StaffDashboard() {
       if (error) {
         alert(error.message);
       } else {
+        // Automatically dispatch notification & email to citizen in the background
+        if (targetEmerg?.user_id) {
+          const targetCitizen = users.find(u => u.id === targetEmerg.user_id);
+          const dept = role === 'police' ? 'Odisha Police Emergency Patrol' :
+                       role === 'hospital' ? 'Emergency Medical & Trauma Control' : 'BMC Emergency Rescue';
+          const title = `🚨 Emergency SOS Cleared: ${targetEmerg.type.toUpperCase()} Dispatch`;
+          const msg = `Your ${targetEmerg.type.toUpperCase()} emergency request at ${targetEmerg.location_text || 'reported location'} has been safely attended and resolved by ${dept}. Reference: SOS-${id.slice(0, 8).toUpperCase()}.`;
+
+          if (targetCitizen?.email) {
+            sendAutomatedCitizenNoticeEmail({
+              userId: targetEmerg.user_id,
+              userEmail: targetCitizen.email,
+              userName: targetCitizen.full_name || 'Citizen',
+              title,
+              subject: `[EMERGENCY RESOLVED] ${dept} Incident Closure`,
+              message: `Dear ${targetCitizen.full_name || 'Citizen'},\n\n${msg}\n\nAll responding teams have cleared the incident. If you require further assistance, please contact the municipal emergency desk or call 112.\n\n${dept} · CityZen OS`,
+              category: 'emergency',
+              refNumber: `SOS-${id.slice(0, 8).toUpperCase()}`
+            }).catch(e => console.warn('Automated emergency email notice:', e));
+          } else {
+            supabase.from('notifications').insert({
+              user_id: targetEmerg.user_id,
+              title,
+              message: msg,
+              type: 'emergency',
+              read: false
+            }).then();
+          }
+        }
         setSelectedEmergency(null);
         setRoutingSim(null);
         loadData();
@@ -437,6 +468,21 @@ export default function StaffDashboard() {
         type: 'complaint',
         read: false
       });
+
+      // Automated Email dispatch to citizen who filed complaint
+      const masterCitizen = users.find(u => u.id === selectedComplaint.user_id);
+      if (masterCitizen?.email) {
+        sendAutomatedCitizenNoticeEmail({
+          userId: masterCitizen.id,
+          userEmail: masterCitizen.email,
+          userName: masterCitizen.full_name || 'Citizen',
+          title: `Grievance Resolved: ${selectedComplaint.title}`,
+          subject: `[BMC RESOLVED] Civic Grievance Resolved: "${selectedComplaint.title}"`,
+          message: `Dear ${masterCitizen.full_name || 'Citizen'},\n\nYour civic complaint "${selectedComplaint.title}" (Category: ${selectedComplaint.category}) has been verified and resolved by the Bhubaneswar Municipal Corporation (BMC) field works team.\n\nResolution Proof: "${resolutionProofText.trim()}"\nLocation: ${selectedComplaint.location_text || 'Ward'}\n\nThank you for helping keep Bhubaneswar clean, safe, and smart.\n\nBhubaneswar Municipal Corporation (BMC)`,
+          category: 'complaint',
+          refNumber: `BMC/GRIEV-${selectedComplaint.id.slice(0, 8).toUpperCase()}`
+        }).catch(e => console.warn('Automated grievance email notice:', e));
+      }
 
       setSelectedComplaint(null);
       setResolutionProofText('');

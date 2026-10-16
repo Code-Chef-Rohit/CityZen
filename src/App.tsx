@@ -16,7 +16,6 @@ import { Notifications, Profile } from '@/screens/Profile';
 import StaffDashboard from '@/screens/StaffDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
 import { supabase, isConfigured } from '@/lib/supabase';
-import { ROLE_AUTHORITY_INFO } from '@/lib/emailService';
 
 type Screen =
   | { name: 'home' }
@@ -64,82 +63,10 @@ function AppContent() {
     return () => clearInterval(interval);
   }, [profile?.id, screen.name]);
 
-  // Automated Realtime Authority Grant Alert State
-  const [authorityGrantAlert, setAuthorityGrantAlert] = useState<{
-    notifId: string;
-    role: string;
-    title: string;
-    message: string;
-    date: string;
-  } | null>(null);
-
+  // Realtime listener on profiles table for instant role change without reload
   useEffect(() => {
     if (!profile?.id) return;
 
-    // 1. Initial check for unread authority grant notifications for this user
-    const checkUnreadAuthorityNotifs = async () => {
-      try {
-        const { data } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('type', 'government')
-          .ilike('title', '%Authority Granted%')
-          .eq('read', false)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (data && data.length > 0) {
-          const notif = data[0];
-          const matchedRole = notif.title.toLowerCase().includes('admin') ? 'admin' :
-                             notif.title.toLowerCase().includes('police') ? 'police' :
-                             notif.title.toLowerCase().includes('hospital') ? 'hospital' :
-                             notif.title.toLowerCase().includes('bmc') ? 'bmc' : (profile.role || 'citizen');
-          setAuthorityGrantAlert({
-            notifId: notif.id,
-            role: matchedRole,
-            title: notif.title,
-            message: notif.message,
-            date: notif.created_at || new Date().toISOString()
-          });
-        }
-      } catch (err) {
-        console.warn('Authority notification check notice:', err);
-      }
-    };
-
-    checkUnreadAuthorityNotifs();
-
-    // 2. Realtime listener: Whenever an admin assigns a new role to this user,
-    // pop up the official alert dialog automatically and immediately!
-    const notifSub = supabase
-      .channel(`user-authority-alert-${profile.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${profile.id}`
-      }, (payload: any) => {
-        const newNotif = payload.new;
-        if (newNotif?.type === 'government' && newNotif?.title?.includes('Authority Granted')) {
-          const matchedRole = newNotif.title.toLowerCase().includes('admin') ? 'admin' :
-                             newNotif.title.toLowerCase().includes('police') ? 'police' :
-                             newNotif.title.toLowerCase().includes('hospital') ? 'hospital' :
-                             newNotif.title.toLowerCase().includes('bmc') ? 'bmc' : (profile.role || 'citizen');
-          setAuthorityGrantAlert({
-            notifId: newNotif.id,
-            role: matchedRole,
-            title: newNotif.title,
-            message: newNotif.message,
-            date: newNotif.created_at || new Date().toISOString()
-          });
-          refreshProfile();
-          refreshUnreadCount();
-        }
-      })
-      .subscribe();
-
-    // 3. Realtime listener on profiles table for instant role change without reload
     const profileSub = supabase
       .channel(`user-profile-change-${profile.id}`)
       .on('postgres_changes', {
@@ -150,15 +77,15 @@ function AppContent() {
       }, (payload: any) => {
         if (payload.new?.role && payload.new.role !== profile.role) {
           refreshProfile();
+          refreshUnreadCount();
         }
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(notifSub);
       supabase.removeChannel(profileSub);
     };
-  }, [profile?.id]);
+  }, [profile?.id, profile?.role]);
 
   const navigateToScreen = (target: Screen) => {
     const serviceScreens = ['complaints', 'bills', 'emergency', 'zen', 'service'];
@@ -290,124 +217,12 @@ function AppContent() {
     );
   }
 
-  const renderAuthorityGrantModal = () => {
-    if (!authorityGrantAlert) return null;
-    const roleInfo = ROLE_AUTHORITY_INFO[authorityGrantAlert.role] || ROLE_AUTHORITY_INFO.citizen;
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in text-left">
-        <div className="relative max-w-lg w-full bg-slate-900 border-2 border-orange-500/50 rounded-3xl p-6 shadow-2xl animate-scale-up space-y-4 text-white max-h-[90vh] overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-start justify-between border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0">
-                <Shield className="w-6 h-6 text-orange-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-orange-400 font-extrabold">Official Administrative Communiqué</span>
-                </div>
-                <h2 className="text-base sm:text-lg font-black text-white mt-0.5">Role Authority Activated</h2>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await supabase.from('notifications').update({ read: true }).eq('id', authorityGrantAlert.notifId);
-                } catch (e) {
-                  console.warn(e);
-                }
-                setAuthorityGrantAlert(null);
-                refreshUnreadCount();
-              }}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Granted Role Badge */}
-          <div className="p-4 bg-slate-950/80 border border-white/10 rounded-2xl flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your Assigned Operational Role</p>
-              <p className="text-xl font-black text-white uppercase mt-0.5 tracking-tight flex items-center gap-2">
-                <span>{authorityGrantAlert.role}</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-bold uppercase">
-                  {roleInfo.clearance}
-                </span>
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <CheckCircle className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Official Message Body */}
-          <div className="p-4 bg-slate-950/60 border border-white/5 rounded-2xl space-y-2 text-xs text-slate-300 font-mono leading-relaxed max-h-48 overflow-y-auto">
-            <p className="font-bold text-white font-sans text-sm">Designation: {roleInfo.title}</p>
-            <p className="text-[11px] text-slate-300">{authorityGrantAlert.message}</p>
-            {roleInfo.permissions && (
-              <div className="pt-2 border-t border-white/10 space-y-1">
-                <p className="text-[10px] uppercase font-bold text-orange-400">Authorized Capabilities:</p>
-                {roleInfo.permissions.map((p, idx) => (
-                  <p key={idx} className="text-[11px] text-slate-400">• {p}</p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Notice Footer info */}
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1">
-            <span>Automated Municipal System Alert</span>
-            <span>{new Date(authorityGrantAlert.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-2.5 pt-2 border-t border-white/10">
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await supabase.from('notifications').update({ read: true }).eq('id', authorityGrantAlert.notifId);
-                } catch (e) {
-                  console.warn(e);
-                }
-                setAuthorityGrantAlert(null);
-                refreshUnreadCount();
-                await refreshProfile();
-                if (authorityGrantAlert.role === 'admin') {
-                  setAdminViewMode('admin');
-                }
-              }}
-              className="flex-1 py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold rounded-xl text-xs shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Shield className="w-4 h-4" />
-              <span>Acknowledge & Access Dashboard</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (profile?.role === 'police' || profile?.role === 'hospital' || profile?.role === 'bmc') {
-    return (
-      <>
-        <StaffDashboard />
-        {renderAuthorityGrantModal()}
-      </>
-    );
+    return <StaffDashboard />;
   }
 
   if (profile?.role === 'admin' && adminViewMode === 'admin') {
-    return (
-      <>
-        <AdminDashboard onSwitchToCitizen={() => setAdminViewMode('citizen')} />
-        {renderAuthorityGrantModal()}
-      </>
-    );
+    return <AdminDashboard onSwitchToCitizen={() => setAdminViewMode('citizen')} />;
   }
 
   const tabMap: Record<Tab, Screen> = {
@@ -440,7 +255,6 @@ function AppContent() {
         onNavigate={(s) => navigateToScreen(s as any)} 
         unreadCount={unreadCount}
       />
-      {renderAuthorityGrantModal()}
 
       {screen.name === 'home' && (
         <Home
