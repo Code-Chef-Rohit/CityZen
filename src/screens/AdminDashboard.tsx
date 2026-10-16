@@ -10,6 +10,7 @@ import {
   getEmailGatewayConfig, 
   saveEmailGatewayConfig, 
   sendTestAutomatedEmail, 
+  ROLE_AUTHORITY_INFO,
   type EmailGatewayConfig 
 } from '@/lib/emailService';
 
@@ -33,64 +34,6 @@ interface RoleChangeNoticeState {
   dispatchTimestamp?: string;
   dispatchError?: string;
 }
-
-const ROLE_AUTHORITY_INFO: Record<string, { title: string; clearance: string; responsibilities: string; permissions: string[] }> = {
-  admin: {
-    title: 'Super Administrator',
-    clearance: 'Level-5 Executive Clearance',
-    responsibilities: 'Full administrative control over city digital infrastructure, citizen registry, role clearance, database auditing, and department overrides.',
-    permissions: [
-      'Superuser access to Admin Control Center',
-      'Assign & revoke municipal officer clearances',
-      'Database audits & emergency dispatch reassignment',
-      'System telemetry & configuration control'
-    ]
-  },
-  police: {
-    title: 'Law Enforcement Dispatcher',
-    clearance: 'Level-3 Security Clearance',
-    responsibilities: 'First responder police control, live cruiser GPS dispatching, citizen emergency distress response, and safety verification.',
-    permissions: [
-      'Police SOS Incident Management & GPS Tracking',
-      'Direct contact & triage of active distress calls',
-      'Real-time cruiser navigation & responder routing',
-      'Official police incident clearance & logging'
-    ]
-  },
-  hospital: {
-    title: 'Emergency Medical Services (EMS) Controller',
-    clearance: 'Level-3 Healthcare Clearance',
-    responsibilities: '24/7 medical trauma dispatch, ambulance navigation, patient vitals monitoring, and hospital bed/ICU allocation.',
-    permissions: [
-      'Hospital & Medical SOS Triage Desk',
-      'Ambulance turn-by-turn live navigation',
-      'Casualty & ICU bed availability status',
-      'Citizen medical notes & handover documentation'
-    ]
-  },
-  bmc: {
-    title: 'Bhubaneswar Municipal Corporation (BMC) Supervisor',
-    clearance: 'Level-2 Municipal Operations Clearance',
-    responsibilities: 'Field supervision of public grievances, road repair orders, streetlight maintenance, solid waste collection, and photo proof verification.',
-    permissions: [
-      'Ward-level ticket assignment & task scheduling',
-      'Uploading resolution proof photos & notes',
-      'Sanitation, drainage & civil works tracking',
-      'Escalation & closure of citizen grievances'
-    ]
-  },
-  citizen: {
-    title: 'Verified Resident Citizen',
-    clearance: 'Level-1 Public Access',
-    responsibilities: 'Resident citizen access to municipal grievance reporting, utility bill payments, DigiLocker vault, and emergency distress services.',
-    permissions: [
-      'Filing geo-tagged civic complaints with photos',
-      'Paying electricity, water, and holding tax bills',
-      '1-Tap Emergency SOS dispatch (Police, Fire, Medical)',
-      'DigiLocker document access & city map explorer'
-    ]
-  }
-};
 
 export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitizen?: () => void }) {
   const { profile, session, signOut, refreshProfile } = useAuth();
@@ -1895,13 +1838,11 @@ CityZen Smart City Operations Center (ICOC)`;
                 <div className="min-w-0">
                   <p className="font-extrabold text-white text-xs truncate">
                     {roleNoticeModal.dispatching 
-                      ? `Transmitting automated email to ${roleNoticeModal.userEmail}...` 
-                      : roleNoticeModal.dispatchSuccess 
-                      ? `Automated background email successfully delivered to ${roleNoticeModal.userEmail}`
-                      : `In-app municipal notice recorded (Ref: ${roleNoticeModal.refNumber})`}
+                      ? `Transmitting automated alert to ${roleNoticeModal.userEmail}...` 
+                      : `Automated System Communiqué Dispatched to ${roleNoticeModal.userEmail || roleNoticeModal.userName}`}
                   </p>
                   <p className="text-[10px] opacity-80 truncate font-mono mt-0.5">
-                    {roleNoticeModal.dispatchMethod || 'Automated Municipal SMTP Relay'} · ID: {roleNoticeModal.dispatchId || 'DISP-LIVE-2026'}
+                    Sender: no-reply@cityzen.odisha.gov.in · {roleNoticeModal.dispatchMethod || 'Municipal Background Relay'}
                   </p>
                 </div>
               </div>
@@ -2011,18 +1952,21 @@ CityZen Smart City Operations Center (ICOC)`;
                   )}
                 </button>
 
-                {roleNoticeModal.userEmail && (
-                  <a
-                    href={`mailto:${encodeURIComponent(roleNoticeModal.userEmail)}?subject=${encodeURIComponent(roleNoticeModal.subject)}&body=${encodeURIComponent(roleNoticeModal.body)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
-                    title="Optional: Open local email client draft"
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded-xl text-[11px] font-bold flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Auto-Sent by System</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setGatewayModalOpen(true)}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer border border-white/10"
+                    title="Configure Automated Email Gateway"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Draft in Mail App</span>
-                  </a>
-                )}
+                    <Zap className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="hidden sm:inline">Gateway Settings</span>
+                  </button>
+                </div>
               </div>
 
               <button

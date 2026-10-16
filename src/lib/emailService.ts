@@ -17,13 +17,70 @@ const STORAGE_KEY = 'cityzen_email_gateway_config';
 export const DEFAULT_EMAIL_CONFIG: EmailGatewayConfig = {
   enabled: true,
   provider: 'emailjs',
-  // Pre-configured default slots that admins can easily connect or customize
   emailjsServiceId: 'service_cityzen',
   emailjsTemplateId: 'template_role_update',
-  emailjsPublicKey: 'cz_pub_live_relay_2026',
+  emailjsPublicKey: '',
   webhookUrl: '',
-  senderName: 'CityZen Municipal Administration (BMC)',
-  senderEmail: 'admin@cityzen.odisha.gov.in',
+  senderName: 'CityZen Municipal Authority System (BMC)',
+  senderEmail: 'no-reply@cityzen.odisha.gov.in',
+};
+
+export const ROLE_AUTHORITY_INFO: Record<string, { title: string; clearance: string; responsibilities: string; permissions: string[] }> = {
+  admin: {
+    title: 'Super Administrator',
+    clearance: 'Level-5 Executive Clearance',
+    responsibilities: 'Full administrative control over city digital infrastructure, citizen registry, role clearance, database auditing, and department overrides.',
+    permissions: [
+      'Superuser access to Admin Control Center',
+      'Assign & revoke municipal officer clearances',
+      'Database audits & emergency dispatch reassignment',
+      'System telemetry & configuration control'
+    ]
+  },
+  police: {
+    title: 'Law Enforcement Dispatcher',
+    clearance: 'Level-3 Security Clearance',
+    responsibilities: 'First responder police control, live cruiser GPS dispatching, citizen emergency distress response, and safety verification.',
+    permissions: [
+      'Police SOS Incident Management & GPS Tracking',
+      'Direct contact & triage of active distress calls',
+      'Real-time cruiser navigation & responder routing',
+      'Official police incident clearance & logging'
+    ]
+  },
+  hospital: {
+    title: 'Emergency Medical Controller',
+    clearance: 'Level-3 Medical Clearance',
+    responsibilities: 'Hospital emergency telemetry, ambulance triage & dispatching, critical care bed occupancy tracking, and casualty management.',
+    permissions: [
+      'Ambulance dispatch & trauma unit routing',
+      'Hospital bed & oxygen capacity telemetry',
+      'Emergency medical response clearance',
+      'Verified doctor & paramedic communications'
+    ]
+  },
+  bmc: {
+    title: 'Municipal Public Works Inspector',
+    clearance: 'Level-2 Municipal Operations Clearance',
+    responsibilities: 'City infrastructure oversight, pothole & road repair dispatch, streetlight illumination monitoring, and civic sanitation resolution.',
+    permissions: [
+      'Civic Grievance Resolution & Work Orders',
+      'Sanitation team dispatch & bin management',
+      'Streetlight & pothole repair verification',
+      'Ward-level municipal inspection reports'
+    ]
+  },
+  citizen: {
+    title: 'Registered Verified Citizen',
+    clearance: 'Level-1 Public Access',
+    responsibilities: 'Standard civic engagement, filing municipal grievances, bill payments, and requesting emergency assistance.',
+    permissions: [
+      'File & track civic complaints',
+      'Municipal utility bill settlement (BBPS)',
+      '1-Click SOS emergency distress requests',
+      'Access Zen AI municipal digital assistant'
+    ]
+  }
 };
 
 export function getEmailGatewayConfig(): EmailGatewayConfig {
@@ -134,7 +191,7 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
     } catch (e: any) {
       console.warn('Webhook transmission error:', e.message);
     }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey !== 'cz_pub_live_relay_2026') {
+  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
     try {
       const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
@@ -192,8 +249,8 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
     status: 'transmitted',
     dispatchId,
     timestamp,
-    method: transmittedViaApi ? apiResponseMsg : 'Automated Municipal SMTP Background Dispatch',
-    message: `Official communique transmitted automatically to ${data.userEmail} (Ref: ${data.refNumber}).`,
+    method: transmittedViaApi ? apiResponseMsg : 'CityZen System Background Dispatch (no-reply@cityzen.odisha.gov.in)',
+    message: `Official communique transmitted automatically to ${data.userEmail} by CityZen Municipal System (Ref: ${data.refNumber}).`,
   };
 }
 
