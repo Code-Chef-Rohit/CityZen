@@ -1,12 +1,14 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   MapPin, Phone, Clock, Navigation, Hospital, Shield, Flame, SquareParking,
-  Building2, Pill, TreePine, Bus, X, Compass, Check
+  Building2, Pill, TreePine, Bus, X, Compass, Check, RefreshCw, Radio, CheckCircle2, Globe2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { Modal } from '@/components/Modal';
 import type { MapPoint, MapCategory } from '@/lib/types';
+import { VERIFIED_BHUBANESWAR_POINTS } from '@/lib/verifiedBhubaneswarPoints';
+import { fetchLiveRealTimePlaces } from '@/lib/realTimePlacesService';
 
 const categoryConfig: Record<MapCategory, { icon: typeof Hospital; color: string; bg: string; label: string }> = {
   hospital: { icon: Hospital, color: 'text-error-500', bg: 'bg-error-500', label: 'Hospitals' },
@@ -29,38 +31,6 @@ const categorySvgs: Record<MapCategory, string> = {
   park: `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18H7a2 2 0 0 1-2-2c0-3.87 3.13-7 7-7s7 3.13 7 7a2 2 0 0 1-2 2z"/><path d="M12 9v13"/></svg>`,
   transit: `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M4 18v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3"/><path d="M17 18v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3"/><path d="M4 11h16"/><path d="M2 15h20"/><path d="M4 6h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg>`
 };
-
-// Real geographical locations for Bhubaneswar
-const realBhubaneswarPoints = [
-  // Hospitals
-  { id: 'bh-hosp-1', name: 'All India Institute of Medical Sciences (AIIMS)', category: 'hospital' as const, lat: 20.2223, lng: 85.7335, address: 'Sijua, Patrapada, Bhubaneswar, Odisha 751019', phone: '0674-247-6600', open_24h: true },
-  { id: 'bh-hosp-2', name: 'AMRI Hospital Bhubaneswar', category: 'hospital' as const, lat: 20.2742, lng: 85.7950, address: 'Khandagiri, Bhubaneswar, Odisha 751030', phone: '0674-666-6600', open_24h: true },
-  { id: 'bh-hosp-3', name: 'KIMS Hospital', category: 'hospital' as const, lat: 20.3533, lng: 85.8189, address: 'KIIT Campus 5, Patia, Bhubaneswar, Odisha 751024', phone: '0674-272-5228', open_24h: true },
-  
-  // Police
-  { id: 'bh-pol-1', name: 'Tamando Police Station', category: 'police' as const, lat: 20.2185, lng: 85.7275, address: 'NH 16, Tamando, Bhubaneswar, Odisha 751028', phone: '100', open_24h: true },
-  { id: 'bh-pol-2', name: 'Khandagiri Police Station', category: 'police' as const, lat: 20.2599, lng: 85.7876, address: 'Khandagiri, Bhubaneswar, Odisha 751030', phone: '100', open_24h: true },
-  { id: 'bh-pol-3', name: 'Jatni Police Station', category: 'police' as const, lat: 20.1633, lng: 85.7042, address: 'Jatni, Odisha 752050', phone: '100', open_24h: true },
-
-  // Fire
-  { id: 'bh-fire-1', name: 'Khandagiri Fire Station', category: 'fire' as const, lat: 20.2612, lng: 85.7885, address: 'Khandagiri, Bhubaneswar, Odisha 751030', phone: '101', open_24h: true },
-  { id: 'bh-fire-2', name: 'Bhubaneswar Fire Station HQ', category: 'fire' as const, lat: 20.2882, lng: 85.8402, address: 'Buxi Jagabandhu Nagar, Bhubaneswar, Odisha 751014', phone: '101', open_24h: true },
-
-  // Transit
-  { id: 'bh-trans-1', name: 'Gohiria Mo Bus Stop', category: 'transit' as const, lat: 20.2263, lng: 85.7483, address: 'Janla, Odisha 752054', phone: '', open_24h: true },
-  { id: 'bh-trans-2', name: 'Bhubaneswar Railway Station', category: 'transit' as const, lat: 20.2644, lng: 85.8404, address: 'Master Canteen Square, Bhubaneswar, Odisha 751009', phone: '139', open_24h: true },
-
-  // Parks
-  { id: 'bh-park-1', name: 'Biju Patnaik Park', category: 'park' as const, lat: 20.2520, lng: 85.8340, address: 'Forest Park, Bhubaneswar, Odisha 751009', phone: '', open_24h: false },
-  { id: 'bh-park-2', name: 'Ekamra Kanan Botanical Gardens', category: 'park' as const, lat: 20.3015, lng: 85.8118, address: 'Nayapalli, Bhubaneswar, Odisha 751015', phone: '', open_24h: false },
-
-  // Pharmacy
-  { id: 'bh-pharm-1', name: 'Apollo Pharmacy 24x7', category: 'pharmacy' as const, lat: 20.2190, lng: 85.7340, address: 'Janla Market, Bhubaneswar, Odisha 752054', phone: '0674-245-1200', open_24h: true },
-  { id: 'bh-pharm-2', name: 'Wellness Forever Pharmacy', category: 'pharmacy' as const, lat: 20.2605, lng: 85.7890, address: 'Khandagiri Chowk, Bhubaneswar, Odisha 751030', phone: '0674-245-1300', open_24h: true },
-
-  // Parking
-  { id: 'bh-parkg-1', name: 'Master Canteen Public Parking', category: 'parking' as const, lat: 20.2650, lng: 85.8395, address: 'Station Rd, Master Canteen, Bhubaneswar, Odisha 751009', phone: '', open_24h: true }
-];
 
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371; // Earth's radius in km
@@ -89,7 +59,11 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [searchRadius, setSearchRadius] = useState<number>(10);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [isSyncingLive, setIsSyncingLive] = useState<boolean>(false);
+  const [liveSyncTime, setLiveSyncTime] = useState<string | null>(null);
+  const [liveOsmCount, setLiveOsmCount] = useState<number>(0);
   const geoTimeoutRef = useRef<any>(null);
+  const lastFetchedLocRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const showGeoNotice = (msg: string) => {
     setGeoError(msg);
@@ -110,53 +84,83 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
   const leafletMapContainerRef = useRef<HTMLDivElement | null>(null);
   const isFirstLoad = useRef(true);
 
-  const loadPoints = async (lat?: number, lng?: number) => {
+  const loadPoints = useCallback(async (lat?: number, lng?: number, forceLiveFetch = false) => {
     try {
-      let allPoints: any[] = [];
+      let basePoints: MapPoint[] = [];
       if (supabase) {
         const { data, error } = await supabase.from('map_points').select('*');
         if (!error && data && data.length > 0) {
-          allPoints = data;
+          basePoints = data;
         }
-      }
-      if (allPoints.length === 0) {
-        allPoints = [...realBhubaneswarPoints];
       }
 
-      if (lat !== undefined && lng !== undefined) {
-        const isBhubaneswar = Math.abs(lat - 20.2184) < 1.0 && Math.abs(lng - 85.7331) < 1.0;
-        if (isBhubaneswar) {
-          const filteredReal = realBhubaneswarPoints.filter(
-            realP => !allPoints.some((dbP: any) => dbP.name === realP.name)
-          );
-          allPoints = [...allPoints, ...filteredReal];
-        } else {
-          const nearby = allPoints.filter((p: any) => 
-            Math.abs(Number(p.lat) - lat) < 0.25 && 
-            Math.abs(Number(p.lng) - lng) < 0.25
-          );
-          if (nearby.length === 0) {
-            const localPoints = [
-              { id: 'hosp-1', name: 'City Hospital Emergency', category: 'hospital' as const, lat: lat + 0.004, lng: lng - 0.005, address: 'Near Main Highway', phone: '080-2234-4500', open_24h: true },
-              { id: 'pol-1', name: 'Sector Police HQ', category: 'police' as const, lat: lat - 0.006, lng: lng + 0.007, address: 'Main Chowk Road', phone: '100', open_24h: true },
-              { id: 'fire-1', name: 'Local Fire Station', category: 'fire' as const, lat: lat + 0.010, lng: lng - 0.002, address: 'Central Ward Crossing', phone: '101', open_24h: true },
-              { id: 'trans-1', name: 'Metro Transit Hub', category: 'transit' as const, lat: lat - 0.002, lng: lng - 0.003, address: 'Gate No 2, Station Road', phone: '1077', open_24h: true },
-              { id: 'park-1', name: 'Central Parking Space', category: 'parking' as const, lat: lat + 0.006, lng: lng + 0.003, address: 'Multi-level Complex', phone: '', open_24h: true },
-              { id: 'pharm-1', name: 'Apex Pharmacy 24x7', category: 'pharmacy' as const, lat: lat - 0.004, lng: lng + 0.005, address: 'Market Block-A', phone: '080-4560-2211', open_24h: true },
-              { id: 'prk-1', name: 'Municipal Park & Garden', category: 'park' as const, lat: lat + 0.002, lng: lng + 0.006, address: 'Green Avenue', phone: '', open_24h: false }
-            ];
-            allPoints = [...allPoints, ...localPoints];
+      // Merge verified municipal POIs (avoiding duplicate names)
+      const existingNames = new Set(basePoints.map(p => p.name.toLowerCase().trim()));
+      const filteredVerified = VERIFIED_BHUBANESWAR_POINTS.filter(
+        vp => !existingNames.has(vp.name.toLowerCase().trim())
+      );
+      const combinedBase: MapPoint[] = [...basePoints, ...filteredVerified];
+
+      // Update base points immediately
+      setPoints(prev => {
+        const liveExisting = prev.filter(p => p.isLiveRealTime);
+        const map = new Map<string, MapPoint>();
+        combinedBase.forEach(p => map.set(p.id, p));
+        liveExisting.forEach(lp => {
+          if (!map.has(lp.id)) map.set(lp.id, lp);
+        });
+        return Array.from(map.values());
+      });
+
+      // Fetch real-time live amenities from OpenStreetMap Overpass & Nominatim
+      const targetLat = lat ?? 20.2184;
+      const targetLng = lng ?? 85.7331;
+
+      // Check if we already fetched recently within 400m unless forced
+      const prevLoc = lastFetchedLocRef.current;
+      const distFromLast = prevLoc ? getDistance(prevLoc.lat, prevLoc.lng, targetLat, targetLng) : 999;
+
+      if (forceLiveFetch || distFromLast > 0.4 || liveOsmCount === 0) {
+        lastFetchedLocRef.current = { lat: targetLat, lng: targetLng };
+        setIsSyncingLive(true);
+        try {
+          const liveResult = await fetchLiveRealTimePlaces(targetLat, targetLng, Math.max(searchRadius * 1000, 5000));
+          if (liveResult.points.length > 0) {
+            setLiveOsmCount(liveResult.points.length);
+            setLiveSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+            setPoints(prev => {
+              const pointMap = new Map<string, MapPoint>();
+              // Keep verified baseline
+              combinedBase.forEach(p => {
+                const key = `${Number(p.lat).toFixed(4)}_${Number(p.lng).toFixed(4)}`;
+                pointMap.set(key, p);
+              });
+
+              // Add live real-time OSM points
+              liveResult.points.forEach(lp => {
+                const key = `${Number(lp.lat).toFixed(4)}_${Number(lp.lng).toFixed(4)}`;
+                if (!pointMap.has(key)) {
+                  pointMap.set(key, lp);
+                }
+              });
+
+              return Array.from(pointMap.values());
+            });
           }
+        } catch (fetchErr) {
+          console.warn("Live OSM telemetry query error:", fetchErr);
+        } finally {
+          setIsSyncingLive(false);
         }
       }
-      setPoints(allPoints);
     } catch (e) {
-      console.warn("Notice: Loaded standard city POIs:", e);
-      setPoints(realBhubaneswarPoints);
+      console.warn("Notice: Loaded baseline ground POIs:", e);
+      setPoints(VERIFIED_BHUBANESWAR_POINTS);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchRadius, liveOsmCount]);
 
   useEffect(() => {
     let watchId: number;
@@ -206,7 +210,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         clearTimeout(geoTimeoutRef.current);
       }
     };
-  }, []);
+  }, [loadPoints]);
 
   const toggleCat = (cat: MapCategory) => {
     setActiveCats((prev) => {
@@ -359,6 +363,45 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         
         {/* Left/Top Map Area Column */}
         <div className="lg:col-span-8 flex flex-col">
+          {/* Real-time Status & Sync Bar */}
+          <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isSyncingLive ? 'bg-amber-400' : 'bg-emerald-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isSyncingLive ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+              </span>
+              <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                {isSyncingLive ? 'Querying Live OpenStreetMap Nodes...' : '🟢 Live OpenStreetMap Real-Time Grid'}
+              </span>
+              {liveSyncTime && (
+                <span className="hidden sm:inline text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+                  (Synced {liveSyncTime})
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
+                {liveOsmCount > 0 ? `${liveOsmCount} Live OSM POIs` : '100% Real-World Data'}
+              </span>
+              <button
+                onClick={() => {
+                  if (userLoc) {
+                    loadPoints(userLoc.lat, userLoc.lng, true);
+                  } else {
+                    loadPoints(20.2184, 85.7331, true);
+                  }
+                }}
+                disabled={isSyncingLive}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-slate-800 text-[11px] font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Fetch live POIs from OpenStreetMap Overpass"
+              >
+                <RefreshCw className={`w-3 h-3 ${isSyncingLive ? 'animate-spin' : ''}`} />
+                <span>Refresh Live</span>
+              </button>
+            </div>
+          </div>
+
           {/* Radius Range selector bar */}
           <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border-b border-ink-100 dark:border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
@@ -530,7 +573,16 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
                         {p.address && p.address.includes('|||') ? p.address.split('|||')[0].trim() : p.address}
                       </p>
                       
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {p.isLiveRealTime ? (
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                            <Radio className="w-2.5 h-2.5 text-emerald-500 animate-pulse" /> Live OSM
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-blue-500" /> Verified POI
+                          </span>
+                        )}
                         {p.open_24h && (
                           <span className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold flex items-center gap-0.5">
                             <Clock className="w-3 h-3" /> 24x7
@@ -557,11 +609,23 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
       <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.name}>
         {selected && (
           <div className="space-y-4">
-            <div className={`w-12 h-12 rounded-2xl ${categoryConfig[selected.category]?.bg || 'bg-primary-600'} flex items-center justify-center shadow-md`}>
-              {(() => {
-                const Icon = categoryConfig[selected.category]?.icon || Hospital;
-                return <Icon className="w-6 h-6 text-white" />;
-              })()}
+            <div className="flex items-center justify-between">
+              <div className={`w-12 h-12 rounded-2xl ${categoryConfig[selected.category]?.bg || 'bg-primary-600'} flex items-center justify-center shadow-md`}>
+                {(() => {
+                  const Icon = categoryConfig[selected.category]?.icon || Hospital;
+                  return <Icon className="w-6 h-6 text-white" />;
+                })()}
+              </div>
+
+              {selected.isLiveRealTime ? (
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> Live Real-Time OSM Node
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" /> Verified Ground Directory
+                </span>
+              )}
             </div>
             
             {(() => {

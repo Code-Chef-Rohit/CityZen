@@ -113,6 +113,7 @@ export interface MapPoint {
   address: string | null;
   phone: string | null;
   open_24h: boolean;
+  isLiveRealTime?: boolean;
 }
 
 export type EnvMetric = 'aqi' | 'temperature' | 'co2' | 'noise' | 'water_quality' | 'green_coverage';
