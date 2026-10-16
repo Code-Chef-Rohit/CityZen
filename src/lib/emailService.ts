@@ -17,9 +17,9 @@ const STORAGE_KEY = 'cityzen_email_gateway_config';
 export const DEFAULT_EMAIL_CONFIG: EmailGatewayConfig = {
   enabled: true,
   provider: 'emailjs',
-  emailjsServiceId: 'service_cityzen',
-  emailjsTemplateId: 'template_role_update',
-  emailjsPublicKey: '',
+  emailjsServiceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_xlxsj8f',
+  emailjsTemplateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_bnczuvh',
+  emailjsPublicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'l8ZDaCW7jP2JEQfDN',
   webhookUrl: '',
   senderName: 'CityZen Municipal Authority System (BMC)',
   senderEmail: 'no-reply@cityzen.odisha.gov.in',
@@ -87,7 +87,18 @@ export function getEmailGatewayConfig(): EmailGatewayConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return { ...DEFAULT_EMAIL_CONFIG, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      // Auto-migrate legacy empty or placeholder configs
+      if (!parsed.emailjsPublicKey || parsed.emailjsPublicKey.trim() === '' || parsed.emailjsPublicKey === 'user_live_xxx') {
+        parsed.emailjsPublicKey = DEFAULT_EMAIL_CONFIG.emailjsPublicKey;
+      }
+      if (!parsed.emailjsServiceId || parsed.emailjsServiceId === 'service_cityzen') {
+        parsed.emailjsServiceId = DEFAULT_EMAIL_CONFIG.emailjsServiceId;
+      }
+      if (!parsed.emailjsTemplateId || parsed.emailjsTemplateId === 'template_role_update') {
+        parsed.emailjsTemplateId = DEFAULT_EMAIL_CONFIG.emailjsTemplateId;
+      }
+      return { ...DEFAULT_EMAIL_CONFIG, ...parsed };
     }
   } catch (e) {
     console.warn('Failed to parse email gateway config from localStorage:', e);
@@ -157,9 +168,14 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       to_name: data.userName,
       to_email: data.userEmail,
       recipient: data.userEmail,
+      email: data.userEmail,
+      user_email: data.userEmail,
       reply_to: config.senderEmail,
       from_name: config.senderName,
       subject: data.subject,
+      message: data.body,
+      message_body: data.body,
+      content: data.body,
       new_role: data.newRole.toUpperCase(),
       role_title: data.roleTitle,
       clearance: data.clearance,
@@ -167,7 +183,6 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       permissions_list: data.permissions.join(', '),
       ref_number: data.refNumber,
       dispatch_id: dispatchId,
-      message_body: data.body,
       portal_url: window.location.origin,
       date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
     },
@@ -200,13 +215,15 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       });
       if (res.ok) {
         transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via EmailJS Cloud SMTP Gateway';
+        apiResponseMsg = `Delivered via EmailJS Cloud SMTP Gateway (${config.emailjsServiceId})`;
       } else {
         const errText = await res.text();
         console.warn('EmailJS response status:', res.status, errText);
+        apiResponseMsg = `EmailJS Cloud API Notice (${res.status}): ${errText}`;
       }
     } catch (e: any) {
       console.warn('EmailJS transmission error:', e.message);
+      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
     }
   }
 
@@ -235,7 +252,8 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       recipientName: data.userName,
       role: data.newRole,
       refNumber: data.refNumber,
-      status: 'transmitted',
+      status: transmittedViaApi ? 'delivered' : 'transmitted',
+      method: apiResponseMsg || 'CityZen System Background Dispatch',
       subject: data.subject,
     };
     existing.unshift(newEntry);
@@ -246,11 +264,13 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
 
   return {
     success: true,
-    status: 'transmitted',
+    status: transmittedViaApi ? 'delivered' : 'transmitted',
     dispatchId,
     timestamp,
-    method: transmittedViaApi ? apiResponseMsg : 'CityZen System Background Dispatch (no-reply@cityzen.odisha.gov.in)',
-    message: `Official communique transmitted automatically to ${data.userEmail} by CityZen Municipal System (Ref: ${data.refNumber}).`,
+    method: apiResponseMsg || 'CityZen System Background Dispatch (no-reply@cityzen.odisha.gov.in)',
+    message: transmittedViaApi
+      ? `Official communique transmitted automatically to ${data.userEmail} via EmailJS Cloud (Ref: ${data.refNumber}).`
+      : `Official communique transmitted automatically to ${data.userEmail} by CityZen Municipal System (Ref: ${data.refNumber}).`,
   };
 }
 
