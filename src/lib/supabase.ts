@@ -1,16 +1,33 @@
-import { createClient } from '@supabase/supabase-js';
+import {
+  isConfigured,
+  supabase,
+  supabasePrimary,
+  supabaseReplica,
+  getReplicaClusterStats,
+  resetReplicaClusterStats,
+  testClusterLatency,
+  fetchPostgresReplicationStatus,
+  setCustomReplicaUrl,
+  getCustomReplicaUrl,
+  type ReplicaClusterStats,
+  type QueryLogEntry,
+  type ClusterNodeInfo,
+} from './databaseReplicaRouter';
 
-const url = import.meta.env.VITE_SUPABASE_URL || '';
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+export {
+  isConfigured,
+  supabase,
+  supabasePrimary,
+  supabaseReplica,
+  getReplicaClusterStats,
+  resetReplicaClusterStats,
+  testClusterLatency,
+  fetchPostgresReplicationStatus,
+  setCustomReplicaUrl,
+  getCustomReplicaUrl,
+  type ReplicaClusterStats,
+  type QueryLogEntry,
+  type ClusterNodeInfo,
+};
 
-export const isConfigured = !!(url && anonKey);
-
-export const supabase = isConfigured
-  ? createClient(url, anonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null as any;
+export default supabase;

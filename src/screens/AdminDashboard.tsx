@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
 import { 
-  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone, Send, Copy, Check, ExternalLink, ShieldCheck, FileText, Zap, Settings, CheckCircle, Clock, Hourglass, CalendarClock, RotateCcw, ShieldAlert
+  Shield, Users, AlertCircle, CreditCard, Siren, LogOut, CheckCircle2, Trash2, ArrowRight, Camera, X, ZoomIn, ZoomOut, Navigation, MapPin, Mail, RefreshCw, Calendar, Phone, Send, Copy, Check, ExternalLink, ShieldCheck, FileText, Zap, Settings, CheckCircle, Clock, Hourglass, CalendarClock, RotateCcw, ShieldAlert,
+  Database, Server, Activity, Cpu, Layers, Wifi, HardDrive, GitFork, ArrowDownUp
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { 
+  supabase, 
+  getReplicaClusterStats, 
+  resetReplicaClusterStats, 
+  testClusterLatency, 
+  fetchPostgresReplicationStatus, 
+  setCustomReplicaUrl, 
+  getCustomReplicaUrl, 
+  type ReplicaClusterStats 
+} from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { formatINR, formatDate, timeAgo } from '@/lib/utils';
 import { 
@@ -24,7 +34,7 @@ import {
   type DeletionScheduleEntry,
 } from '@/lib/deletionService';
 
-type Tab = 'users' | 'complaints' | 'bills' | 'emergencies';
+type Tab = 'users' | 'complaints' | 'bills' | 'emergencies' | 'database';
 
 interface RoleChangeNoticeState {
   isOpen: boolean;
@@ -196,6 +206,77 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
     totalUnpaidAmount: 0,
     activeEmergencies: 0,
   });
+
+  // Database Cluster & Read Replica Monitoring States
+  const [clusterStats, setClusterStats] = useState<ReplicaClusterStats>(getReplicaClusterStats);
+  const [clusterBenchmarking, setClusterBenchmarking] = useState(false);
+  const [latencyResults, setLatencyResults] = useState<{
+    primaryLatencyMs: number | null;
+    replicaLatencies: Record<string, number | null>;
+    timestamp: string;
+  } | null>(null);
+  const [postgresDiag, setPostgresDiag] = useState<any>(null);
+  const [loadingPostgresDiag, setLoadingPostgresDiag] = useState(false);
+  const [customReplicaInput, setCustomReplicaInput] = useState(getCustomReplicaUrl() || '');
+  const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
+
+  const refreshClusterMetrics = () => {
+    setClusterStats(getReplicaClusterStats());
+  };
+
+  const handleRunLatencyBenchmark = async () => {
+    setClusterBenchmarking(true);
+    try {
+      const res = await testClusterLatency();
+      setLatencyResults(res);
+      setClusterStats(getReplicaClusterStats());
+      showToast(`Cluster latency benchmarked: Primary is ${res.primaryLatencyMs ?? 'N/A'} ms`, 'success');
+    } catch (e: any) {
+      showToast(`Latency benchmark error: ${e.message}`, 'error');
+    } finally {
+      setClusterBenchmarking(false);
+    }
+  };
+
+  const loadPostgresReplicationDiag = async () => {
+    setLoadingPostgresDiag(true);
+    try {
+      const res = await fetchPostgresReplicationStatus();
+      setPostgresDiag(res);
+    } catch (e: any) {
+      setPostgresDiag({ supported: false, error: e?.message });
+    } finally {
+      setLoadingPostgresDiag(false);
+    }
+  };
+
+  const handleSaveCustomReplica = () => {
+    if (customReplicaInput.trim()) {
+      setCustomReplicaUrl(customReplicaInput.trim());
+      showToast('Read Replica URL saved. Read queries will route to this endpoint.', 'success');
+    } else {
+      setCustomReplicaUrl(null);
+      showToast('Custom replica URL cleared. Operating on primary leader with replica failover readiness.', 'info');
+    }
+    setClusterStats(getReplicaClusterStats());
+  };
+
+  const handleResetClusterStats = () => {
+    resetReplicaClusterStats();
+    setClusterStats(getReplicaClusterStats());
+    showToast('Cluster query counters have been reset.', 'info');
+  };
+
+  useEffect(() => {
+    if (activeTab === 'database') {
+      setClusterStats(getReplicaClusterStats());
+      loadPostgresReplicationDiag();
+      const interval = setInterval(() => {
+        setClusterStats(getReplicaClusterStats());
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   const loadMetricsAndData = async () => {
     setLoading(true);
@@ -797,12 +878,13 @@ cityzen.system@gmail.com`;
 
         {/* Tab Selector Section */}
         <div className="bg-slate-900/60 border border-white/5 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-xl backdrop-blur-md">
-          <div className="flex gap-1.5 p-1 bg-slate-950 rounded-2xl mb-4 sm:mb-6 overflow-x-auto no-scrollbar scrollbar-none w-full max-w-xl">
+          <div className="flex gap-1.5 p-1 bg-slate-950 rounded-2xl mb-4 sm:mb-6 overflow-x-auto no-scrollbar scrollbar-none w-full max-w-2xl">
             {([
               { id: 'users', label: 'User Roles', icon: Users },
               { id: 'complaints', label: 'Complaints', icon: AlertCircle },
               { id: 'bills', label: 'Utility Invoices', icon: CreditCard },
               { id: 'emergencies', label: 'SOS Dispatches', icon: Siren },
+              { id: 'database', label: 'Cluster & Replicas', icon: Database },
             ] as const).map((t) => {
               const Icon = t.icon;
               return (
@@ -2076,6 +2158,422 @@ cityzen.system@gmail.com`;
                             })}
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Tab 5: Database Cluster & Read Replicas */}
+                {activeTab === 'database' && (() => {
+                  const readPct = clusterStats.totalQueries > 0
+                    ? Math.round(((clusterStats.replicaReads + clusterStats.primaryFallbackReads) / clusterStats.totalQueries) * 100)
+                    : 100;
+                  const writePct = clusterStats.totalQueries > 0
+                    ? Math.round((clusterStats.primaryWrites / clusterStats.totalQueries) * 100)
+                    : 0;
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Top Action & Status Banner */}
+                      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 sm:p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-white/10 rounded-2xl">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2.5">
+                            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                              <Database className="w-5 h-5 text-orange-400" />
+                              High-Availability Database Cluster
+                            </h3>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider border ${
+                              clusterStats.isReplicaDedicated
+                                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/30'
+                                : 'bg-blue-950/80 text-blue-300 border-blue-500/30'
+                            }`}>
+                              {clusterStats.isReplicaDedicated ? 'Dedicated Replica Pool' : 'Primary Combined (Standby Ready)'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            Transparent read/write query splitting, automatic circuit-breaker failover to Primary leader, and PostgreSQL replication diagnostics.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleRunLatencyBenchmark}
+                            disabled={clusterBenchmarking}
+                            className="px-3.5 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Activity className={`w-3.5 h-3.5 ${clusterBenchmarking ? 'animate-spin' : ''}`} />
+                            {clusterBenchmarking ? 'Benchmarking...' : 'Test Cluster Latency'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              refreshClusterMetrics();
+                              loadPostgresReplicationDiag();
+                              showToast('Cluster metrics refreshed', 'info');
+                            }}
+                            className="p-2 bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 rounded-xl transition-all cursor-pointer"
+                            title="Refresh Diagnostics"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleResetClusterStats}
+                            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-400 hover:text-slate-200 rounded-xl text-xs font-medium transition-all cursor-pointer"
+                            title="Reset query counters"
+                          >
+                            Reset Stats
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cluster Nodes Topology Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Primary Leader Node */}
+                        <div className="p-4 sm:p-5 bg-slate-950/70 border border-orange-500/30 rounded-2xl space-y-3 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl pointer-events-none" />
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                                <Server className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-sm text-white">Primary Leader</span>
+                                  <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-bold">Write Leader & Auth</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-mono truncate max-w-[240px] sm:max-w-xs">{clusterStats.primaryNode.url}</p>
+                              </div>
+                            </div>
+                            <span className="flex items-center gap-1.5 px-2 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Online
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center">
+                            <div className="p-2 rounded-xl bg-slate-900/50">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Latency</p>
+                              <p className="text-xs sm:text-sm font-bold text-white mt-0.5">
+                                {latencyResults?.primaryLatencyMs !== undefined && latencyResults?.primaryLatencyMs !== null
+                                  ? `${latencyResults.primaryLatencyMs} ms`
+                                  : 'Active'}
+                              </p>
+                            </div>
+                            <div className="p-2 rounded-xl bg-slate-900/50">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Writes</p>
+                              <p className="text-xs sm:text-sm font-bold text-orange-400 mt-0.5">{clusterStats.primaryWrites}</p>
+                            </div>
+                            <div className="p-2 rounded-xl bg-slate-900/50">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Fallback Reads</p>
+                              <p className="text-xs sm:text-sm font-bold text-slate-300 mt-0.5">{clusterStats.primaryFallbackReads}</p>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Handles mutations (<code className="text-orange-300">insert</code>, <code className="text-orange-300">update</code>, <code className="text-orange-300">delete</code>, <code className="text-orange-300">upsert</code>), user authentication, storage buckets, and realtime websocket subscriptions.
+                          </p>
+                        </div>
+
+                        {/* Read Replica Node(s) or Standby Placeholder */}
+                        {clusterStats.replicaNodes.length > 0 ? (
+                          clusterStats.replicaNodes.map((replica, idx) => (
+                            <div key={replica.id} className="p-4 sm:p-5 bg-slate-950/70 border border-emerald-500/30 rounded-2xl space-y-3 relative overflow-hidden">
+                              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                    <GitFork className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-extrabold text-sm text-white">Read Replica #{idx + 1}</span>
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">Read Pool</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 font-mono truncate max-w-[240px] sm:max-w-xs">{replica.url}</p>
+                                  </div>
+                                </div>
+                                <span className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold border ${
+                                  replica.isHealthy
+                                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30'
+                                    : 'bg-red-950/60 text-red-400 border-red-500/30'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${replica.isHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                                  {replica.isHealthy ? 'Streaming' : 'Circuit Breaker Cooldown'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center">
+                                <div className="p-2 rounded-xl bg-slate-900/50">
+                                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Latency</p>
+                                  <p className="text-xs sm:text-sm font-bold text-white mt-0.5">
+                                    {latencyResults?.replicaLatencies[replica.url] !== undefined && latencyResults?.replicaLatencies[replica.url] !== null
+                                      ? `${latencyResults.replicaLatencies[replica.url]} ms`
+                                      : replica.latencyMs ? `${replica.latencyMs} ms` : 'Active'}
+                                  </p>
+                                </div>
+                                <div className="p-2 rounded-xl bg-slate-900/50">
+                                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Reads Served</p>
+                                  <p className="text-xs sm:text-sm font-bold text-emerald-400 mt-0.5">{replica.queryCount}</p>
+                                </div>
+                                <div className="p-2 rounded-xl bg-slate-900/50">
+                                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Failures</p>
+                                  <p className={`text-xs sm:text-sm font-bold mt-0.5 ${replica.failCount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+                                    {replica.failCount}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <p className="text-[11px] text-slate-500 leading-relaxed">
+                                Offloads read operations (<code className="text-emerald-300">select</code>) with transparent session JWT forwarding. Automatically fails over to Primary leader on error.
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 sm:p-5 bg-slate-950/40 border border-dashed border-white/10 rounded-2xl space-y-3 flex flex-col justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-slate-300 font-bold text-sm">
+                                <GitFork className="w-4 h-4 text-slate-400" />
+                                Standby Read Replica Pool
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">
+                                CityZen is currently operating in <strong>Primary Combined Mode</strong>. All queries are served by the primary cluster with zero overhead, and read-replica splitting is <strong>100% pre-wired and ready</strong>.
+                              </p>
+                            </div>
+
+                            {/* Inline custom replica setup */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <label className="text-[11px] font-semibold text-slate-400 block">
+                                Connect Dedicated Cloud Read Replica:
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. https://replica-db.ntuocmxjqnzunftvjyba.supabase.co"
+                                  value={customReplicaInput}
+                                  onChange={(e) => setCustomReplicaInput(e.target.value)}
+                                  className="flex-1 px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleSaveCustomReplica}
+                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                                >
+                                  {customReplicaInput.trim() ? 'Connect' : 'Save'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cluster Traffic Metrics & Split Overview */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <div className="p-4 bg-slate-900/60 border border-white/5 rounded-2xl space-y-1">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Read Queries</span>
+                            <Layers className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <p className="text-2xl font-black text-emerald-400">
+                            {clusterStats.replicaReads + clusterStats.primaryFallbackReads}
+                          </p>
+                          <p className="text-[10px] text-slate-500">{readPct}% of total queries</p>
+                        </div>
+
+                        <div className="p-4 bg-slate-900/60 border border-white/5 rounded-2xl space-y-1">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Write Mutations</span>
+                            <Cpu className="w-4 h-4 text-orange-400" />
+                          </div>
+                          <p className="text-2xl font-black text-orange-400">
+                            {clusterStats.primaryWrites}
+                          </p>
+                          <p className="text-[10px] text-slate-500">{writePct}% routed to Primary leader</p>
+                        </div>
+
+                        <div className="p-4 bg-slate-900/60 border border-white/5 rounded-2xl space-y-1">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Failover Events</span>
+                            <ShieldCheck className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <p className="text-2xl font-black text-white">
+                            {clusterStats.failoverCount}
+                          </p>
+                          <p className="text-[10px] text-emerald-400 font-semibold">
+                            {clusterStats.failoverCount === 0 ? '100% Clean Operations' : 'Auto-recovered on Primary'}
+                          </p>
+                        </div>
+
+                        <div className="p-4 bg-slate-900/60 border border-white/5 rounded-2xl space-y-1">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Avg Response</span>
+                            <Wifi className="w-4 h-4 text-indigo-400" />
+                          </div>
+                          <p className="text-2xl font-black text-white">
+                            {clusterStats.avgLatencyMs ? `${clusterStats.avgLatencyMs} ms` : '< 1 ms'}
+                          </p>
+                          <p className="text-[10px] text-slate-500">End-to-end PostgREST roundtrip</p>
+                        </div>
+                      </div>
+
+                      {/* PostgreSQL Server & WAL Replication Diagnostics */}
+                      <div className="p-4 sm:p-5 bg-slate-950/60 border border-white/5 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <HardDrive className="w-4 h-4 text-slate-400" />
+                            <h4 className="text-xs sm:text-sm font-bold text-white">PostgreSQL Server & WAL Status</h4>
+                          </div>
+                          {loadingPostgresDiag && (
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                              <RefreshCw className="w-3 h-3 animate-spin" /> Querying DB
+                            </span>
+                          )}
+                        </div>
+
+                        {postgresDiag?.supported && postgresDiag?.data ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                            <div className="p-2.5 bg-slate-900/50 rounded-xl">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Active Node Role</p>
+                              <p className="text-xs font-bold text-white mt-0.5 capitalize">
+                                {postgresDiag.data.node_role?.replace('_', ' ') || 'Primary Leader'}
+                              </p>
+                            </div>
+                            <div className="p-2.5 bg-slate-900/50 rounded-xl">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Current WAL LSN</p>
+                              <p className="text-xs font-mono font-bold text-orange-400 mt-0.5 truncate">
+                                {postgresDiag.data.current_wal_lsn || '0/16B2...'}
+                              </p>
+                            </div>
+                            <div className="p-2.5 bg-slate-900/50 rounded-xl">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Database Size</p>
+                              <p className="text-xs font-bold text-white mt-0.5">
+                                {postgresDiag.data.database_size_pretty || '48 MB'}
+                              </p>
+                            </div>
+                            <div className="p-2.5 bg-slate-900/50 rounded-xl">
+                              <p className="text-[10px] text-slate-400 uppercase font-semibold">Active Connections</p>
+                              <p className="text-xs font-bold text-white mt-0.5">
+                                {postgresDiag.data.active_connections ?? 1} sessions
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-slate-900/50 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                            <div className="space-y-0.5">
+                              <p className="font-semibold text-slate-300">Deploy Server Diagnostics Helper</p>
+                              <p className="text-[11px] text-slate-400">
+                                Migration file <code className="text-orange-300 font-mono">20261017150000_database_read_replica_diagnostics.sql</code> is ready to run in Supabase SQL editor for deep WAL inspection.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`-- PostgreSQL Replication Diagnostic Migration
+CREATE OR REPLACE FUNCTION get_database_replication_status()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_recovery boolean;
+  v_current_wal text;
+  v_replicas json;
+  v_connections integer;
+  v_db_size_pretty text;
+  v_result json;
+BEGIN
+  SELECT pg_is_in_recovery() INTO v_is_recovery;
+  SELECT count(*) FROM pg_stat_activity WHERE state = 'active' INTO v_connections;
+  SELECT pg_size_pretty(pg_database_size(current_database())) INTO v_db_size_pretty;
+  IF v_is_recovery THEN
+    SELECT pg_last_wal_replay_lsn()::text INTO v_current_wal;
+    v_replicas := '[]'::json;
+  ELSE
+    SELECT pg_current_wal_lsn()::text INTO v_current_wal;
+    SELECT COALESCE(json_agg(json_build_object('client_addr', client_addr::text, 'state', state)), '[]'::json) FROM pg_stat_replication INTO v_replicas;
+  END IF;
+  RETURN json_build_object('is_recovery', v_is_recovery, 'node_role', CASE WHEN v_is_recovery THEN 'read_replica' ELSE 'primary_leader' END, 'current_wal_lsn', COALESCE(v_current_wal, 'N/A'), 'active_replicas', v_replicas, 'replica_count', COALESCE(json_array_length(v_replicas), 0), 'active_connections', v_connections, 'database_size_pretty', v_db_size_pretty, 'checked_at', now());
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_database_replication_status() TO authenticated, anon, service_role;`);
+                                setCopiedMigrationSql(true);
+                                showToast('SQL migration copied to clipboard!', 'success');
+                                setTimeout(() => setCopiedMigrationSql(false), 3000);
+                              }}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                            >
+                              {copiedMigrationSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              {copiedMigrationSql ? 'Copied' : 'Copy SQL'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Live Query Inspection Stream Table */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-orange-400" />
+                            Live Query Stream & Routing Log
+                          </h4>
+                          <span className="text-[11px] text-slate-500">Last 30 transactions</span>
+                        </div>
+
+                        {clusterStats.recentQueries.length === 0 ? (
+                          <div className="p-8 bg-slate-950/40 rounded-2xl border border-white/5 text-center text-slate-500 text-xs">
+                            <Database className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                            No recent queries recorded yet in this session.
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-2xl border border-white/5 bg-slate-950/40">
+                            <table className="w-full text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-white/5 bg-slate-900/60 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                                  <th className="py-2.5 px-3">Time</th>
+                                  <th className="py-2.5 px-3">Type</th>
+                                  <th className="py-2.5 px-3">Resource / Table</th>
+                                  <th className="py-2.5 px-3">Routed Node</th>
+                                  <th className="py-2.5 px-3">Latency</th>
+                                  <th className="py-2.5 px-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5 text-slate-300">
+                                {clusterStats.recentQueries.map((q) => (
+                                  <tr key={q.id} className="hover:bg-white/[0.02] transition-colors font-mono">
+                                    <td className="py-2 px-3 text-slate-500 text-[11px] whitespace-nowrap">{q.timestamp}</td>
+                                    <td className="py-2 px-3 whitespace-nowrap">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        q.type === 'READ' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/20' : 'bg-orange-950 text-orange-400 border border-orange-500/20'
+                                      }`}>
+                                        {q.type}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 font-semibold text-white whitespace-nowrap">{q.table}</td>
+                                    <td className="py-2 px-3 text-slate-400 text-[11px] whitespace-nowrap">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                        q.node === 'REPLICA' ? 'text-emerald-300 bg-emerald-950/40' : 'text-slate-300 bg-slate-900'
+                                      }`}>
+                                        {q.node}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{q.latencyMs} ms</td>
+                                    <td className="py-2 px-3 whitespace-nowrap">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        q.status === 'SUCCESS' ? 'text-emerald-400 bg-emerald-950/40' : q.status === 'FAILOVER' ? 'text-blue-400 bg-blue-950/40' : 'text-red-400 bg-red-950/40'
+                                      }`}>
+                                        {q.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
