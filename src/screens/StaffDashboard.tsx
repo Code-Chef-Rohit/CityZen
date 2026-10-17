@@ -23,6 +23,9 @@ export default function StaffDashboard() {
 
   // Search/Filter states
   const [searchQuery, setSearchQuery] = useState('');
+  const [policeStatusFilter, setPoliceStatusFilter] = useState<'all' | 'active' | 'resolved'>('active');
+  const [hospitalStatusFilter, setHospitalStatusFilter] = useState<'all' | 'active' | 'resolved'>('active');
+  const [bmcStatusFilter, setBmcStatusFilter] = useState<'all' | 'active' | 'resolved'>('active');
 
   // 1. Police View States
   const [selectedEmergency, setSelectedEmergency] = useState<EmergencyRequest | null>(null);
@@ -171,6 +174,28 @@ export default function StaffDashboard() {
         setRoutingSim(null);
         loadData();
       }
+    }
+  };
+
+  const handleReopenEmergency = async (id: string) => {
+    if (window.confirm("Re-open this emergency SOS dispatch and mark it active?")) {
+      const { error } = await supabase
+        .from('emergency_requests')
+        .update({ status: 'active', resolved_at: null })
+        .eq('id', id);
+      if (error) alert(error.message);
+      else loadData();
+    }
+  };
+
+  const handleRedoComplaint = async (id: string) => {
+    if (window.confirm("Re-open this civic complaint for active repair inspection? This resets its status to 'in_progress'.")) {
+      const { error } = await supabase
+        .from('complaints')
+        .update({ status: 'in_progress', resolved_at: null, resolution_proof: null, resolution_photo_url: null })
+        .eq('id', id);
+      if (error) alert(error.message);
+      else loadData();
     }
   };
 
@@ -549,7 +574,7 @@ export default function StaffDashboard() {
               {/* Left Column: Active SOS List */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h2 className="font-extrabold text-base text-blue-400 flex items-center gap-2">
                       <Shield className="w-5 h-5" /> Emergency SOS Dispatches
                     </h2>
@@ -562,144 +587,236 @@ export default function StaffDashboard() {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    {emergencies
-                      .filter(e => 
-                        e.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (e.location_text && e.location_text.toLowerCase().includes(searchQuery.toLowerCase()))
-                      )
-                      .map(e => {
-                        const citizen = (e as any).profiles || users.find(u => u.id === e.user_id);
-                        const callerMatch = e.notes?.match(/\[Citizen:\s*([^|]+)\s*\|\s*Phone:\s*([^|]+)\s*\|\s*Ward:\s*([^\]]+)\]/);
-                        const callerName = citizen?.full_name || callerMatch?.[1]?.trim() || 'Citizen (SOS Sender)';
-                        const callerPhone = citizen?.phone || callerMatch?.[2]?.trim() || '';
-                        const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || '';
+                  {(() => {
+                    const policeFilteredAll = emergencies.filter(e => 
+                      e.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.location_text && e.location_text.toLowerCase().includes(searchQuery.toLowerCase()))
+                    );
+                    const policeActiveCount = policeFilteredAll.filter(e => e.status !== 'resolved').length;
+                    const policeResolvedCount = policeFilteredAll.filter(e => e.status === 'resolved').length;
+                    const policeDisplayed = policeFilteredAll.filter(e => {
+                      if (policeStatusFilter === 'active') return e.status !== 'resolved';
+                      if (policeStatusFilter === 'resolved') return e.status === 'resolved';
+                      return true;
+                    });
 
-                        let liveDistanceStr: string | null = null;
-                        if (responderLocation && e.lat && e.lng) {
-                          liveDistanceStr = `${getDistance(responderLocation.lat, responderLocation.lng, Number(e.lat), Number(e.lng)).toFixed(1)} km away`;
-                        }
-
-                        return (
-                          <div 
-                            key={e.id}
-                            className={`border rounded-2xl p-4 transition-all ${
-                              selectedEmergency?.id === e.id 
-                                ? 'bg-slate-805 border-blue-500/40 ring-1 ring-blue-500/20 shadow-lg' 
-                                : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
+                    return (
+                      <>
+                        {/* Filter Pill Controls */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4">
+                          <button
+                            type="button"
+                            onClick={() => setPoliceStatusFilter('active')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              policeStatusFilter === 'active'
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30 ring-1 ring-blue-400/40'
+                                : 'bg-slate-950/80 text-blue-300 border-white/10 hover:border-blue-500/30'
                             }`}
                           >
-                            <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                              <div 
-                                onClick={() => {
-                                  setSelectedEmergency(e);
-                                  simulateRouting(e);
-                                  openGoogleMapsDirections(e.lat, e.lng, e.location_text);
-                                }}
-                                className="space-y-2 cursor-pointer group flex-1 min-w-0"
-                                title="Click to view details and navigate to citizen location"
-                              >
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                    e.type === 'ambulance' ? 'bg-red-500/10 text-red-400' :
-                                    e.type === 'police' ? 'bg-blue-500/10 text-blue-400' :
-                                    e.type === 'fire' ? 'bg-amber-500/10 text-amber-400' :
-                                    'bg-purple-500/10 text-purple-400'
-                                  }`}>
-                                    {e.type} ALERT
-                                  </span>
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                    e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' : 'bg-slate-800 text-slate-400'
-                                  }`}>
-                                    {e.status}
-                                  </span>
-                                  {liveDistanceStr && (
-                                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                      <Navigation className="w-3 h-3" /> {liveDistanceStr}
-                                    </span>
-                                  )}
-                                </div>
+                            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                            <span>Active Alarms</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-400/20 text-blue-300 font-extrabold">{policeActiveCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPoliceStatusFilter('resolved')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              policeStatusFilter === 'resolved'
+                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400/40'
+                                : 'bg-slate-950/80 text-emerald-400 border-white/10 hover:border-emerald-500/30'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Resolved & Cleared</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-400/20 text-emerald-300 font-extrabold">{policeResolvedCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPoliceStatusFilter('all')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              policeStatusFilter === 'all'
+                                ? 'bg-slate-700 text-white border-slate-500 shadow-sm'
+                                : 'bg-slate-950/80 text-slate-400 border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <span>All ({policeFilteredAll.length})</span>
+                          </button>
+                        </div>
 
-                                {/* Citizen Profile Details Banner */}
-                                <div className="bg-slate-900/90 rounded-xl p-3 border border-white/10 space-y-1.5">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                        <User className="w-4 h-4" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold text-white truncate">{callerName}</p>
-                                        <p className="text-[10px] text-slate-400">
-                                          {callerWard ? `Ward: ${callerWard}` : 'General Ward'}
-                                          {citizen?.email ? ` • ${citizen.email}` : ''}
-                                        </p>
+                        <div className="space-y-3">
+                          {policeDisplayed.map(e => {
+                            const citizen = (e as any).profiles || users.find(u => u.id === e.user_id);
+                            const callerMatch = e.notes?.match(/\[Citizen:\s*([^|]+)\s*\|\s*Phone:\s*([^|]+)\s*\|\s*Ward:\s*([^\]]+)\]/);
+                            const callerName = citizen?.full_name || callerMatch?.[1]?.trim() || 'Citizen (SOS Sender)';
+                            const callerPhone = citizen?.phone || callerMatch?.[2]?.trim() || '';
+                            const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || '';
+
+                            let liveDistanceStr: string | null = null;
+                            if (responderLocation && e.lat && e.lng) {
+                              liveDistanceStr = `${getDistance(responderLocation.lat, responderLocation.lng, Number(e.lat), Number(e.lng)).toFixed(1)} km away`;
+                            }
+
+                            return (
+                              <div 
+                                key={e.id}
+                                className={`border rounded-2xl p-4 transition-all ${
+                                  selectedEmergency?.id === e.id 
+                                    ? 'bg-slate-805 border-blue-500/40 ring-1 ring-blue-500/20 shadow-lg' 
+                                    : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
+                                }`}
+                              >
+                                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                                  <div 
+                                    onClick={() => {
+                                      setSelectedEmergency(e);
+                                      simulateRouting(e);
+                                      openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                    }}
+                                    className="space-y-2 cursor-pointer group flex-1 min-w-0"
+                                    title="Click to view details and navigate to citizen location"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                        e.type === 'ambulance' ? 'bg-red-500/10 text-red-400' :
+                                        e.type === 'police' ? 'bg-blue-500/10 text-blue-400' :
+                                        e.type === 'fire' ? 'bg-amber-500/10 text-amber-400' :
+                                        'bg-purple-500/10 text-purple-400'
+                                      }`}>
+                                        {e.type} ALERT
+                                      </span>
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                        e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' :
+                                        e.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                        'bg-slate-800 text-slate-400'
+                                      }`}>
+                                        {e.status}
+                                      </span>
+                                      {liveDistanceStr && (
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                          <Navigation className="w-3 h-3" /> {liveDistanceStr}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Citizen Profile Details Banner */}
+                                    <div className="bg-slate-900/90 rounded-xl p-3 border border-white/10 space-y-1.5">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                            <User className="w-4 h-4" />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{callerName}</p>
+                                            <p className="text-[10px] text-slate-400">
+                                              {callerWard ? `Ward: ${callerWard}` : 'General Ward'}
+                                              {citizen?.email ? ` • ${citizen.email}` : ''}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {callerPhone ? (
+                                          <a
+                                            href={`tel:${callerPhone}`}
+                                            onClick={(ev) => ev.stopPropagation()}
+                                            className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
+                                            title="Call citizen directly"
+                                          >
+                                            <Phone className="w-3.5 h-3.5" />
+                                            <span>{callerPhone}</span>
+                                          </a>
+                                        ) : (
+                                          <span className="text-[10px] text-slate-500 italic shrink-0">No phone</span>
+                                        )}
                                       </div>
                                     </div>
 
-                                    {callerPhone ? (
-                                      <a
-                                        href={`tel:${callerPhone}`}
-                                        onClick={(ev) => ev.stopPropagation()}
-                                        className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
-                                        title="Call citizen directly"
+                                    {/* Location & GPS Info */}
+                                    <p className="font-extrabold text-xs text-slate-100 group-hover:text-blue-400 transition-colors flex items-start gap-1.5">
+                                      <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                                      <span className="underline decoration-blue-500/40 truncate">{e.location_text || 'GPS Coordinates'}</span>
+                                    </p>
+                                    {e.lat && e.lng && (
+                                      <p className="text-[10px] font-mono text-slate-400 pl-5">
+                                        Exact GPS: {Number(e.lat).toFixed(5)}, {Number(e.lng).toFixed(5)}
+                                      </p>
+                                    )}
+
+                                    <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
+                                    <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
+
+                                    {/* Resolved status notice */}
+                                    {e.status === 'resolved' && (
+                                      <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs">
+                                        <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                                          <CheckCircle2 className="w-3.5 h-3.5" /> Cleared by Emergency Response Team
+                                        </span>
+                                        {e.resolved_at && (
+                                          <span className="text-[10px] text-emerald-300/80 font-mono">
+                                            {new Date(e.resolved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                                    <button
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setSelectedEmergency(e);
+                                        simulateRouting(e);
+                                        openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                      }}
+                                      className="flex-1 sm:flex-none px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-blue-600/20"
+                                      title="Navigate from current GPS to citizen location"
+                                    >
+                                      <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
+                                    </button>
+                                    {e.status === 'active' ? (
+                                      <button
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleResolveEmergency(e.id);
+                                        }}
+                                        className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                       >
-                                        <Phone className="w-3.5 h-3.5" />
-                                        <span>{callerPhone}</span>
-                                      </a>
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
+                                      </button>
                                     ) : (
-                                      <span className="text-[10px] text-slate-500 italic shrink-0">No phone</span>
+                                      <button
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleReopenEmergency(e.id);
+                                        }}
+                                        className="flex-1 sm:flex-none px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                        title="Re-open this emergency SOS alert"
+                                      >
+                                        <Clock className="w-3.5 h-3.5 text-amber-400" /> Re-open
+                                      </button>
                                     )}
                                   </div>
                                 </div>
-
-                                {/* Location & GPS Info */}
-                                <p className="font-extrabold text-xs text-slate-100 group-hover:text-blue-400 transition-colors flex items-start gap-1.5">
-                                  <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
-                                  <span className="underline decoration-blue-500/40 truncate">{e.location_text || 'GPS Coordinates'}</span>
-                                </p>
-                                {e.lat && e.lng && (
-                                  <p className="text-[10px] font-mono text-slate-400 pl-5">
-                                    Exact GPS: {Number(e.lat).toFixed(5)}, {Number(e.lng).toFixed(5)}
-                                  </p>
-                                )}
-
-                                <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
-                                <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
                               </div>
+                            );
+                          })}
 
-                              <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-                                <button
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setSelectedEmergency(e);
-                                    simulateRouting(e);
-                                    openGoogleMapsDirections(e.lat, e.lng, e.location_text);
-                                  }}
-                                  className="flex-1 sm:flex-none px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-blue-600/20"
-                                  title="Navigate from current GPS to citizen location"
-                                >
-                                  <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
-                                </button>
-                                {e.status === 'active' && (
-                                  <button
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      handleResolveEmergency(e.id);
-                                    }}
-                                    className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
-                                  </button>
-                                )}
-                              </div>
+                          {policeDisplayed.length === 0 && (
+                            <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-white/5 space-y-2">
+                              <CheckCircle2 className="w-8 h-8 text-emerald-500/60 mx-auto" />
+                              <p className="text-xs font-bold text-slate-300">
+                                {policeStatusFilter === 'active' ? 'No active emergency SOS alarms. All clear!' :
+                                 policeStatusFilter === 'resolved' ? 'No resolved alarms in history.' :
+                                 'No emergency dispatches found.'}
+                              </p>
+                              {policeStatusFilter === 'active' && (
+                                <p className="text-[10px] text-slate-500">Stay vigilant! New emergency alarms will trigger here in real time.</p>
+                              )}
                             </div>
-                          </div>
-                        );
-                      })}
-                      {emergencies.length === 0 && (
-                        <p className="text-center text-xs text-slate-500 py-6">No emergency SOS signals active. Stay vigilant!</p>
-                      )}
-                    </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                   </div>
                 </div>
 
@@ -841,9 +958,9 @@ export default function StaffDashboard() {
                   {/* Left Column: Ambulance SOS alerts */}
                   <div className="lg:col-span-2 space-y-4">
                     <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <h2 className="font-extrabold text-base text-red-400 flex items-center gap-2">
-                          <HeartPulse className="w-5 h-5 animate-pulse" /> Active Ambulance Requests
+                          <HeartPulse className="w-5 h-5 animate-pulse" /> Ambulance SOS Requests
                         </h2>
                         <input
                           type="text"
@@ -854,139 +971,232 @@ export default function StaffDashboard() {
                         />
                       </div>
 
-                      <div className="space-y-3">
-                        {emergencies
+                      {(() => {
+                        const hospFilteredAll = emergencies
                           .filter(e => e.type === 'ambulance')
                           .filter(e => 
                             !searchQuery || (e.location_text && e.location_text.toLowerCase().includes(searchQuery.toLowerCase()))
-                          )
-                          .map(e => {
-                            const citizen = (e as any).profiles || users.find(u => u.id === e.user_id);
-                            const callerMatch = e.notes?.match(/\[Citizen:\s*([^|]+)\s*\|\s*Phone:\s*([^|]+)\s*\|\s*Ward:\s*([^\]]+)\]/);
-                            const callerName = citizen?.full_name || callerMatch?.[1]?.trim() || 'Citizen (SOS Sender)';
-                            const callerPhone = citizen?.phone || callerMatch?.[2]?.trim() || '';
-                            const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || '';
+                          );
+                        const hospActiveCount = hospFilteredAll.filter(e => e.status !== 'resolved').length;
+                        const hospResolvedCount = hospFilteredAll.filter(e => e.status === 'resolved').length;
+                        const hospDisplayed = hospFilteredAll.filter(e => {
+                          if (hospitalStatusFilter === 'active') return e.status !== 'resolved';
+                          if (hospitalStatusFilter === 'resolved') return e.status === 'resolved';
+                          return true;
+                        });
 
-                            let liveDistanceStr: string | null = null;
-                            if (responderLocation && e.lat && e.lng) {
-                              liveDistanceStr = `${getDistance(responderLocation.lat, responderLocation.lng, Number(e.lat), Number(e.lng)).toFixed(1)} km away`;
-                            }
-
-                            return (
-                              <div 
-                                key={e.id}
-                                className={`border rounded-2xl p-4 transition-all ${
-                                  selectedEmergency?.id === e.id 
-                                    ? 'bg-slate-805 border-red-500/40 ring-1 ring-red-500/20 shadow-lg' 
-                                    : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
+                        return (
+                          <>
+                            {/* Filter Pill Controls */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4">
+                              <button
+                                type="button"
+                                onClick={() => setHospitalStatusFilter('active')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                                  hospitalStatusFilter === 'active'
+                                    ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30 ring-1 ring-red-400/40'
+                                    : 'bg-slate-950/80 text-red-300 border-white/10 hover:border-red-500/30'
                                 }`}
                               >
-                                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                                  <div 
-                                    onClick={() => {
-                                      setSelectedEmergency(e);
-                                      simulateRouting(e);
-                                      openGoogleMapsDirections(e.lat, e.lng, e.location_text);
-                                    }}
-                                    className="space-y-2 cursor-pointer group flex-1 min-w-0"
-                                    title="Click to view details and navigate to citizen location"
-                                  >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-500/10 text-red-400">
-                                        AMBULANCE ALERT
-                                      </span>
-                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                        e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' : 'bg-slate-800 text-slate-400'
-                                      }`}>
-                                        {e.status}
-                                      </span>
-                                      {liveDistanceStr && (
-                                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                          <Navigation className="w-3 h-3" /> {liveDistanceStr}
-                                        </span>
-                                      )}
-                                    </div>
+                                <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                                <span>Active Ambulance</span>
+                                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-red-400/20 text-red-300 font-extrabold">{hospActiveCount}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setHospitalStatusFilter('resolved')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                                  hospitalStatusFilter === 'resolved'
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400/40'
+                                    : 'bg-slate-950/80 text-emerald-400 border-white/10 hover:border-emerald-500/30'
+                                }`}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Resolved & Cleared</span>
+                                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-400/20 text-emerald-300 font-extrabold">{hospResolvedCount}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setHospitalStatusFilter('all')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                                  hospitalStatusFilter === 'all'
+                                    ? 'bg-slate-700 text-white border-slate-500 shadow-sm'
+                                    : 'bg-slate-950/80 text-slate-400 border-white/10 hover:border-white/20'
+                                }`}
+                              >
+                                <span>All ({hospFilteredAll.length})</span>
+                              </button>
+                            </div>
 
-                                    {/* Citizen Profile Details Banner */}
-                                    <div className="bg-slate-900/90 rounded-xl p-3 border border-white/10 space-y-1.5">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                          <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                            <User className="w-4 h-4" />
-                                          </div>
-                                          <div className="min-w-0">
-                                            <p className="text-xs font-bold text-white truncate">{callerName}</p>
-                                            <p className="text-[10px] text-slate-400">
-                                              {callerWard ? `Ward: ${callerWard}` : 'General Ward'}
-                                              {citizen?.email ? ` • ${citizen.email}` : ''}
-                                            </p>
+                            <div className="space-y-3">
+                              {hospDisplayed.map(e => {
+                                const citizen = (e as any).profiles || users.find(u => u.id === e.user_id);
+                                const callerMatch = e.notes?.match(/\[Citizen:\s*([^|]+)\s*\|\s*Phone:\s*([^|]+)\s*\|\s*Ward:\s*([^\]]+)\]/);
+                                const callerName = citizen?.full_name || callerMatch?.[1]?.trim() || 'Citizen (SOS Sender)';
+                                const callerPhone = citizen?.phone || callerMatch?.[2]?.trim() || '';
+                                const callerWard = citizen?.ward || callerMatch?.[3]?.trim() || '';
+
+                                let liveDistanceStr: string | null = null;
+                                if (responderLocation && e.lat && e.lng) {
+                                  liveDistanceStr = `${getDistance(responderLocation.lat, responderLocation.lng, Number(e.lat), Number(e.lng)).toFixed(1)} km away`;
+                                }
+
+                                return (
+                                  <div 
+                                    key={e.id}
+                                    className={`border rounded-2xl p-4 transition-all ${
+                                      selectedEmergency?.id === e.id 
+                                        ? 'bg-slate-805 border-red-500/40 ring-1 ring-red-500/20 shadow-lg' 
+                                        : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                                      <div 
+                                        onClick={() => {
+                                          setSelectedEmergency(e);
+                                          simulateRouting(e);
+                                          openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                        }}
+                                        className="space-y-2 cursor-pointer group flex-1 min-w-0"
+                                        title="Click to view details and navigate to citizen location"
+                                      >
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-500/10 text-red-400">
+                                            AMBULANCE ALERT
+                                          </span>
+                                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                            e.status === 'active' ? 'bg-red-500/10 text-red-400 animate-pulse' :
+                                            e.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                            'bg-slate-800 text-slate-400'
+                                          }`}>
+                                            {e.status}
+                                          </span>
+                                          {liveDistanceStr && (
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                              <Navigation className="w-3 h-3" /> {liveDistanceStr}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Citizen Profile Details Banner */}
+                                        <div className="bg-slate-900/90 rounded-xl p-3 border border-white/10 space-y-1.5">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                              <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                                <User className="w-4 h-4" />
+                                              </div>
+                                              <div className="min-w-0">
+                                                <p className="text-xs font-bold text-white truncate">{callerName}</p>
+                                                <p className="text-[10px] text-slate-400">
+                                                  {callerWard ? `Ward: ${callerWard}` : 'General Ward'}
+                                                  {citizen?.email ? ` • ${citizen.email}` : ''}
+                                                </p>
+                                              </div>
+                                            </div>
+
+                                            {callerPhone ? (
+                                              <a
+                                                href={`tel:${callerPhone}`}
+                                                onClick={(ev) => ev.stopPropagation()}
+                                                className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
+                                                title="Call citizen directly"
+                                              >
+                                                <Phone className="w-3.5 h-3.5" />
+                                                <span>{callerPhone}</span>
+                                              </a>
+                                            ) : (
+                                              <span className="text-[10px] text-slate-500 italic shrink-0">No phone</span>
+                                            )}
                                           </div>
                                         </div>
 
-                                        {callerPhone ? (
-                                          <a
-                                            href={`tel:${callerPhone}`}
-                                            onClick={(ev) => ev.stopPropagation()}
-                                            className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
-                                            title="Call citizen directly"
+                                        {/* Location & GPS Info */}
+                                        <p className="font-extrabold text-xs text-slate-100 group-hover:text-red-400 transition-colors flex items-start gap-1.5">
+                                          <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                                          <span className="underline decoration-red-500/40">{e.location_text || 'GPS Coordinates'}</span>
+                                        </p>
+                                        {e.lat && e.lng && (
+                                          <p className="text-[10px] font-mono text-slate-400 pl-5">
+                                            Exact GPS: {Number(e.lat).toFixed(5)}, {Number(e.lng).toFixed(5)}
+                                          </p>
+                                        )}
+
+                                        <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
+                                        <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
+
+                                        {/* Resolved status notice */}
+                                        {e.status === 'resolved' && (
+                                          <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs">
+                                            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                                              <CheckCircle2 className="w-3.5 h-3.5" /> Cleared by Emergency Response Team
+                                            </span>
+                                            {e.resolved_at && (
+                                              <span className="text-[10px] text-emerald-300/80 font-mono">
+                                                {new Date(e.resolved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                                        <button
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedEmergency(e);
+                                            simulateRouting(e);
+                                            openGoogleMapsDirections(e.lat, e.lng, e.location_text);
+                                          }}
+                                          className="flex-1 sm:flex-none px-3.5 py-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-red-600/20"
+                                          title="Navigate from current GPS to citizen location"
+                                        >
+                                          <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
+                                        </button>
+                                        {e.status === 'active' ? (
+                                          <button
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleResolveEmergency(e.id);
+                                            }}
+                                            className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                           >
-                                            <Phone className="w-3.5 h-3.5" />
-                                            <span>{callerPhone}</span>
-                                          </a>
+                                            <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
+                                          </button>
                                         ) : (
-                                          <span className="text-[10px] text-slate-500 italic shrink-0">No phone</span>
+                                          <button
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleReopenEmergency(e.id);
+                                            }}
+                                            className="flex-1 sm:flex-none px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                            title="Re-open this emergency SOS alert"
+                                          >
+                                            <Clock className="w-3.5 h-3.5 text-amber-400" /> Re-open
+                                          </button>
                                         )}
                                       </div>
                                     </div>
-
-                                    {/* Location & GPS Info */}
-                                    <p className="font-extrabold text-xs text-slate-100 group-hover:text-red-400 transition-colors flex items-start gap-1.5">
-                                      <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
-                                      <span className="underline decoration-red-500/40">{e.location_text || 'GPS Coordinates'}</span>
-                                    </p>
-                                    {e.lat && e.lng && (
-                                      <p className="text-[10px] font-mono text-slate-400 pl-5">
-                                        Exact GPS: {Number(e.lat).toFixed(5)}, {Number(e.lng).toFixed(5)}
-                                      </p>
-                                    )}
-
-                                    <p className="text-xs text-slate-400 italic">"{e.notes || 'No description provided'}"</p>
-                                    <p className="text-[10px] text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
                                   </div>
+                                );
+                              })}
 
-                                  <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-                                    <button
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        setSelectedEmergency(e);
-                                        simulateRouting(e);
-                                        openGoogleMapsDirections(e.lat, e.lng, e.location_text);
-                                      }}
-                                      className="flex-1 sm:flex-none px-3.5 py-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-red-600/20"
-                                      title="Navigate from current GPS to citizen location"
-                                    >
-                                      <Navigation className="w-3.5 h-3.5" /> Navigate (Maps)
-                                    </button>
-                                    {e.status === 'active' && (
-                                      <button
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          handleResolveEmergency(e.id);
-                                        }}
-                                        className="flex-1 sm:flex-none px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                                      >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Resolve SOS
-                                      </button>
-                                    )}
-                                  </div>
+                              {hospDisplayed.length === 0 && (
+                                <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-white/5 space-y-2">
+                                  <CheckCircle2 className="w-8 h-8 text-emerald-500/60 mx-auto" />
+                                  <p className="text-xs font-bold text-slate-300">
+                                    {hospitalStatusFilter === 'active' ? 'No active ambulance requests. All patients attended!' :
+                                     hospitalStatusFilter === 'resolved' ? 'No resolved ambulance requests in history.' :
+                                     'No ambulance requests found.'}
+                                  </p>
+                                  {hospitalStatusFilter === 'active' && (
+                                    <p className="text-[10px] text-slate-500">Trauma desk is standby on 108 emergency channel.</p>
+                                  )}
                                 </div>
-                              </div>
-                            );
-                          })}
-                        {emergencies.filter(e => e.type === 'ambulance').length === 0 && (
-                          <p className="text-center text-xs text-slate-500 py-6 italic">No ambulance requests active. All is well!</p>
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1275,7 +1485,7 @@ export default function StaffDashboard() {
               {/* Left Column: Complaints list */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="bg-slate-900 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h2 className="font-extrabold text-base text-amber-400 flex items-center gap-2">
                       <Building className="w-5 h-5" /> Civic Complaint Logs
                     </h2>
@@ -1288,98 +1498,174 @@ export default function StaffDashboard() {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    {complaints
+                  {(() => {
+                    const bmcFilteredAll = complaints
                       .filter(c => 
                         !c.description?.startsWith('[ML_MERGE:') && 
                         !c.description?.startsWith('[ML_CLUSTER_OVERLOAD:') && (
                           c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          c.category.toLowerCase().includes(searchQuery.toLowerCase())
+                          c.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (c.location_text && c.location_text.toLowerCase().includes(searchQuery.toLowerCase()))
                         )
-                      )
-                      .map(c => (
-                        <div 
-                          key={c.id}
-                          className={`border rounded-2xl p-4 transition-all ${
-                            selectedComplaint?.id === c.id 
-                              ? 'bg-slate-805 border-amber-500/40 ring-1 ring-amber-500/20' 
-                              : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
-                          }`}
-                        >
-                          <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                            <div className="space-y-1 pr-4 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400">
-                                  {c.category}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                  c.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                  c.status === 'in_progress' ? 'bg-blue-500/10 text-blue-400' :
-                                  'bg-red-500/10 text-red-400'
-                                }`}>
-                                  {c.status}
-                                </span>
-                                {c.title.includes('[CRITICAL OVERLOAD]') && (
-                                  <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-650/30 text-red-400 border border-red-500/20 animate-pulse">
-                                    🚨 OVERLOAD CLUSTER ({complaints.filter(x => x.description?.includes(`[ML_CLUSTER_OVERLOAD:${c.id}`) || x.description?.includes(`[ML_MERGE:${c.id}`)).length + 1} REPORTS)
-                                  </span>
-                                )}
-                              </div>
-                              <p className="font-extrabold text-sm text-slate-100">{c.title}</p>
-                              <p className="text-xs text-slate-400">{c.description || 'No description provided.'}</p>
-                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                <span 
-                                  onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
-                                  className="flex items-center gap-1 text-slate-300 font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors"
-                                  title="Click to open directions in Google Maps"
-                                >
-                                  <MapPin className="w-3.5 h-3.5 text-amber-400" /> {c.location_text || 'Bhubaneswar, Odisha'}
-                                </span>
-                                <button
-                                  onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
-                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                                  title="Navigate from my location to incident in Google Maps"
-                                >
-                                  <Navigation className="w-3 h-3" /> Guide Me (Maps)
-                                </button>
-                              </div>
+                      );
+                    const bmcActiveCount = bmcFilteredAll.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length;
+                    const bmcResolvedCount = bmcFilteredAll.filter(c => c.status === 'resolved').length;
+                    const bmcDisplayed = bmcFilteredAll.filter(c => {
+                      if (bmcStatusFilter === 'active') return c.status !== 'resolved' && c.status !== 'rejected';
+                      if (bmcStatusFilter === 'resolved') return c.status === 'resolved';
+                      return true;
+                    });
 
-                              {c.status === 'resolved' && (
-                                <div className="mt-2.5 p-2.5 bg-emerald-500/5 rounded-xl border border-emerald-500/15 text-[11px] space-y-1.5">
-                                  <span className="font-bold text-emerald-400 block uppercase tracking-wider text-[8px]">LOGGED REPAIR PROOF</span>
-                                  {c.resolution_proof && <p className="text-emerald-300 italic">"{c.resolution_proof}"</p>}
-                                  {c.resolution_photo_url && (
-                                    <div 
-                                      onClick={() => setPreviewPhoto(c.resolution_photo_url!)}
-                                      className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer font-bold"
+                    return (
+                      <>
+                        {/* Filter Pill Controls */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4">
+                          <button
+                            type="button"
+                            onClick={() => setBmcStatusFilter('active')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              bmcStatusFilter === 'active'
+                                ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/30 ring-1 ring-amber-400/40'
+                                : 'bg-slate-950/80 text-amber-300 border-white/10 hover:border-amber-500/30'
+                            }`}
+                          >
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                            <span>Active Issues</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400/20 text-amber-300 font-extrabold">{bmcActiveCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBmcStatusFilter('resolved')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              bmcStatusFilter === 'resolved'
+                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400/40'
+                                : 'bg-slate-950/80 text-emerald-400 border-white/10 hover:border-emerald-500/30'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Resolved with Proof</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-400/20 text-emerald-300 font-extrabold">{bmcResolvedCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBmcStatusFilter('all')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                              bmcStatusFilter === 'all'
+                                ? 'bg-slate-700 text-white border-slate-500 shadow-sm'
+                                : 'bg-slate-950/80 text-slate-400 border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <span>All ({bmcFilteredAll.length})</span>
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {bmcDisplayed.map(c => (
+                            <div 
+                              key={c.id}
+                              className={`border rounded-2xl p-4 transition-all ${
+                                selectedComplaint?.id === c.id 
+                                  ? 'bg-slate-805 border-amber-500/40 ring-1 ring-amber-500/20' 
+                                  : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/80'
+                              }`}
+                            >
+                              <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                                <div className="space-y-1 pr-4 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400">
+                                      {c.category}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                      c.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                      c.status === 'in_progress' ? 'bg-blue-500/10 text-blue-400' :
+                                      'bg-red-500/10 text-red-400'
+                                    }`}>
+                                      {c.status}
+                                    </span>
+                                    {c.title.includes('[CRITICAL OVERLOAD]') && (
+                                      <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-red-650/30 text-red-400 border border-red-500/20 animate-pulse">
+                                        🚨 OVERLOAD CLUSTER ({complaints.filter(x => x.description?.includes(`[ML_CLUSTER_OVERLOAD:${c.id}`) || x.description?.includes(`[ML_MERGE:${c.id}`)).length + 1} REPORTS)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-extrabold text-sm text-slate-100">{c.title}</p>
+                                  <p className="text-xs text-slate-400">{c.description || 'No description provided.'}</p>
+                                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-1">
+                                    <span 
+                                      onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
+                                      className="flex items-center gap-1 text-slate-300 font-medium cursor-pointer hover:text-amber-400 hover:underline transition-colors"
+                                      title="Click to open directions in Google Maps"
                                     >
-                                      <Camera className="w-3 h-3" /> View BMC Proof Photo
+                                      <MapPin className="w-3.5 h-3.5 text-amber-400" /> {c.location_text || 'Bhubaneswar, Odisha'}
+                                    </span>
+                                    <button
+                                      onClick={() => openGoogleMapsDirections(c.lat, c.lng, c.location_text)}
+                                      className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/25 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                                      title="Navigate from my location to incident in Google Maps"
+                                    >
+                                      <Navigation className="w-3 h-3" /> Guide Me (Maps)
+                                    </button>
+                                  </div>
+
+                                  {c.status === 'resolved' && (
+                                    <div className="mt-2.5 p-2.5 bg-emerald-500/5 rounded-xl border border-emerald-500/15 text-[11px] space-y-1.5">
+                                      <span className="font-bold text-emerald-400 block uppercase tracking-wider text-[8px]">LOGGED REPAIR PROOF</span>
+                                      {c.resolution_proof && <p className="text-emerald-300 italic">"{c.resolution_proof}"</p>}
+                                      {c.resolution_photo_url && (
+                                        <div 
+                                          onClick={() => setPreviewPhoto(c.resolution_photo_url!)}
+                                          className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer font-bold"
+                                        >
+                                          <Camera className="w-3 h-3" /> View BMC Proof Photo
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
+                                <div className="shrink-0 mt-2 sm:mt-0 w-full sm:w-auto">
+                                  {c.status !== 'resolved' ? (
+                                    <button
+                                      onClick={() => { setSelectedComplaint(c); setResolutionProofText(''); setResolutionProofPhoto(null); }}
+                                      className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-600/20"
+                                    >
+                                      <CheckCheck className="w-4 h-4" /> Resolve Job
+                                    </button>
+                                  ) : (
+                                    <div className="flex flex-col sm:items-end gap-2">
+                                      <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20">
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Resolved with Proof
+                                      </span>
+                                      <button
+                                        onClick={() => handleRedoComplaint(c.id)}
+                                        className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                        title="Re-open civic complaint for active repair inspection"
+                                      >
+                                        <Clock className="w-3.5 h-3.5 text-amber-400" /> Re-open / Redo
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {bmcDisplayed.length === 0 && (
+                            <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-white/5 space-y-2">
+                              <CheckCircle2 className="w-8 h-8 text-emerald-500/60 mx-auto" />
+                              <p className="text-xs font-bold text-slate-300">
+                                {bmcStatusFilter === 'active' ? 'No active civic issues pending in this filter. City operations clear!' :
+                                 bmcStatusFilter === 'resolved' ? 'No resolved civic issues with proof logged yet.' :
+                                 'No complaints found.'}
+                              </p>
+                              {bmcStatusFilter === 'active' && (
+                                <p className="text-[10px] text-slate-500">Citizen reported complaints will appear here automatically.</p>
                               )}
                             </div>
-                            <div className="shrink-0 mt-2 sm:mt-0 w-full sm:w-auto">
-                              {c.status !== 'resolved' ? (
-                                <button
-                                  onClick={() => { setSelectedComplaint(c); setResolutionProofText(''); setResolutionProofPhoto(null); }}
-                                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                  <CheckCheck className="w-4 h-4" /> Resolve Job
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                                  <CheckCircle2 className="w-4 h-4" /> Resolved
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                          )}
                         </div>
-                      ))}
-                    {complaints.length === 0 && (
-                      <p className="text-center text-xs text-slate-500 py-6">No municipal complaints registered yet.</p>
-                    )}
-                  </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

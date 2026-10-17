@@ -63,6 +63,10 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
   const [sosSearchQuery, setSosSearchQuery] = useState('');
   const [complaintSearchQuery, setComplaintSearchQuery] = useState('');
 
+  // Status Filter States
+  const [complaintStatusFilter, setComplaintStatusFilter] = useState<'all' | 'active' | 'resolved'>('all');
+  const [sosStatusFilter, setSosStatusFilter] = useState<'all' | 'active' | 'resolved'>('active');
+
   // Clear/Adjust Utility States
   const [selectedBillToClear, setSelectedBillToClear] = useState<any>(null);
   const [deductAmount, setDeductAmount] = useState('');
@@ -874,17 +878,65 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                     </div>
                   );
                 })()}
-                {activeTab === 'complaints' && (
-                  <div className="relative max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Search complaints by title, department, location, or citizen..."
-                      value={complaintSearchQuery}
-                      onChange={(e) => setComplaintSearchQuery(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs focus:outline-none focus:border-orange-500 text-white placeholder-slate-500"
-                    />
-                  </div>
-                )}
+                {activeTab === 'complaints' && (() => {
+                  const compMasters = complaints.filter(c => 
+                    !c.description?.startsWith('[ML_MERGE:') && 
+                    !c.description?.startsWith('[ML_CLUSTER_OVERLOAD:')
+                  );
+                  const compActiveCount = compMasters.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length;
+                  const compResolvedCount = compMasters.filter(c => c.status === 'resolved').length;
+
+                  return (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <div className="relative flex-1 max-w-md">
+                        <input
+                          type="text"
+                          placeholder="Search complaints by title, department, location, or citizen..."
+                          value={complaintSearchQuery}
+                          onChange={(e) => setComplaintSearchQuery(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs focus:outline-none focus:border-orange-500 text-white placeholder-slate-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+                        <button
+                          type="button"
+                          onClick={() => setComplaintStatusFilter('active')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            complaintStatusFilter === 'active'
+                              ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
+                              : 'bg-slate-900 text-amber-400 border-white/10 hover:border-amber-500/30'
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                          <span>Active Complaints ({compActiveCount})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setComplaintStatusFilter('resolved')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            complaintStatusFilter === 'resolved'
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                              : 'bg-slate-900 text-emerald-400 border-white/10 hover:border-emerald-500/30'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Resolved ({compResolvedCount})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setComplaintStatusFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            complaintStatusFilter === 'all'
+                              ? 'bg-orange-600 text-white border-orange-500 shadow-sm'
+                              : 'bg-slate-900 text-slate-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          All ({compMasters.length})
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {activeTab === 'bills' && (
                   <div className="relative max-w-md">
                     <input
@@ -896,17 +948,61 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                     />
                   </div>
                 )}
-                {activeTab === 'emergencies' && (
-                  <div className="relative max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Search SOS by city, ward, or citizen name..."
-                      value={sosSearchQuery}
-                      onChange={(e) => setSosSearchQuery(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs focus:outline-none focus:border-orange-500 text-white placeholder-slate-500"
-                    />
-                  </div>
-                )}
+                {activeTab === 'emergencies' && (() => {
+                  const sosActiveCount = emergencies.filter(e => e.status !== 'resolved').length;
+                  const sosResolvedCount = emergencies.filter(e => e.status === 'resolved').length;
+
+                  return (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <div className="relative flex-1 max-w-md">
+                        <input
+                          type="text"
+                          placeholder="Search SOS by city, ward, or citizen name..."
+                          value={sosSearchQuery}
+                          onChange={(e) => setSosSearchQuery(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs focus:outline-none focus:border-orange-500 text-white placeholder-slate-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+                        <button
+                          type="button"
+                          onClick={() => setSosStatusFilter('active')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            sosStatusFilter === 'active'
+                              ? 'bg-red-600 text-white border-red-500 shadow-sm'
+                              : 'bg-slate-900 text-red-400 border-white/10 hover:border-red-500/30'
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                          <span>Active Alarms ({sosActiveCount})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSosStatusFilter('resolved')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            sosStatusFilter === 'resolved'
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                              : 'bg-slate-900 text-emerald-400 border-white/10 hover:border-emerald-500/30'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Resolved ({sosResolvedCount})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSosStatusFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            sosStatusFilter === 'all'
+                              ? 'bg-slate-700 text-white border-slate-500 shadow-sm'
+                              : 'bg-slate-900 text-slate-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          All ({emergencies.length})
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="overflow-x-auto">
@@ -1315,13 +1411,25 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                     !c.description?.startsWith('[ML_MERGE:') && 
                     !c.description?.startsWith('[ML_CLUSTER_OVERLOAD:')
                   );
+                  const displayedMasters = masters.filter(c => {
+                    if (complaintStatusFilter === 'active') return c.status !== 'resolved' && c.status !== 'rejected';
+                    if (complaintStatusFilter === 'resolved') return c.status === 'resolved';
+                    return true;
+                  });
 
-                  if (masters.length === 0) {
+                  if (displayedMasters.length === 0) {
                     return (
                       <div className="py-8 text-center text-slate-500">
                         <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                        <p className="font-semibold text-xs text-slate-300">No complaints reported or matching search</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Complaints filed by citizens will appear here with live ML deduplication & BMC resolution proof.</p>
+                        <p className="font-semibold text-xs text-slate-300">
+                          {complaintStatusFilter === 'active' ? 'No active complaints pending' :
+                           complaintStatusFilter === 'resolved' ? 'No resolved complaints matching filter' :
+                           'No complaints reported or matching search'}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {complaintStatusFilter === 'active' ? 'All reported civic issues in this view are resolved or completed.' :
+                           'Complaints filed by citizens will appear here with live ML deduplication & BMC resolution proof.'}
+                        </p>
                       </div>
                     );
                   }
@@ -1330,7 +1438,7 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                     <div>
                       {/* Responsive Mobile Cards View (< md) */}
                       <div className="md:hidden space-y-3">
-                        {masters.map(c => {
+                        {displayedMasters.map(c => {
                           const children = complaints.filter(x => 
                             x.description && (
                               x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
@@ -1478,7 +1586,7 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                             </tr>
                           </thead>
                           <tbody>
-                            {masters.map(c => {
+                            {displayedMasters.map(c => {
                               const children = complaints.filter(x => 
                                 x.description && (
                                   x.description.startsWith(`[ML_MERGE:${c.id}]`) ||
@@ -1774,12 +1882,25 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                            user?.full_name?.toLowerCase().includes(query);
                   });
 
-                  if (filteredEmergencies.length === 0) {
+                  const displayedEmergencies = filteredEmergencies.filter(e => {
+                    if (sosStatusFilter === 'active') return e.status !== 'resolved';
+                    if (sosStatusFilter === 'resolved') return e.status === 'resolved';
+                    return true;
+                  });
+
+                  if (displayedEmergencies.length === 0) {
                     return (
                       <div className="py-8 text-center text-slate-500">
                         <Siren className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                        <p className="font-semibold text-xs text-slate-300">No emergency SOS requests triggered</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Live police, ambulance, and disaster SOS alarms will be monitored here.</p>
+                        <p className="font-semibold text-xs text-slate-300">
+                          {sosStatusFilter === 'active' ? 'No active emergency SOS alarms' :
+                           sosStatusFilter === 'resolved' ? 'No resolved emergency alarms in history' :
+                           'No emergency SOS requests triggered or matching search'}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {sosStatusFilter === 'active' ? 'Live police, ambulance, and disaster SOS alarms will alert here in real time.' :
+                           'All historical and resolved dispatches will be archived here.'}
+                        </p>
                       </div>
                     );
                   }
@@ -1788,7 +1909,7 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                     <div>
                       {/* Responsive Mobile Cards View (< md) */}
                       <div className="md:hidden space-y-3">
-                        {filteredEmergencies.map(e => {
+                        {displayedEmergencies.map(e => {
                           const user = users.find(u => u.id === e.user_id);
 
                           return (
@@ -1909,7 +2030,7 @@ This is an automated administrative notification sent to ${recipientEmail || 'yo
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredEmergencies.map(e => {
+                            {displayedEmergencies.map(e => {
                               const user = users.find(u => u.id === e.user_id);
                               return (
                                 <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">

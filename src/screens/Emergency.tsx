@@ -42,6 +42,7 @@ export function Emergency({ onBack }: { onBack: () => void }) {
   const { session, profile } = useAuth();
   const [requests, setRequests] = useState<EmergencyRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved'>('all');
   const [confirmType, setConfirmType] = useState<EmergencyType | null>(null);
   const [active, setActive] = useState<EmergencyRequest | null>(null);
   const [countdown, setCountdown] = useState(3);
@@ -665,42 +666,112 @@ export function Emergency({ onBack }: { onBack: () => void }) {
 
       {/* Recent emergencies list */}
       <div className="px-4 pb-6">
-        <h2 className="font-bold text-ink-900 dark:text-white text-sm mb-3">Recent SOS Dispatches</h2>
-        {loading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-16 skeleton" />)}
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-center text-sm text-ink-400 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
-            No emergency requests logged. Stay safe!
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {requests.map((r) => {
-              const cfg = types.find((t) => t.value === r.type) || types[0];
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <h2 className="font-bold text-ink-900 dark:text-white text-sm">Recent SOS Dispatches</h2>
+          
+          {/* Active vs Resolved filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none pb-0.5">
+            {(() => {
+              const activeCount = requests.filter(r => r.status === 'active' || r.status === 'dispatched').length;
+              const resolvedCount = requests.filter(r => r.status === 'resolved').length;
+              const allCount = requests.length;
+
               return (
-                <div key={r.id} className="bg-white dark:bg-slate-900 rounded-2xl p-4 flex items-center gap-3 shadow-sm border border-slate-100 dark:border-slate-800">
-                  <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 shadow-sm`}>
-                    <cfg.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-ink-800 dark:text-white capitalize text-sm">{r.type}</p>
-                    <p className="text-xs text-ink-400 dark:text-slate-400 flex items-center gap-1 truncate">
-                      <MapPin className="w-3 h-3 text-primary-600 shrink-0" /> {r.location_text} · {timeAgo(r.created_at)}
-                    </p>
-                  </div>
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize shrink-0 ${
-                    r.status === 'active' ? 'bg-error-500/10 text-error-600' :
-                    r.status === 'dispatched' ? 'bg-accent-500/10 text-accent-600' :
-                    'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {r.status}
-                  </span>
-                </div>
+                <>
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                      statusFilter === 'all'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    <span>All</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold">{allCount}</span>
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('active')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                      statusFilter === 'active'
+                        ? 'bg-red-600 text-white shadow-sm shadow-red-600/25 ring-2 ring-red-500/30'
+                        : 'bg-white dark:bg-slate-900 text-red-500 border border-red-200 dark:border-red-500/20'
+                    }`}
+                  >
+                    <span>Active</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${activeCount > 0 ? 'bg-red-500/20 text-red-700 dark:text-red-300 animate-pulse' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>{activeCount}</span>
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('resolved')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                      statusFilter === 'resolved'
+                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 ring-2 ring-emerald-500/30'
+                        : 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Resolved</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">{resolvedCount}</span>
+                  </button>
+                </>
               );
-            })}
+            })()}
           </div>
-        )}
+        </div>
+
+        {(() => {
+          const filteredRequests = requests.filter(r => {
+            if (statusFilter === 'active') return r.status === 'active' || r.status === 'dispatched';
+            if (statusFilter === 'resolved') return r.status === 'resolved';
+            return true;
+          });
+
+          if (loading) {
+            return (
+              <div className="space-y-2">
+                {[1, 2].map((i) => <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-16 skeleton" />)}
+              </div>
+            );
+          }
+
+          if (filteredRequests.length === 0) {
+            return (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-center text-sm text-ink-400 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
+                {statusFilter === 'active' ? 'No active emergencies right now. All alerts are resolved!' :
+                 statusFilter === 'resolved' ? 'No resolved emergencies in log yet.' :
+                 'No emergency requests logged. Stay safe!'}
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-2.5">
+              {filteredRequests.map((r) => {
+                const cfg = types.find((t) => t.value === r.type) || types[0];
+                return (
+                  <div key={r.id} className="bg-white dark:bg-slate-900 rounded-2xl p-4 flex items-center gap-3 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <cfg.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-ink-800 dark:text-white capitalize text-sm">{r.type} SOS</p>
+                      <p className="text-xs text-ink-400 dark:text-slate-400 flex items-center gap-1 truncate">
+                        <MapPin className="w-3 h-3 text-primary-600 shrink-0" /> {r.location_text} · {timeAgo(r.created_at)}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize shrink-0 ${
+                      r.status === 'active' ? 'bg-error-500/10 text-error-600 animate-pulse border border-error-500/20' :
+                      r.status === 'dispatched' ? 'bg-accent-500/10 text-accent-600 border border-accent-500/20' :
+                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-500/20 flex items-center gap-1'
+                    }`}>
+                      {r.status === 'resolved' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                      {r.status === 'resolved' ? 'Resolved & Cleared' : r.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Confirm modal */}

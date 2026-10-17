@@ -39,6 +39,8 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved'>('all');
+
   const load = async () => {
     if (!session?.user) return;
     const { data } = await supabase
@@ -64,13 +66,24 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
     load();
   };
 
-  // Filter complaints based on active tab selection
-  const displayedComplaints = complaints.filter(c => {
+  // Base complaints by tab (City Feed vs My Reports)
+  const baseComplaints = complaints.filter(c => {
     if (complaintTab === 'my') {
       return c.user_id === session?.user?.id;
     }
     // For 'all' city feed, filter out child duplicates to prevent UI spam!
     return !c.description?.startsWith('[ML_MERGE:');
+  });
+
+  const activeCount = baseComplaints.filter(c => c.status !== 'resolved' && c.status !== 'rejected').length;
+  const resolvedCount = baseComplaints.filter(c => c.status === 'resolved').length;
+  const allCount = baseComplaints.length;
+
+  // Filter complaints based on active vs resolved selection
+  const displayedComplaints = baseComplaints.filter(c => {
+    if (statusFilter === 'active') return c.status !== 'resolved' && c.status !== 'rejected';
+    if (statusFilter === 'resolved') return c.status === 'resolved';
+    return true;
   });
 
   return (
@@ -90,8 +103,8 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
       />
 
       <div className="px-4 py-4">
-        {/* Tab switcher */}
-        <div className="flex gap-2 p-1 bg-ink-50 dark:bg-slate-900 rounded-xl mb-4 border border-ink-100 dark:border-slate-800">
+        {/* Tab switcher: City Feed vs My Reports */}
+        <div className="flex gap-2 p-1 bg-ink-50 dark:bg-slate-900 rounded-xl mb-3 border border-ink-100 dark:border-slate-800">
           <button
             onClick={() => setComplaintTab('all')}
             className={`flex-1 py-2 text-center rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -100,7 +113,7 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
                 : 'text-ink-500 hover:text-ink-700 dark:text-slate-400'
             }`}
           >
-            City Feed
+            City-wide Feed
           </button>
           <button
             onClick={() => setComplaintTab('my')}
@@ -114,6 +127,47 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
           </button>
         </div>
 
+        {/* Status Separation Pills: All vs Active Issues vs Resolved Issues */}
+        <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar scrollbar-none pb-1">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === 'all'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
+            }`}
+          >
+            <span>All Issues</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold">{allCount}</span>
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('active')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === 'active'
+                ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/25 ring-2 ring-amber-500/30'
+                : 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 hover:border-amber-400'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Active Issues</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold">{activeCount}</span>
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('resolved')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === 'resolved'
+                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 ring-2 ring-emerald-500/30'
+                : 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 hover:border-emerald-400'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Resolved Issues</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">{resolvedCount}</span>
+          </button>
+        </div>
+
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded-2xl h-24 skeleton" />)}
@@ -123,9 +177,19 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
             <div className="w-16 h-16 rounded-full bg-ink-100 dark:bg-slate-850 flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-ink-400" />
             </div>
-            <p className="font-semibold text-ink-700 dark:text-slate-200">No complaints found</p>
+            <p className="font-semibold text-ink-700 dark:text-slate-200">
+              {statusFilter === 'active' ? "No active issues pending" :
+               statusFilter === 'resolved' ? "No resolved issues yet" :
+               "No complaints found"}
+            </p>
             <p className="text-sm text-ink-400 dark:text-slate-400 mt-1 mb-4">
-              {complaintTab === 'my' ? "You haven't filed any complaints yet." : "No reports active in your city."}
+              {statusFilter === 'active'
+                ? "All reported issues in this feed are currently resolved or addressed."
+                : statusFilter === 'resolved'
+                ? "Once municipal teams complete repairs and log proof, they appear here."
+                : complaintTab === 'my'
+                ? "You haven't filed any complaints yet."
+                : "No reports active in your city."}
             </p>
             <Button onClick={() => setShowNew(true)}>
               <Plus className="w-4 h-4" /> File a Complaint
