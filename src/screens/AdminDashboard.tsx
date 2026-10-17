@@ -304,8 +304,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
             userEmail: citizen.email,
             userName: citizen.full_name || 'Citizen',
             title,
-            subject: `[BMC STATUS] Complaint #${complaintId.slice(0, 8).toUpperCase()} - ${newStatus.toUpperCase()}`,
-            message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nLocation: ${master.location_text || 'Ward'}\nReference: BMC/GRIEV-${complaintId.slice(0, 8).toUpperCase()}\n\nBhubaneswar Municipal Corporation (BMC)`,
+            subject: `CityZen: Update on complaint #${complaintId.slice(0, 8).toUpperCase()}`,
+            message: `Hi ${citizen.full_name || 'Citizen'},\n\nYour civic complaint "${master.title}" has been updated to ${newStatus.replace('_', ' ')}.\n\nLocation: ${master.location_text || 'Reported area'}\nRef: CZ-${complaintId.slice(0, 8).toUpperCase()}\n\nBest regards,\nCityZen Support`,
             category: 'complaint'
           }).catch(e => console.warn(e));
         } else {
@@ -337,8 +337,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
             userEmail: citizen.email,
             userName: citizen.full_name || 'Citizen',
             title,
-            subject: `[BBPS NOTICE] ${targetBill.type.toUpperCase()} Utility Invoice ${newStatus.toUpperCase()}`,
-            message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nInvoice ID: ${targetBill.id.slice(0, 8).toUpperCase()}\nPeriod: ${targetBill.period || 'Current Cycle'}\n\nCityZen Municipal Revenue Directorate`,
+            subject: `CityZen: ${targetBill.type} utility bill updated (${newStatus})`,
+            message: `Hi ${citizen.full_name || 'Citizen'},\n\nYour ${targetBill.type} utility invoice for ₹${targetBill.amount} has been updated to ${newStatus}.\n\nInvoice ID: ${targetBill.id.slice(0, 8).toUpperCase()}\nCycle: ${targetBill.period || 'Current Cycle'}\n\nBest regards,\nCityZen Support`,
             category: 'bill'
           }).catch(e => console.warn(e));
         } else {
@@ -391,8 +391,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
           userEmail: citizen.email,
           userName: citizen.full_name || 'Citizen',
           title,
-          subject: `[BBPS ADJUSTMENT] ₹${amtToDeduct} Applied to ${selectedBillToClear.type.toUpperCase()} Bill`,
-          message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nCityZen Municipal Revenue Directorate`,
+          subject: `CityZen: ₹${amtToDeduct} adjustment on ${selectedBillToClear.type} bill`,
+          message: `Hi ${citizen.full_name || 'Citizen'},\n\nA payment adjustment of ₹${amtToDeduct} was applied to your ${selectedBillToClear.type} bill. Remaining balance: ₹${newAmount}.\n\nBest regards,\nCityZen Support`,
           category: 'bill'
         }).catch(e => console.warn(e));
       }
@@ -498,8 +498,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
           userEmail: citizen.email,
           userName: citizen.full_name || 'Citizen',
           title,
-          subject: `[EMERGENCY CLEARED] Incident Status Update`,
-          message: `Dear ${citizen.full_name || 'Citizen'},\n\n${msg}\n\nStatus: Incident Resolved\nRef: SOS-${id.slice(0, 8).toUpperCase()}\n\nCityZen Emergency Command`,
+          subject: `CityZen: ${targetEmerg.type} emergency alert resolved`,
+          message: `Hi ${citizen.full_name || 'Citizen'},\n\nYour ${targetEmerg.type} emergency request at ${targetEmerg.location_text || 'reported location'} has been safely attended and cleared.\n\nRef: SOS-${id.slice(0, 8).toUpperCase()}\n\nCityZen Support`,
           category: 'emergency',
           refNumber: `SOS-${id.slice(0, 8).toUpperCase()}`
         }).catch(e => console.warn(e));
@@ -567,34 +567,27 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         console.warn("Could not insert notification into database:", notifErr);
       }
 
-      // 4. Prepare formal municipal dispatch email text (tuned for anti-spam deliverability)
-      const emailSubject = `CityZen Account Role Update for ${recipientName}: ${roleDetails.title}`;
-      const emailDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-      const emailBody = `Hello ${recipientName},
+      // 4. Prepare minimal, clean email text (tuned to prevent spam/phishing classification)
+      const emailSubject = `CityZen account update: ${roleDetails.title}`;
+      const emailBody = `Hi ${recipientName},
 
-Your user profile role on the CityZen Portal has been updated by the Municipal Administration.
+Your account role on CityZen has been updated to ${roleDetails.title}.
 
-Official Communique Ref Number & Date:
-Ref Number: ${refNumber}
-Date: ${emailDate}
+Account Details:
+• Role: ${roleDetails.title}
+• Clearance: ${roleDetails.clearance}
+• Account: ${recipientEmail || 'your email'}
+• Ref: ${refNumber}
 
-New Assigned Role & Designation:
-Assigned Role: ${newRole.toUpperCase()}
-Designation: ${roleDetails.title} (${roleDetails.clearance})
-
-Authorized Capabilities & Permissions:
+Included features:
 ${roleDetails.permissions.map(p => `• ${p}`).join('\n')}
 
-Login Link to CityZen Portal:
+Log in to CityZen:
 ${window.location.origin}
-Registered Email: ${recipientEmail || 'your email'}
 
----
-Sender: CityZen Portal Team
-CityZen Smart Municipal Governance Platform
-Contact: cityzen.system@gmail.com
-
-This is an automated administrative notification sent to ${recipientEmail || 'your email'} regarding your verified user account on the CityZen platform. If you have any questions or did not expect this change, please contact cityzen.system@gmail.com.`;
+Best regards,
+The CityZen Team
+cityzen.system@gmail.com`;
 
       loadMetricsAndData();
 

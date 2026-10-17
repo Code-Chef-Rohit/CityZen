@@ -144,15 +144,95 @@ export interface EmailDispatchResult {
   message: string;
 }
 
-/**
- * Automatically dispatches the official municipal role authority update email
- * in the background without requiring the admin to open an external mail client
- * or press Enter/Send manually.
- */
+export const CITYZEN_LOGO_URL = 'https://cityzen-one.netlify.app/logo.jpg';
+
+export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: string): string {
+  const logoUrl = CITYZEN_LOGO_URL;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityZen Account Update</title>
+</head>
+<body style="margin:0;padding:24px 16px;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;margin:0 auto;background:#1e293b;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <tr>
+      <td style="padding:32px 24px 18px;text-align:center;background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <img src="${logoUrl}" alt="CityZen Logo" width="80" height="80" style="border-radius:20px;border:2px solid rgba(56,189,248,0.4);box-shadow:0 0 20px rgba(56,189,248,0.25);display:inline-block;margin-bottom:12px;" />
+        <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">CityZen</h1>
+        <p style="color:#38bdf8;font-size:11px;margin:4px 0 0;text-transform:uppercase;letter-spacing:2px;font-weight:700;">One City · One App</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 24px 20px;">
+        <p style="font-size:15px;line-height:22px;color:#f8fafc;margin:0 0 14px;">
+          Hi <strong>${data.userName}</strong>,
+        </p>
+        <p style="font-size:13px;line-height:20px;color:#94a3b8;margin:0 0 20px;">
+          Your account role on the CityZen portal has been updated:
+        </p>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border-radius:16px;border:1px solid rgba(56,189,248,0.25);margin-bottom:20px;">
+          <tr>
+            <td style="padding:16px 20px;">
+              <span style="display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#38bdf8;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.2);padding:2px 8px;border-radius:6px;margin-bottom:6px;">
+                Assigned Role
+              </span>
+              <div style="font-size:17px;font-weight:800;color:#ffffff;margin-bottom:2px;">
+                ${data.roleTitle}
+              </div>
+              <div style="font-size:12px;color:#64748b;">
+                ${data.clearance}
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div style="margin-bottom:22px;">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin:0 0 10px;">
+            Included Features & Access:
+          </p>
+          <ul style="margin:0;padding-left:18px;font-size:12px;line-height:22px;color:#cbd5e1;">
+            ${data.permissions.map(p => `<li style="margin-bottom:3px;">${p}</li>`).join('')}
+          </ul>
+        </div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+          <tr>
+            <td align="center">
+              <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 32px;border-radius:12px;box-shadow:0 4px 14px rgba(2,132,199,0.35);">
+                Open CityZen Portal →
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;font-size:11px;color:#64748b;">
+          <tr>
+            <td style="padding:2px 0;">Account: <strong style="color:#cbd5e1;">${data.userEmail}</strong></td>
+            <td align="right" style="padding:2px 0;">Ref: <strong style="color:#cbd5e1;">${data.refNumber}</strong></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;font-size:10px;line-height:16px;color:#64748b;">
+        This automated notification was sent for your verified account on CityZen.<br>
+        For inquiries, reply to <a href="mailto:cityzen.system@gmail.com" style="color:#38bdf8;text-decoration:none;">cityzen.system@gmail.com</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): Promise<EmailDispatchResult> {
   const config = getEmailGatewayConfig();
   const dispatchId = `DISP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const timestamp = new Date().toISOString();
+  const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
+  const htmlEmail = buildRoleChangeHtmlEmail(data, portalUrl);
 
   if (!data.userEmail || !data.userEmail.includes('@')) {
     return {
@@ -194,8 +274,14 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
       body: data.body,
       official_content: data.body,
       details: data.body,
-      login_link: window.location.origin,
-      portal_url: window.location.origin,
+      html_message: htmlEmail,
+      html_content: htmlEmail,
+      message_html: htmlEmail,
+      body_html: htmlEmail,
+      logo_url: CITYZEN_LOGO_URL,
+      logo_img: `<img src="${CITYZEN_LOGO_URL}" alt="CityZen Logo" width="76" height="76" style="border-radius:18px;display:block;margin:0 auto 12px auto;" />`,
+      login_link: portalUrl,
+      portal_url: portalUrl,
       new_role: data.newRole.toUpperCase(),
       role: data.newRole.toUpperCase(),
       role_title: data.roleTitle,
@@ -309,9 +395,9 @@ export async function sendTestAutomatedEmail(targetEmail: string): Promise<Email
     clearance: 'Level-5 Executive Clearance',
     responsibilities: 'Diagnostic validation of CityZen Automated Municipal Mail Gateway.',
     permissions: ['Test Dispatch Access', 'Telemetry Inspection'],
-    refNumber: `BMC/CZ-TEST/${Math.floor(100000 + Math.random() * 900000)}`,
-    subject: '[TEST RUN] CityZen Automated Mail Gateway Verification',
-    body: `This is an automated test dispatch from the CityZen Municipal Operations Platform.\n\nTimestamp: ${new Date().toLocaleString()}\nGateway Status: ACTIVE\nDelivery: Automated Background Transmission (No manual confirmation required).`,
+    refNumber: `CZ-TEST-${Math.floor(100000 + Math.random() * 900000)}`,
+    subject: 'CityZen gateway verification test',
+    body: `Hi Officer in Command,\n\nThis is an automated test message from the CityZen platform.\n\nGateway status: Active\nTimestamp: ${new Date().toLocaleString()}\n\nBest regards,\nThe CityZen Team`,
   };
 
   return await sendAutomatedRoleChangeEmail(dummyData);
@@ -328,6 +414,61 @@ export interface CitizenNoticeEmailData {
   refNumber?: string;
 }
 
+export function buildCitizenNoticeHtmlEmail(data: CitizenNoticeEmailData, portalUrl: string, refNum: string): string {
+  const logoUrl = CITYZEN_LOGO_URL;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${data.title}</title>
+</head>
+<body style="margin:0;padding:24px 16px;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;margin:0 auto;background:#1e293b;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <tr>
+      <td style="padding:32px 24px 18px;text-align:center;background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <img src="${logoUrl}" alt="CityZen Logo" width="80" height="80" style="border-radius:20px;border:2px solid rgba(56,189,248,0.4);box-shadow:0 0 20px rgba(56,189,248,0.25);display:inline-block;margin-bottom:12px;" />
+        <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;">CityZen</h1>
+        <p style="color:#38bdf8;font-size:11px;margin:4px 0 0;text-transform:uppercase;letter-spacing:2px;font-weight:700;">One City · One App</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 24px 20px;">
+        <p style="font-size:15px;line-height:22px;color:#f8fafc;margin:0 0 14px;">
+          Hi <strong>${data.userName || 'Citizen'}</strong>,
+        </p>
+        <div style="background:#0f172a;border-radius:14px;border:1px solid rgba(255,255,255,0.08);padding:16px 18px;margin-bottom:20px;">
+          <h2 style="font-size:15px;color:#38bdf8;margin:0 0 8px;">${data.title}</h2>
+          <p style="font-size:13px;line-height:20px;color:#cbd5e1;margin:0;white-space:pre-line;">${data.message}</p>
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+          <tr>
+            <td align="center">
+              <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 32px;border-radius:12px;box-shadow:0 4px 14px rgba(2,132,199,0.35);">
+                Open CityZen Portal →
+              </a>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;font-size:11px;color:#64748b;">
+          <tr>
+            <td style="padding:2px 0;">Account: <strong style="color:#cbd5e1;">${data.userEmail}</strong></td>
+            <td align="right" style="padding:2px 0;">Ref: <strong style="color:#cbd5e1;">${refNum}</strong></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;font-size:10px;line-height:16px;color:#64748b;">
+        This automated notification was sent for your account on CityZen.<br>
+        For inquiries, reply to <a href="mailto:cityzen.system@gmail.com" style="color:#38bdf8;text-decoration:none;">cityzen.system@gmail.com</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 /**
  * Automatically dispatches official notifications and lifecycle updates
  * across all personas (Police SOS, BMC Grievance Resolution, Hospital Ambulance, Admin Actions)
@@ -337,7 +478,9 @@ export async function sendAutomatedCitizenNoticeEmail(data: CitizenNoticeEmailDa
   const config = getEmailGatewayConfig();
   const dispatchId = `DISP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const timestamp = new Date().toISOString();
-  const refNum = data.refNumber || `BMC/CZ-NOTIF/${Math.floor(100000 + Math.random() * 900000)}`;
+  const refNum = data.refNumber || `CZ-NOTIF-${Math.floor(100000 + Math.random() * 900000)}`;
+  const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
+  const htmlNotice = buildCitizenNoticeHtmlEmail(data, portalUrl, refNum);
 
   if (!data.userEmail || !data.userEmail.includes('@')) {
     return {
@@ -366,11 +509,18 @@ export async function sendAutomatedCitizenNoticeEmail(data: CitizenNoticeEmailDa
       message: data.message,
       message_body: data.message,
       content: data.message,
+      html_message: htmlNotice,
+      html_content: htmlNotice,
+      message_html: htmlNotice,
+      body_html: htmlNotice,
+      logo_url: CITYZEN_LOGO_URL,
+      logo_img: `<img src="${CITYZEN_LOGO_URL}" alt="CityZen Logo" width="76" height="76" style="border-radius:18px;display:block;margin:0 auto 12px auto;" />`,
       role_title: data.title,
-      new_role: (data.category || 'MUNICIPAL NOTICE').toUpperCase(),
+      new_role: (data.category || 'NOTICE').toUpperCase(),
       ref_number: refNum,
       dispatch_id: dispatchId,
-      portal_url: window.location.origin,
+      portal_url: portalUrl,
+      login_link: portalUrl,
       date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
     },
   };

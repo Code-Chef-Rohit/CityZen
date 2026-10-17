@@ -155,8 +155,8 @@ export default function StaffDashboard() {
               userEmail: targetCitizen.email,
               userName: targetCitizen.full_name || 'Citizen',
               title,
-              subject: `[EMERGENCY RESOLVED] ${dept} Incident Closure`,
-              message: `Dear ${targetCitizen.full_name || 'Citizen'},\n\n${msg}\n\nAll responding teams have cleared the incident. If you require further assistance, please contact the municipal emergency desk or call 112.\n\n${dept} · CityZen OS`,
+              subject: `CityZen: ${targetEmerg.type} emergency dispatch resolved`,
+              message: `Hi ${targetCitizen.full_name || 'Citizen'},\n\n${msg}\n\nAll responding teams have cleared the incident. If you require further assistance, contact emergency support or dial 112.\n\nBest regards,\n${dept} · CityZen`,
               category: 'emergency',
               refNumber: `SOS-${id.slice(0, 8).toUpperCase()}`
             }).catch(e => console.warn('Automated emergency email notice:', e));
