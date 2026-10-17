@@ -4,6 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL_15+-Read_Replica_Cluster-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
 > 🌐 **Live Production Portal:** [https://cityzen-one.netlify.app/](https://cityzen-one.netlify.app/)
 
@@ -57,6 +58,16 @@ CityZen is a production-grade, real-time municipal operating system and civic en
 
 ---
 
+### 5. 🗄️ High-Availability Read Replica & Read/Write Splitting Cluster (`src/lib/databaseReplicaRouter.ts`)
+* **Transparent Query Splitting**: Smart proxy architecture automatically routes read operations (`.select()`) to the dedicated Read Replica pool (with round-robin load distribution across multiple replicas), while routing write operations (`.insert()`, `.update()`, `.delete()`, `.upsert()`) directly to the Primary Write Leader.
+* **Zero Breaking Changes**: Works seamlessly across all 89+ database queries throughout the entire application without modifying existing code.
+* **Circuit-Breaker & Automatic Failover**: If a read replica fails, times out, or encounters a 5xx error, the router automatically replays the exact chained query on the Primary Leader with zero downtime and no client-side exceptions. Degraded nodes automatically enter a 30-second cooldown period before re-probing.
+* **JWT Session Propagation**: Uses custom `global.fetch` inside replica clients to pass the active user session token (`Authorization: Bearer <Token>`) from `primaryClient.auth.getSession()`, guaranteeing that all Row-Level Security (RLS) policies work identically on both Primary and Replicas.
+* **PostgreSQL WAL Replication Diagnostics RPC (`supabase/migrations/20261017150000_database_read_replica_diagnostics.sql`)**: Stored procedure `get_database_replication_status()` returns node role (`primary_leader` vs `read_replica`), active WAL LSN positions (`pg_current_wal_lsn` / `pg_last_wal_replay_lsn`), streaming replication lag from `pg_stat_replication`, database size, and active connections.
+* **Admin Cluster & Replica Monitoring Console**: Dedicated **"Cluster & Replicas"** tab in the Admin Dashboard featuring live cluster topology cards, interactive latency benchmarking tool (`testClusterLatency`), traffic split ratios (% Read vs % Write), failover counters, a live 30-query routing log, and dynamic replica URL testing.
+
+---
+
 ## 🛠️ Technology Stack
 
 | Layer | Technology |
@@ -66,7 +77,7 @@ CityZen is a production-grade, real-time municipal operating system and civic en
 | **Icons & Visuals** | Lucide Icons, Leaflet.js (OpenStreetMap) |
 | **Machine Learning** | Client-side Computer Vision (Perceptual pHash, Haversine Matrix, Color Entropy) |
 | **Live Telemetry** | Open-Meteo Meteorological & Air Quality Station APIs |
-| **Backend & Database** | Supabase (PostgreSQL 15+, Row Level Security, RPC Stored Procedures) |
+| **Backend & Database** | Supabase (PostgreSQL 15+, Transparent Read/Write Replica Splitting, Circuit-Breaker Failover, Row Level Security, RPC Stored Procedures) |
 
 ---
 
@@ -87,10 +98,15 @@ npm install
 ```
 
 ### 3. Environment Variables
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (or copy from `.env.example`):
 ```env
+# Primary Leader (Writes, Auth, Storage, Realtime)
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-public-api-key
+
+# Dedicated Read Replica (or comma-separated list of replica endpoints)
+# If left matching VITE_SUPABASE_URL or omitted, runs in Primary Combined Mode
+VITE_SUPABASE_READ_REPLICA_URL=https://your-project-id.supabase.co
 ```
 
 ### 4. Run Dev Server
@@ -322,6 +338,29 @@ CREATE POLICY "notifications_policy" ON public.notifications FOR ALL TO authenti
 5. **7-Day Grace Period Scheduled Deletion**: Once past the 3-day lock, deletion enters a mandatory 7-day waiting period. Citizens receive automated official confirmation emails, view real-time countdown telemetry on their profile, and can cancel the request with one click.
 6. **Super Administrator Immediate Purge Override**: Super Admins possess direct override capabilities to immediately purge accounts and associated records without waiting.
 7. **Admin Timing Telemetry & Rescheduling**: Super Admins can audit all scheduled deletions, view exact requested timestamps and remaining grace periods, and modify or reschedule execution timing (`+1d`, `+3d`, `+7d`, `+14d`, custom datetime-local) with automated citizen email notifications.
+8. **Enterprise Read/Write Isolation & Failover Guarantee**: Read traffic is isolated from write workloads, protecting transactional operations (e.g. SOS alerts, payments, grievance submissions) from heavy read contention. In the event of replica degradation, queries automatically fail over to the primary leader without user disruption.
+
+---
+
+## 🗄️ Database Clustering & Read Replica Setup Guide
+
+CityZen features built-in support for dedicated Supabase/PostgreSQL Read Replicas:
+
+### 1. Provisioning a Read Replica in Supabase Cloud
+1. Navigate to your [Supabase Project Dashboard](https://supabase.com/dashboard).
+2. Go to **Settings** $\rightarrow$ **Database** $\rightarrow$ **Read Replicas**.
+3. Click **Deploy Read Replica** and select your closest AWS region (e.g. `ap-south-1` for Mumbai).
+4. Copy the assigned Read Replica URL.
+
+### 2. Attaching to CityZen
+You can attach the replica in two ways:
+* **Option A (Environment File)**: Set `VITE_SUPABASE_READ_REPLICA_URL=<Replica-URL>` in your `.env` file.
+* **Option B (Admin Dashboard)**: Open the **Cluster & Replicas** tab in the Super Admin Dashboard and enter the URL in the **Connect Dedicated Cloud Read Replica** field.
+
+### 3. PostgreSQL Replication Diagnostics
+Run the diagnostic migration located at:
+[`supabase/migrations/20261017150000_database_read_replica_diagnostics.sql`](file:///supabase/migrations/20261017150000_database_read_replica_diagnostics.sql)
+in your Supabase SQL Editor. This enables the Super Admin Dashboard to inspect live WAL positions, database size, and streaming replication lag in real time.
 
 ---
 
