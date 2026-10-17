@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   Sun, Cloud, CloudRain, CloudLightning, Droplets, Wind, Thermometer, Leaf, Siren, ChevronRight,
-  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge, User, CreditCard, FileText, Map as MapIcon
+  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge, User, CreditCard, FileText, Map as MapIcon,
+  X, ExternalLink, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +25,13 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
   const [complaints, setComplaints] = useState<Complaint[]>(() => cached?.complaints || []);
   const [notifications, setNotifications] = useState<Notification[]>(() => cached?.notifications || []);
   const [loading, setLoading] = useState<boolean>(() => !cached);
+  const [selectedAlert, setSelectedAlert] = useState<Notification | null>(null);
+  const [expandedAlerts, setExpandedAlerts] = useState<Record<string, boolean>>({});
+
+  const toggleAlertExpand = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setExpandedAlerts(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const [realWeather, setRealWeather] = useState<{
     temp: number;
@@ -152,7 +160,7 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
   const firstName = rawName.trim().split(' ')[0] || 'Citizen';
 
   return (
-    <div className="min-h-[100dvh] lg:min-h-0 lg:h-[calc(100vh-5.5rem)] w-full lg:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 pb-24 lg:pb-8 lg:shadow-2xl lg:my-3 lg:rounded-3xl overflow-y-auto border-0 lg:border lg:border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100">
+    <div className="min-h-[100dvh] lg:min-h-0 lg:h-[calc(100vh-5.5rem)] w-full lg:max-w-5xl mx-auto bg-ink-50 dark:bg-slate-950 pb-36 sm:pb-40 lg:pb-16 lg:shadow-2xl lg:my-3 lg:rounded-3xl overflow-y-auto border-0 lg:border lg:border-slate-800/40 animate-fade-in text-ink-800 dark:text-slate-100">
       {/* Hero header */}
       <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800 text-white px-4 sm:px-6 pt-8 sm:pt-12 pb-16 sm:pb-20 overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -362,36 +370,181 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
       </div>
 
       {/* Recent notifications */}
-      <div className="px-5 mt-6">
+      <div className="px-4 sm:px-5 mt-6">
         <SectionHeader title="Recent Alerts" onMore={() => onTab('notifications')} />
         {loading ? (
           <SkeletonRow />
         ) : notifications.length === 0 ? (
-          <EmptyHint text="No alerts right now." />
+          <EmptyHint text="No alerts right now. You are all caught up!" />
         ) : (
-          <div className="space-y-2.5">
-            {notifications.map((n) => (
-              <div key={n.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  n.type === 'emergency' ? 'bg-error-500/10' :
-                  n.type === 'bill' ? 'bg-secondary-100 dark:bg-secondary-950/40' :
-                  n.type === 'complaint' ? 'bg-accent-500/10' : 'bg-primary-100 dark:bg-primary-950/40'
-                }`}>
-                  {n.type === 'emergency' ? <Siren className="w-4 h-4 text-error-500" /> :
-                   n.type === 'bill' ? <Droplets className="w-4 h-4 text-secondary-500" /> :
-                   n.type === 'complaint' ? <AlertCircle className="w-4 h-4 text-accent-500" /> :
-                   <Bell className="w-4 h-4 text-primary-600" />}
+          <div className="space-y-3">
+            {notifications.map((n) => {
+              const isLong = n.message && n.message.length > 180;
+              const isExpanded = expandedAlerts[n.id];
+
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => setSelectedAlert(n)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.99] touch-manipulation group text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-sm ${
+                      n.type === 'emergency' ? 'bg-error-500/10 text-error-500' :
+                      n.type === 'bill' ? 'bg-secondary-100 text-secondary-500 dark:bg-secondary-950/40' :
+                      n.type === 'complaint' ? 'bg-accent-500/10 text-accent-500' : 'bg-primary-100 text-primary-600 dark:bg-primary-950/40'
+                    }`}>
+                      {n.type === 'emergency' ? <Siren className="w-5 h-5" /> :
+                       n.type === 'bill' ? <Droplets className="w-5 h-5" /> :
+                       n.type === 'complaint' ? <AlertCircle className="w-5 h-5" /> :
+                       <Bell className="w-5 h-5" />}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-bold text-ink-800 dark:text-slate-100 text-sm leading-snug break-words [overflow-wrap:anywhere]">
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-ink-400 dark:text-slate-500 font-mono shrink-0 whitespace-nowrap">
+                          {timeAgo(n.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Full Message with whitespace-pre-line preserved */}
+                      {n.message && (
+                        <div className="mt-1.5">
+                          <p className={`text-xs text-ink-600 dark:text-slate-300 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
+                            isLong && !isExpanded ? 'line-clamp-3' : ''
+                          }`}>
+                            {n.message}
+                          </p>
+
+                          {isLong && (
+                            <button
+                              type="button"
+                              onClick={(e) => toggleAlertExpand(n.id, e)}
+                              className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:underline mt-1.5 inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              {isExpanded ? 'Show less ▲' : 'Read full message ▼'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Card Footer with alert category tag and action prompt */}
+                      <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {n.type} notice
+                        </span>
+                        <span className="text-[11px] font-semibold text-primary-600 dark:text-primary-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                          {['bill', 'complaint', 'emergency'].includes(n.type) ? 'View Details' : 'View Notice'} <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-ink-800 dark:text-slate-100 text-sm break-words">{n.title}</p>
-                  <p className="text-xs text-ink-500 dark:text-slate-400 line-clamp-2 break-words [overflow-wrap:anywhere]">{n.message}</p>
-                  <p className="text-[10px] text-ink-400 dark:text-slate-500 mt-1 font-mono">{timeAgo(n.created_at)}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Alert Detail Modal */}
+      {selectedAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in" 
+            onClick={() => setSelectedAlert(null)} 
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-scale-up text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                  selectedAlert.type === 'emergency' ? 'bg-error-500/10 text-error-500' :
+                  selectedAlert.type === 'bill' ? 'bg-secondary-100 text-secondary-500 dark:bg-secondary-950/40' :
+                  selectedAlert.type === 'complaint' ? 'bg-accent-500/10 text-accent-500' : 'bg-primary-100 text-primary-600 dark:bg-primary-950/40'
+                }`}>
+                  {selectedAlert.type === 'emergency' ? <Siren className="w-5 h-5" /> :
+                   selectedAlert.type === 'bill' ? <Droplets className="w-5 h-5" /> :
+                   selectedAlert.type === 'complaint' ? <AlertCircle className="w-5 h-5" /> :
+                   <Bell className="w-5 h-5" />}
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {selectedAlert.type} alert
+                  </span>
+                  <p className="text-[11px] text-ink-400 dark:text-slate-500 mt-0.5 font-mono">
+                    {new Date(selectedAlert.created_at).toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })} ({timeAgo(selectedAlert.created_at)})
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-base sm:text-lg text-ink-900 dark:text-white leading-snug break-words [overflow-wrap:anywhere]">
+                {selectedAlert.title}
+              </h3>
+              <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/80 max-h-64 overflow-y-auto">
+                <p className="text-xs sm:text-sm text-ink-700 dark:text-slate-200 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                  {selectedAlert.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              {['bill', 'complaint', 'emergency'].includes(selectedAlert.type) ? (
+                <button
+                  onClick={() => {
+                    const t = selectedAlert.type;
+                    setSelectedAlert(null);
+                    if (t === 'bill') onOpenService('bills');
+                    else if (t === 'complaint') onOpenService('complaints');
+                    else if (t === 'emergency') onTab('emergency');
+                  }}
+                  className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-primary-500/20"
+                >
+                  <span>Open {selectedAlert.type === 'bill' ? 'Bills' : selectedAlert.type === 'complaint' ? 'Complaint' : 'Emergency'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedAlert(null);
+                    onTab('notifications');
+                  }}
+                  className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-primary-500/20"
+                >
+                  <span>View All Alerts</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safe bottom spacer ensuring full visibility above mobile navigation bar */}
+      <div className="h-10 sm:h-12 w-full" />
     </div>
   );
 }
@@ -416,9 +569,13 @@ function StatCard({ icon: Icon, label, value, unit, color }: {
 function SectionHeader({ title, onMore }: { title: string; onMore: () => void }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h2 className="font-bold text-ink-900">{title}</h2>
-      <button onClick={onMore} className="text-xs text-primary-600 font-semibold flex items-center gap-0.5">
-        See all <ChevronRight className="w-3.5 h-3.5" />
+      <h2 className="font-bold text-ink-900 dark:text-white text-sm sm:text-base">{title}</h2>
+      <button 
+        onClick={onMore} 
+        className="text-xs text-primary-600 dark:text-primary-400 font-bold flex items-center gap-1 hover:underline cursor-pointer py-1 px-2.5 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-950/40 active:scale-95 transition-all touch-manipulation"
+      >
+        <span>See all</span>
+        <ChevronRight className="w-3.5 h-3.5" />
       </button>
     </div>
   );

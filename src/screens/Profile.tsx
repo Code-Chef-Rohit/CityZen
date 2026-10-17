@@ -184,7 +184,7 @@ export function Notifications({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-2.5 pb-24 lg:pb-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-2.5 pb-36 lg:pb-12">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -247,7 +247,7 @@ export function Notifications({
                     </div>
                     
                     {n.message && (
-                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed break-words [overflow-wrap:anywhere]">
+                      <p className="text-[11px] sm:text-xs text-ink-600 dark:text-slate-300 mt-1 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
                         {n.message}
                       </p>
                     )}
