@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Droplets, Zap, Leaf, Landmark, CheckCircle2, Clock, Receipt,
   CreditCard, Wallet, Building, X, Plus, Trash2, AlertCircle,
@@ -785,21 +785,39 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
   // Net banking state
   const [selectedBank, setSelectedBank] = useState('sbi');
 
-  // Active VPA calculation
-  const currentPayee = (showCustomVpaInput && isValidVpa(customVpa))
-    ? { vpa: customVpa.trim(), name: 'Custom Registered UPI Payee' }
-    : (DEFAULT_MUNICIPAL_VPAS[selectedVpaIndex] || DEFAULT_MUNICIPAL_VPAS[0] || { vpa: 'bmc.odisha@sbi', name: 'Bhubaneswar Municipal Corporation' });
+  // Active VPA calculation memoized to prevent recreation on every render
+  const currentPayee = useMemo(() => {
+    if (showCustomVpaInput && isValidVpa(customVpa)) {
+      return { vpa: customVpa.trim(), name: 'Custom Registered UPI Payee' };
+    }
+    return (
+      DEFAULT_MUNICIPAL_VPAS[selectedVpaIndex] ||
+      DEFAULT_MUNICIPAL_VPAS[0] || {
+        vpa: 'bmc.odisha@sbi',
+        name: 'Bhubaneswar Municipal Corporation',
+      }
+    );
+  }, [showCustomVpaInput, customVpa, selectedVpaIndex]);
 
   const safeAmount = Number(bill.amount) > 0 ? Number(bill.amount) : 0;
   const safePeriod = bill.period || 'General Municipal Utility';
 
-  // NPCI-compliant UPI URI
-  const upiUri = buildNpciUpiUri({
-    pa: currentPayee.vpa,
-    pn: currentPayee.name,
-    am: safeAmount,
-    tn: `Bill Settlement - ${safePeriod}`
-  });
+  // Stable transaction reference derived deterministically from the bill
+  const transactionRef = useMemo(() => {
+    const rawId = (bill?.id || 'BILL').toString().replace(/[^a-zA-Z0-9]/g, '');
+    return `CZ${rawId.slice(-12) || 'REF'}`;
+  }, [bill?.id]);
+
+  // NPCI-compliant UPI URI memoized with stable references
+  const upiUri = useMemo(() => {
+    return buildNpciUpiUri({
+      pa: currentPayee.vpa,
+      pn: currentPayee.name,
+      am: safeAmount,
+      tn: `Bill Settlement - ${safePeriod}`,
+      tr: transactionRef,
+    });
+  }, [currentPayee.vpa, currentPayee.name, safeAmount, safePeriod, transactionRef]);
 
   // Generate offline QR Code whenever URI changes
   useEffect(() => {
@@ -937,7 +955,7 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
     setPaymentError(null);
 
     if (method === 'card') {
-      const cleanNum = cardNumber.replace(/\s/g, '');
+      const cleanNum = cardNumber.replace(/\D/g, '');
       if (cleanNum.length < 16) {
         setPaymentError('Please enter a valid 16-digit card number.');
         return;
@@ -1341,7 +1359,7 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
               <div className="absolute right-4 top-4 text-xs font-black text-slate-400 italic">VISA / RuPay</div>
               <p className="text-[8px] text-slate-400">CARDNUMBER</p>
               <p className="text-sm font-bold tracking-widest mt-1">
-                {cardNumber.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim() || '•••• •••• •••• ••••'}
+                {cardNumber ? cardNumber.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 ') : '•••• •••• •••• ••••'}
               </p>
               <div className="flex justify-between mt-4">
                 <div>
@@ -1361,8 +1379,8 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
                 type="text"
                 maxLength={19}
                 placeholder="4111 2222 3333 4444"
-                value={cardNumber.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim()}
-                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
+                value={cardNumber ? cardNumber.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 ') : ''}
+                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:border-primary-500 text-slate-800 dark:text-white font-mono"
               />
             </div>
@@ -1376,8 +1394,10 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
                   placeholder="MM/YY"
                   value={cardExpiry}
                   onChange={(e) => {
-                    let val = e.target.value;
-                    if (val.length === 2 && !val.includes('/')) val += '/';
+                    let val = e.target.value.replace(/[^\d/]/g, '').slice(0, 5);
+                    if (val.length === 2 && !val.includes('/') && e.target.value.length > cardExpiry.length) {
+                      val += '/';
+                    }
                     setCardExpiry(val);
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:border-primary-500 text-slate-800 dark:text-white font-mono"
@@ -1390,7 +1410,7 @@ function PaymentFlow({ bill, onPaid }: { bill: Bill; onPaid: (details?: { method
                   maxLength={3}
                   placeholder="•••"
                   value={cardCvv}
-                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:border-primary-500 tracking-wider text-slate-800 dark:text-white font-mono"
                 />
               </div>

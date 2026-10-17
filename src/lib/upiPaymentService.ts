@@ -76,11 +76,12 @@ export function buildNpciUpiUri(details?: Partial<UpiPaymentDetails>): string {
   const numAm = Number(details.am);
   const cleanAm = (!isNaN(numAm) && numAm >= 0 ? numAm : 0).toFixed(2);
   const cleanTn = encodeURIComponent(sanitizeUpiNote(details.tn || 'Municipal Utility Bill'));
-  const tr = details.tr || `CZ${Date.now()}`;
+  const tr = details.tr ? details.tr.trim() : undefined;
   const mc = details.mc || '9399'; // 9399 = Government/Municipal Services
 
   // Standard NPCI UPI URI string format with literal @ in pa
-  return `upi://pay?pa=${cleanPa}&pn=${cleanPn}&mc=${mc}&tr=${tr}&am=${cleanAm}&cu=INR&tn=${cleanTn}&mode=02`;
+  const trPart = tr ? `&tr=${encodeURIComponent(tr)}` : '';
+  return `upi://pay?pa=${cleanPa}&pn=${cleanPn}&mc=${mc}${trPart}&am=${cleanAm}&cu=INR&tn=${cleanTn}&mode=02`;
 }
 
 /**
