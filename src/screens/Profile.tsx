@@ -20,6 +20,7 @@ import {
   DELETION_REGISTRATION_LOCK_DAYS,
   DELETION_WAIT_DAYS
 } from '@/lib/deletionService';
+import { getCachedNotifications, setCachedNotifications } from '@/lib/screenDataCache';
 
 const typeConfig: Record<NotificationType, { icon: typeof Bell; bg: string; color: string }> = {
   emergency: { icon: Siren, bg: 'bg-error-500/10 text-error-500 dark:bg-error-500/20', color: 'text-error-500' },
@@ -40,30 +41,45 @@ export function Notifications({
   onRefreshCount?: () => void;
 }) {
   const { profile } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedNotifications(profile?.id);
+  const [notifications, setNotifications] = useState<Notification[]>(() => cached || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
   const [filter, setFilter] = useState<'all' | 'unread' | 'bill' | 'emergency' | 'complaint'>('all');
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!profile?.id) return;
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(40);
-    setNotifications(data ?? []);
-    setLoading(false);
+    if (!silent && !getCachedNotifications(profile.id)) {
+      setLoading(true);
+    }
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(40);
+      if (data) {
+        setCachedNotifications(data, profile.id);
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.warn("Notifications fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    load();
+    const hasCache = !!getCachedNotifications(profile?.id);
+    load(hasCache);
   }, [profile?.id]);
 
   const markAllAsRead = async () => {
     if (!profile?.id) return;
     await supabase.from('notifications').update({ read: true }).eq('user_id', profile.id).eq('read', false);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    setCachedNotifications(updated, profile.id);
     onRefreshCount?.();
   };
 
@@ -72,21 +88,27 @@ export function Notifications({
     if (confirm('Are you sure you want to delete all civic alerts?')) {
       await supabase.from('notifications').delete().eq('user_id', profile.id);
       setNotifications([]);
+      setCachedNotifications([], profile.id);
       onRefreshCount?.();
     }
   };
 
   const deleteOne = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    if (!profile?.id) return;
     await supabase.from('notifications').delete().eq('id', id);
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    const updated = notifications.filter(n => n.id !== id);
+    setNotifications(updated);
+    setCachedNotifications(updated, profile.id);
     onRefreshCount?.();
   };
 
   const handleNotificationClick = async (n: Notification) => {
-    if (!n.read) {
+    if (!n.read && profile?.id) {
       await supabase.from('notifications').update({ read: true }).eq('id', n.id);
-      setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+      const updated = notifications.map(item => item.id === n.id ? { ...item, read: true } : item);
+      setNotifications(updated);
+      setCachedNotifications(updated, profile.id);
       onRefreshCount?.();
     }
 
@@ -166,7 +188,7 @@ export function Notifications({
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-20 skeleton border border-slate-100 dark:border-slate-800" />
+              <div key={i} className="rounded-2xl h-20 skeleton border border-slate-200/50 dark:border-slate-800/60" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -189,7 +211,7 @@ export function Notifications({
                 <div
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3 relative group cursor-pointer ${
+                  className={`w-full bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3 relative group cursor-pointer active:scale-[0.99] touch-manipulation ${
                     !n.read 
                       ? 'border-primary-500/50 bg-primary-50/15 dark:bg-primary-950/20 ring-1 ring-primary-500/20' 
                       : 'border-slate-100 dark:border-slate-800'
@@ -217,10 +239,10 @@ export function Notifications({
 
                       <button
                         onClick={(e) => deleteOne(e, n.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95 transition-all cursor-pointer shrink-0 -mt-1 -mr-1"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-ink-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 active:scale-90 transition-all cursor-pointer shrink-0 -mt-1 -mr-1 touch-manipulation"
                         title="Dismiss alert"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                     

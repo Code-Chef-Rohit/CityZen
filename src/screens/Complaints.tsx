@@ -28,11 +28,13 @@ import {
   getHammingDistance, 
   verifyImageAuthenticity 
 } from '@/lib/mlImageVerification';
+import { getCachedComplaints, setCachedComplaints } from '@/lib/screenDataCache';
 
 export function Complaints({ onBack, initialCategory }: { onBack: () => void; initialCategory?: ComplaintCategory }) {
   const { session } = useAuth();
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedComplaints(session?.user?.id);
+  const [complaints, setComplaints] = useState<Complaint[]>(() => cached || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
   const [complaintTab, setComplaintTab] = useState<'all' | 'my'>('all');
   const [showNew, setShowNew] = useState(!!initialCategory);
   const [selected, setSelected] = useState<Complaint | null>(null);
@@ -41,18 +43,30 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved'>('all');
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!session?.user) return;
-    const { data } = await supabase
-      .from('complaints')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setComplaints(data ?? []);
-    setLoading(false);
+    if (!silent && !getCachedComplaints(session.user.id)) {
+      setLoading(true);
+    }
+    try {
+      const { data } = await supabase
+        .from('complaints')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (data) {
+        setCachedComplaints(data, session.user.id);
+        setComplaints(data);
+      }
+    } catch (err) {
+      console.warn("Complaints fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    load();
+    const hasCache = !!getCachedComplaints(session?.user?.id);
+    load(hasCache);
   }, [session]);
 
   useEffect(() => {
@@ -170,7 +184,7 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
 
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded-2xl h-24 skeleton" />)}
+            {[1, 2, 3].map((i) => <div key={i} className="rounded-2xl h-24 skeleton border border-slate-200/50 dark:border-slate-800/60" />)}
           </div>
         ) : displayedComplaints.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center border border-slate-100 dark:border-slate-800 dark:bg-slate-900">

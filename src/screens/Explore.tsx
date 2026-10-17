@@ -18,15 +18,20 @@ interface ExploreProps {
   onOpenService: (serviceId: string) => void;
 }
 
+let cachedServices: Service[] | null = null;
+
 export function Explore({ onBack, onOpenService }: ExploreProps) {
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<Service[]>(() => cachedServices || []);
   const [query, setQuery] = useState('');
   const [activeCat, setActiveCat] = useState<string>('All');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => !cachedServices);
 
   useEffect(() => {
     supabase.from('services').select('*').order('category').then(({ data }: any) => {
-      setServices(data ?? []);
+      if (data) {
+        cachedServices = data;
+        setServices(data);
+      }
       setLoading(false);
     });
   }, []);
@@ -79,7 +84,7 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 h-32 skeleton" />
+              <div key={i} className="rounded-2xl p-4 h-32 skeleton border border-slate-200/50 dark:border-slate-800/60" />
             ))}
           </div>
         ) : (

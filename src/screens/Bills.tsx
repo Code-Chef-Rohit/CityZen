@@ -19,6 +19,7 @@ import {
   DEFAULT_MUNICIPAL_VPAS, isValidVpa, playPaymentChime, playScannerBeep,
   sanitizeUpiNote
 } from '@/lib/upiPaymentService';
+import { getCachedBills, setCachedBills } from '@/lib/screenDataCache';
 
 const typeConfig: Record<BillType, { icon: typeof Droplets; color: string; bg: string; label: string }> = {
   water: { icon: Droplets, color: 'text-secondary-500', bg: 'bg-secondary-100 dark:bg-secondary-950/40', label: 'Water Supply' },
@@ -51,8 +52,9 @@ const billers = [
 
 export function Bills({ onBack, initialType }: { onBack: () => void; initialType?: BillType }) {
   const { session, profile } = useAuth();
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedBills(session?.user?.id);
+  const [bills, setBills] = useState<Bill[]>(() => cached || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('unpaid');
   const [payBill, setPayBill] = useState<Bill | null>(null);
   const [viewReceiptBill, setViewReceiptBill] = useState<Bill | null>(null);
@@ -77,8 +79,11 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
   const [error, setError] = useState<string | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!session?.user) return;
+    if (!silent && !getCachedBills(session.user.id)) {
+      setLoading(true);
+    }
     try {
       const { data, error: queryErr } = await supabase
         .from('bills')
@@ -89,17 +94,21 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
         console.warn('Supabase bills query error:', queryErr);
         setDbError(queryErr.message);
       } else {
-        setBills(data ?? []);
+        const list = data ?? [];
+        setBills(list);
+        setCachedBills(list, session.user.id);
         setDbError(null);
       }
     } catch (err: any) {
       setDbError(err.message || 'Failed to query database schema cache.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    load();
+    const hasCache = !!getCachedBills(session?.user?.id);
+    load(hasCache);
   }, [session]);
 
   useEffect(() => {
@@ -407,7 +416,7 @@ export function Bills({ onBack, initialType }: { onBack: () => void; initialType
       <div className="px-4 pb-6">
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-24 skeleton border border-slate-100 dark:border-slate-800" />)}
+            {[1, 2, 3].map((i) => <div key={i} className="rounded-2xl h-24 skeleton border border-slate-200/50 dark:border-slate-800/60" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-8 text-center shadow-sm">

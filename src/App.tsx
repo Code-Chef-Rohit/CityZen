@@ -16,6 +16,7 @@ import { Notifications, Profile } from '@/screens/Profile';
 import StaffDashboard from '@/screens/StaffDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
 import { supabase, isConfigured } from '@/lib/supabase';
+import { preloadCitizenData } from '@/lib/screenDataCache';
 
 type Screen =
   | { name: 'home' }
@@ -59,6 +60,9 @@ function AppContent() {
 
   useEffect(() => {
     refreshUnreadCount();
+    if (profile?.id) {
+      preloadCitizenData(profile.id);
+    }
     const interval = setInterval(refreshUnreadCount, 10000);
     return () => clearInterval(interval);
   }, [profile?.id, screen.name]);

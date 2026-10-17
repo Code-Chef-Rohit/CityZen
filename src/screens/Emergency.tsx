@@ -11,6 +11,7 @@ import { Button } from '@/components/Button';
 import { Modal } from '@/components/Modal';
 import { timeAgo } from '@/lib/utils';
 import type { EmergencyRequest, EmergencyType } from '@/lib/types';
+import { getCachedEmergency, setCachedEmergency } from '@/lib/screenDataCache';
 
 const types: { value: EmergencyType; label: string; icon: typeof Siren; color: string; bg: string; phone: string; desc: string }[] = [
   { value: 'police', label: 'Police 100', icon: Shield, color: 'text-secondary-600', bg: 'bg-secondary-600', phone: '100', desc: 'Crimes, break-ins, physical threats' },
@@ -40,8 +41,9 @@ interface AIProtocolStep {
 
 export function Emergency({ onBack }: { onBack: () => void }) {
   const { session, profile } = useAuth();
-  const [requests, setRequests] = useState<EmergencyRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedEmergency(session?.user?.id);
+  const [requests, setRequests] = useState<EmergencyRequest[]>(() => cached || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved'>('all');
   const [confirmType, setConfirmType] = useState<EmergencyType | null>(null);
   const [active, setActive] = useState<EmergencyRequest | null>(null);
@@ -75,20 +77,32 @@ export function Emergency({ onBack }: { onBack: () => void }) {
   const [callInput, setCallInput] = useState('');
   const [callStatus, setCallStatus] = useState<'ringing' | 'connected' | 'ended'>('ringing');
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!session?.user) return;
-    const { data } = await supabase
-      .from('emergency_requests')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(6);
-    setRequests(data ?? []);
-    setLoading(false);
+    if (!silent && !getCachedEmergency(session.user.id)) {
+      setLoading(true);
+    }
+    try {
+      const { data } = await supabase
+        .from('emergency_requests')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      if (data) {
+        setRequests(data);
+        setCachedEmergency(data, session.user.id);
+      }
+    } catch (err) {
+      console.warn("Emergency requests fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    load();
+    const hasCache = !!getCachedEmergency(session?.user?.id);
+    load(hasCache);
   }, [session]);
 
   // Immediately request current GPS position upon opening Emergency screen
@@ -728,7 +742,7 @@ export function Emergency({ onBack }: { onBack: () => void }) {
           if (loading) {
             return (
               <div className="space-y-2">
-                {[1, 2].map((i) => <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl h-16 skeleton" />)}
+                {[1, 2].map((i) => <div key={i} className="rounded-2xl h-16 skeleton border border-slate-200/50 dark:border-slate-800/60" />)}
               </div>
             );
           }

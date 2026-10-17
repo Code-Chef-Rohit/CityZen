@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { EnvReading, Bill, Complaint, Notification } from '@/lib/types';
 import { formatINR, timeAgo } from '@/lib/utils';
 import type { Tab } from '@/components/BottomNav';
+import { getCachedHome, setCachedHome } from '@/lib/screenDataCache';
 
 interface HomeProps {
   onTab: (tab: Tab) => void;
@@ -18,10 +19,11 @@ interface HomeProps {
 
 export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomeProps) {
   const { profile, session } = useAuth();
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedHome(profile?.id);
+  const [bills, setBills] = useState<Bill[]>(() => cached?.bills || []);
+  const [complaints, setComplaints] = useState<Complaint[]>(() => cached?.complaints || []);
+  const [notifications, setNotifications] = useState<Notification[]>(() => cached?.notifications || []);
+  const [loading, setLoading] = useState<boolean>(() => !cached);
 
   const [realWeather, setRealWeather] = useState<{
     temp: number;
@@ -130,9 +132,15 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
         notifQuery,
       ]);
       if (cancelled) return;
-      setBills(billsRes.data ?? []);
-      setComplaints(complaintsRes.data ?? []);
-      setNotifications(notifRes.data ?? []);
+      const bData = billsRes.data ?? [];
+      const cData = complaintsRes.data ?? [];
+      const nData = notifRes.data ?? [];
+      setBills(bData);
+      setComplaints(cData);
+      setNotifications(nData);
+      if (profile?.id) {
+        setCachedHome({ bills: bData, complaints: cData, notifications: nData }, profile.id);
+      }
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -189,30 +197,30 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
           </div>
 
           {/* Weather + AQI strip */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mt-4 sm:mt-5">
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3 border border-white/10">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-3.5 sm:mt-5">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 border border-white/10">
               {realWeather.icon === 'sun' ? (
-                <Sun className="w-8 h-8 text-amber-300 shrink-0" />
+                <Sun className="w-6 h-6 sm:w-8 sm:h-8 text-amber-300 shrink-0" />
               ) : realWeather.icon === 'rain' ? (
-                <CloudRain className="w-8 h-8 text-sky-200 shrink-0" />
+                <CloudRain className="w-6 h-6 sm:w-8 sm:h-8 text-sky-200 shrink-0" />
               ) : realWeather.icon === 'thunder' ? (
-                <CloudLightning className="w-8 h-8 text-amber-400 shrink-0" />
+                <CloudLightning className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400 shrink-0" />
               ) : (
-                <Cloud className="w-8 h-8 text-sky-200 shrink-0" />
+                <Cloud className="w-6 h-6 sm:w-8 sm:h-8 text-sky-200 shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold leading-none">{liveSensors.temp}°C</p>
-                <p className="text-primary-100/80 text-[11px] sm:text-xs mt-0.5 font-medium truncate">
-                  {realWeather.condition} · Feels {liveSensors.feelsLike}°C
+                <p className="text-lg sm:text-2xl font-bold leading-none">{liveSensors.temp}°C</p>
+                <p className="text-primary-100/80 text-[10px] sm:text-xs mt-1 font-medium truncate">
+                  {realWeather.condition}
                 </p>
               </div>
             </div>
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3 border border-white/10">
-              <Wind className="w-8 h-8 text-primary-200 shrink-0" />
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3 border border-white/10">
+              <Wind className="w-6 h-6 sm:w-8 sm:h-8 text-primary-200 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold leading-none">{liveSensors.aqi}</p>
-                <p className="text-primary-100/90 text-[11px] sm:text-xs mt-0.5 font-semibold flex items-center gap-1.5 truncate">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${getAqiCategory(liveSensors.aqi).color.includes('emerald') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <p className="text-lg sm:text-2xl font-bold leading-none">{liveSensors.aqi}</p>
+                <p className="text-primary-100/90 text-[10px] sm:text-xs mt-1 font-semibold flex items-center gap-1 truncate">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getAqiCategory(liveSensors.aqi).color.includes('emerald') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                   AQI · {getAqiCategory(liveSensors.aqi).label}
                 </p>
               </div>
@@ -295,7 +303,7 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
               <button
                 key={bill.id}
                 onClick={() => onOpenService('bills')}
-                className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 text-left shadow-sm hover:shadow-md transition-shadow"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3 text-left shadow-sm hover:shadow-md transition-all active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   bill.type === 'water' ? 'bg-secondary-100' : bill.type === 'electricity' ? 'bg-accent-500/10' : 'bg-primary-100'
@@ -331,7 +339,7 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
               <button
                 key={c.id}
                 onClick={() => onOpenService('complaints')}
-                className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 text-left shadow-sm hover:shadow-md transition-shadow"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3 text-left shadow-sm hover:shadow-md transition-all active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-xl bg-ink-100 flex items-center justify-center">
                   <AlertCircle className="w-5 h-5 text-ink-500" />
@@ -427,7 +435,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function EmptyHint({ text }: { text: string }) {
   return (
-    <div className="bg-white rounded-2xl p-5 text-center text-sm text-ink-400 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 text-center text-xs text-ink-400 dark:text-slate-400 shadow-sm">
       {text}
     </div>
   );
@@ -437,7 +445,7 @@ function SkeletonRow() {
   return (
     <div className="space-y-2.5">
       {[1, 2].map((i) => (
-        <div key={i} className="bg-white rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+        <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
           <div className="w-10 h-10 rounded-xl skeleton" />
           <div className="flex-1 space-y-2">
             <div className="h-3 w-32 rounded skeleton" />

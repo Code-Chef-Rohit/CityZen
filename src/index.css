@@ -117,9 +117,14 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-200) 50%, var(--color-ink-100) 75%);
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear;
+  animation: shimmer 1.8s infinite linear;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.45) 25%, rgba(51, 65, 85, 0.6) 50%, rgba(30, 41, 59, 0.45) 75%) !important;
+  background-size: 1000px 100%;
 }
 
 /* ============================================================

@@ -19,7 +19,7 @@ const tabs: { id: Tab; label: string; icon: typeof Home }[] = [
 
 export function BottomNav({ active, onChange, unreadCount = 0 }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-ink-100 dark:border-slate-800 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-lg transition-colors">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-ink-100 dark:border-slate-800 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-lg transition-colors">
       <div className="max-w-5xl mx-auto flex items-stretch justify-around px-1">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = active === id;
