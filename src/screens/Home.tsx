@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Sun, Cloud, CloudRain, CloudLightning, Droplets, Wind, Thermometer, Leaf, Siren, ChevronRight,
-  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge, User
+  AlertCircle, Sparkles, Bell, Zap, Trash2, Car, Gauge, User, CreditCard, FileText, Map as MapIcon
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -246,24 +246,30 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
         </button>
       </div>
 
-      {/* Quick actions */}
+      {/* Quick actions - 8 primary features accessible directly on mobile */}
       <div className="px-4 sm:px-5 mt-5">
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5">
           {[
-            { label: 'SOS', icon: Siren, color: 'bg-error-500', tab: 'emergency' as Tab },
-            { label: 'Bills', icon: Droplets, color: 'bg-secondary-500', action: () => onOpenService('bills') },
-            { label: 'Complaint', icon: AlertCircle, color: 'bg-accent-500', action: () => onOpenService('complaints') },
-            { label: 'Map', icon: Car, color: 'bg-primary-500', tab: 'map' as Tab },
+            { label: 'SOS', icon: Siren, color: 'bg-error-500 shadow-error-500/25', tab: 'emergency' as Tab },
+            { label: 'Pay Bills', icon: CreditCard, color: 'bg-secondary-600 shadow-secondary-600/25', action: () => onOpenService('bills') },
+            { label: 'Complaint', icon: AlertCircle, color: 'bg-amber-500 shadow-amber-500/25', action: () => onOpenService('complaints') },
+            { label: 'Smart Map', icon: MapIcon, color: 'bg-emerald-600 shadow-emerald-600/25', tab: 'map' as Tab },
+            { label: 'Zen AI', icon: Sparkles, color: 'bg-purple-600 shadow-purple-600/25', action: onOpenZen },
+            { label: 'DigiLocker', icon: FileText, color: 'bg-teal-600 shadow-teal-600/25', action: () => onTab('explore') },
+            { label: 'Alerts', icon: Bell, color: 'bg-orange-500 shadow-orange-500/25', tab: 'notifications' as Tab },
+            { label: 'Profile', icon: User, color: 'bg-indigo-600 shadow-indigo-600/25', action: () => onOpenProfile?.() },
           ].map(({ label, icon: Icon, color, tab, action }) => (
             <button
               key={label}
               onClick={() => (tab ? onTab(tab) : action?.())}
-              className="flex flex-col items-center gap-1.5 sm:gap-2 active:scale-95 transition-transform cursor-pointer"
+              className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform cursor-pointer touch-manipulation group"
             >
-              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-md hover:scale-105 transition-transform`}>
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-md group-hover:scale-105 group-active:scale-95 transition-transform`}>
                 <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-ink-700 dark:text-slate-300">{label}</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-ink-700 dark:text-slate-300 text-center leading-tight truncate max-w-full">
+                {label}
+              </span>
             </button>
           ))}
         </div>

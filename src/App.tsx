@@ -231,18 +231,22 @@ function AppContent() {
 
   const tabMap: Record<Tab, Screen> = {
     home: { name: 'home' },
-    map: { name: 'map' },
     explore: { name: 'explore' },
     emergency: { name: 'emergency' },
+    complaints: { name: 'complaints' },
+    bills: { name: 'bills' },
+    map: { name: 'map' },
     notifications: { name: 'notifications' },
   };
 
   const activeTab: Tab =
     screen.name === 'home' ? 'home' :
-    screen.name === 'map' ? 'map' :
-    screen.name === 'explore' || screen.name === 'service' ? 'explore' :
+    screen.name === 'complaints' ? 'complaints' :
+    screen.name === 'bills' ? 'bills' :
     screen.name === 'emergency' ? 'emergency' :
-    'notifications';
+    screen.name === 'map' ? 'map' :
+    screen.name === 'notifications' ? 'notifications' :
+    'explore';
 
   const openService = (id: string) => {
     if (id === 'bills') navigateToScreen({ name: 'bills' });
@@ -301,15 +305,15 @@ function AppContent() {
       {profile?.role === 'admin' && (
         <button
           onClick={() => setAdminViewMode('admin')}
-          className="fixed top-[max(0.85rem,env(safe-area-inset-top))] left-4 z-40 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white rounded-full text-xs font-black flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer ring-2 ring-white/30"
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white rounded-full text-xs font-black flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer ring-2 ring-white/30 backdrop-blur-md touch-manipulation"
           title="Return to Admin Control Center"
         >
           <Shield className="w-3.5 h-3.5" /> Admin Center
         </button>
       )}
 
-      {/* Bottom nav — hidden on full-screen overlays */}
-      {!['zen', 'complaints', 'bills', 'service', 'profile'].includes(screen.name) && (
+      {/* Bottom nav — visible across all main screens on mobile */}
+      {screen.name !== 'zen' && (
         <BottomNav active={activeTab} onChange={(t) => setScreen(tabMap[t])} unreadCount={unreadCount} />
       )}
 

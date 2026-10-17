@@ -471,7 +471,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
           </div>
 
           {/* Map Viewport Container */}
-          <div className="relative h-[48vh] sm:h-[55vh] lg:h-[65vh] bg-slate-100 dark:bg-slate-950 overflow-hidden border-b lg:border-r border-slate-200 dark:border-slate-800 lg:rounded-2xl lg:m-3 shadow-inner">
+          <div className="relative h-[38vh] sm:h-[48vh] lg:h-[65vh] bg-slate-100 dark:bg-slate-950 overflow-hidden border-b lg:border-r border-slate-200 dark:border-slate-800 lg:rounded-2xl lg:m-3 shadow-inner">
             {geoError && (
               <div className="absolute top-4 left-4 right-16 bg-slate-900/95 dark:bg-slate-800/95 text-slate-100 p-2.5 rounded-xl shadow-2xl z-[1000] border border-white/10 text-xs font-medium backdrop-blur-md flex items-center justify-between gap-2 animate-in fade-in">
                 <div className="flex items-center gap-2 min-w-0">
@@ -523,7 +523,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
         </div>
 
         {/* Right Column / Bottom Nearby POI List */}
-        <div className="lg:col-span-4 px-4 py-4 overflow-y-auto max-h-[50vh] lg:max-h-[75vh]">
+        <div className="lg:col-span-4 px-4 py-4 pb-28 lg:pb-8 lg:overflow-y-auto lg:max-h-[75vh]">
           <h2 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-3 flex items-center justify-between">
             <span>Nearby POIs within {searchRadius} km</span>
             <span className="text-xs font-mono text-primary-600 bg-primary-50 dark:bg-primary-950/40 px-2 py-0.5 rounded-full font-bold">

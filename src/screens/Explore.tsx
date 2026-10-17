@@ -51,13 +51,13 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
 
       <div className="px-4 py-3">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Search services…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-ink-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-ink-200 dark:border-slate-800 rounded-xl text-sm text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
           />
         </div>
       </div>
@@ -68,10 +68,10 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
             <button
               key={cat}
               onClick={() => setActiveCat(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer touch-manipulation active:scale-95 ${
                 activeCat === cat
                   ? 'bg-primary-600 text-white shadow-sm'
-                  : 'bg-white text-ink-500 border border-ink-200'
+                  : 'bg-white dark:bg-slate-900 text-ink-500 dark:text-slate-400 border border-ink-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
               {cat}
@@ -93,16 +93,16 @@ export function Explore({ onBack, onOpenService }: ExploreProps) {
               <button
                 key={s.id}
                 onClick={() => onOpenService(s.id)}
-                className="bg-white rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-shadow group"
+                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-all group active:scale-[0.98] cursor-pointer touch-manipulation"
               >
-                <div className="w-11 h-11 rounded-2xl bg-primary-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                  <ServiceIcon name={s.icon} className="w-5 h-5 text-primary-600" />
+                <div className="w-11 h-11 rounded-2xl bg-primary-50 dark:bg-primary-950/40 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                  <ServiceIcon name={s.icon} className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 </div>
-                <p className="font-semibold text-ink-900 text-sm leading-tight">{s.name}</p>
-                <p className="text-xs text-ink-400 mt-1 line-clamp-2">{s.description}</p>
+                <p className="font-semibold text-ink-900 dark:text-white text-sm leading-tight">{s.name}</p>
+                <p className="text-xs text-ink-400 dark:text-slate-400 mt-1 line-clamp-2">{s.description}</p>
                 <div className="flex items-center gap-1 mt-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${s.available ? 'bg-primary-500' : 'bg-ink-300'}`} />
-                  <span className="text-[10px] text-ink-400">{s.available ? 'Available' : 'Unavailable'}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${s.available ? 'bg-primary-500' : 'bg-ink-300 dark:bg-slate-700'}`} />
+                  <span className="text-[10px] text-ink-400 dark:text-slate-400">{s.available ? 'Available' : 'Unavailable'}</span>
                 </div>
               </button>
             ))}
@@ -487,7 +487,7 @@ export function ServiceDetail({
     <Screen className="max-w-4xl mx-auto">
       <ScreenHeader title={service.name} subtitle={service.category} onBack={onBack} />
       
-      <div className="px-5 py-4 space-y-6 pb-24 max-h-[85vh] overflow-y-auto">
+      <div className="px-4 sm:px-5 py-4 space-y-6 pb-28">
         {/* Top Header Card */}
         <div className="bg-slate-900 border border-white/5 rounded-3xl p-5 shadow-xl flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0">

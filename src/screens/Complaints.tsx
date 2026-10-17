@@ -219,39 +219,39 @@ export function Complaints({ onBack, initialCategory }: { onBack: () => void; in
                 <button
                   key={c.id}
                   onClick={() => setSelected(c)}
-                  className="w-full bg-white rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-shadow"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-all active:scale-[0.99] touch-manipulation cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-ink-900 flex items-center gap-1.5">
+                      <p className="font-semibold text-ink-900 dark:text-white flex items-center gap-1.5">
                         {c.title}
                         {isDuplicate && (
-                          <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-bold">Duplicate Merged</span>
+                          <span className="text-[9px] bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full font-bold">Duplicate Merged</span>
                         )}
                         {c.status === 'resolved' && (
-                          <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                          <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
                             <CheckCircle2 className="w-2.5 h-2.5" /> Proof Logged
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-ink-400 mt-0.5 capitalize">{c.category}</p>
+                      <p className="text-xs text-ink-400 dark:text-slate-400 mt-0.5 capitalize">{c.category}</p>
                     </div>
                     <StatusBadge status={c.status} />
                   </div>
                   {cleanDesc && (
-                    <p className="text-sm text-ink-500 mt-2 line-clamp-2">{cleanDesc}</p>
+                    <p className="text-sm text-ink-500 dark:text-slate-300 mt-2 line-clamp-2">{cleanDesc}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-ink-400">
+                  <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-ink-400 dark:text-slate-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {timeAgo(c.created_at)}
                     </span>
                     {c.location_text && (
                       <span className="flex items-center gap-1 truncate max-w-[200px]">
-                        <MapPin className="w-3 h-3 text-primary-600" /> {c.location_text}
+                        <MapPin className="w-3 h-3 text-primary-600 dark:text-primary-400" /> {c.location_text}
                       </span>
                     )}
                     {c.lat && c.lng && (
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono font-bold">
+                      <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold border border-emerald-500/20">
                         GPS Verified
                       </span>
                     )}
@@ -334,36 +334,36 @@ function ComplaintDetail({ complaint, onPreviewPhoto }: { complaint: Complaint; 
   const cleanDesc = isDuplicate ? complaint.description?.replace(/\[ML_MERGE:[^\]]+\]/, '').trim() : complaint.description;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 text-ink-900 dark:text-white">
       <div>
         <StatusBadge status={complaint.status} />
-        <h3 className="font-bold text-ink-900 text-lg mt-2">{complaint.title}</h3>
-        {cleanDesc && <p className="text-sm text-ink-500 mt-1">{cleanDesc}</p>}
+        <h3 className="font-bold text-ink-900 dark:text-white text-lg mt-2">{complaint.title}</h3>
+        {cleanDesc && <p className="text-sm text-ink-500 dark:text-slate-300 mt-1">{cleanDesc}</p>}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-400">
-        <span className="px-2 py-1 bg-ink-100 rounded-full capitalize">{complaint.category}</span>
-        {complaint.department && <span className="px-2 py-1 bg-secondary-100 rounded-full text-secondary-700">{complaint.department}</span>}
-        {isDuplicate && <span className="px-2 py-1 bg-orange-100 rounded-full text-orange-700 font-bold text-[10px]">Duplicate Linked (Storage Saved)</span>}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-400 dark:text-slate-400">
+        <span className="px-2 py-1 bg-ink-100 dark:bg-slate-800 text-ink-700 dark:text-slate-200 rounded-full capitalize">{complaint.category}</span>
+        {complaint.department && <span className="px-2 py-1 bg-secondary-100 dark:bg-secondary-950/60 rounded-full text-secondary-700 dark:text-secondary-300 font-semibold">{complaint.department}</span>}
+        {isDuplicate && <span className="px-2 py-1 bg-orange-100 dark:bg-orange-950/60 rounded-full text-orange-700 dark:text-orange-300 font-bold text-[10px]">Duplicate Linked (Storage Saved)</span>}
         {complaint.ml_verification_score && (
-          <span className="px-2 py-1 bg-emerald-100 rounded-full text-emerald-800 font-bold text-[10px] flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3 text-emerald-600" /> {complaint.ml_verification_score}% Authenticity Verified
+          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-950/60 rounded-full text-emerald-800 dark:text-emerald-300 font-bold text-[10px] flex items-center gap-1 border border-emerald-500/20">
+            <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {complaint.ml_verification_score}% Authenticity Verified
           </span>
         )}
       </div>
 
       {complaint.location_text && (
-        <div className="bg-ink-50 p-3 rounded-2xl space-y-2">
-          <div className="flex items-center gap-2 text-sm font-semibold text-ink-700">
-            <MapPin className="w-4 h-4 text-primary-600 shrink-0" />
+        <div className="bg-ink-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-3.5 rounded-2xl space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-ink-700 dark:text-slate-200">
+            <MapPin className="w-4 h-4 text-primary-600 dark:text-primary-400 shrink-0" />
             <span className="truncate">{complaint.location_text}</span>
           </div>
           {complaint.lat && complaint.lng && (
-            <div className="flex items-center justify-between text-xs text-ink-400 pt-1 border-t border-ink-100">
+            <div className="flex items-center justify-between text-xs text-ink-400 dark:text-slate-400 pt-1 border-t border-ink-100 dark:border-slate-700/60">
               <span className="font-mono">Coordinates: {Number(complaint.lat).toFixed(4)}, {Number(complaint.lng).toFixed(4)}</span>
               <button
                 onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${complaint.lat},${complaint.lng}`, '_blank')}
-                className="text-primary-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-primary-600 dark:text-primary-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Navigation className="w-3 h-3" /> Get Directions
               </button>
@@ -375,10 +375,10 @@ function ComplaintDetail({ complaint, onPreviewPhoto }: { complaint: Complaint; 
       {/* Citizen Incident Attachment */}
       {complaint.photo_url && (
         <div className="space-y-1.5">
-          <p className="text-xs font-bold text-ink-500 uppercase tracking-wider">Citizen Photo Evidence</p>
+          <p className="text-xs font-bold text-ink-500 dark:text-slate-400 uppercase tracking-wider">Citizen Photo Evidence</p>
           <div 
             onClick={() => onPreviewPhoto(complaint.photo_url!)}
-            className="rounded-2xl overflow-hidden border border-slate-100 max-h-56 flex items-center justify-center bg-slate-50 relative group cursor-zoom-in"
+            className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 max-h-56 flex items-center justify-center bg-slate-50 dark:bg-slate-950 relative group cursor-zoom-in"
           >
             <img src={complaint.photo_url} alt="Complaint Attachment" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5">
@@ -391,24 +391,24 @@ function ComplaintDetail({ complaint, onPreviewPhoto }: { complaint: Complaint; 
       {/* BMC Resolution Proof Section (Visible to Citizen) */}
       {complaint.status === 'resolved' && (
         <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 space-y-3 animate-fade-in">
-          <div className="flex items-center gap-2 text-emerald-800">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
               <p className="font-bold text-sm">Resolved by BMC Civic Team</p>
-              <p className="text-[10px] text-emerald-700">Official repair evidence logged below</p>
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400">Official repair evidence logged below</p>
             </div>
           </div>
 
           {complaint.resolution_proof && (
-            <div className="bg-white/80 dark:bg-slate-900/60 p-3 rounded-xl border border-emerald-500/20 text-xs text-ink-800 dark:text-slate-200">
-              <span className="font-bold text-emerald-700 block uppercase tracking-wider text-[9px] mb-0.5">BMC Field Notes:</span>
+            <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-emerald-500/20 text-xs text-ink-800 dark:text-slate-200">
+              <span className="font-bold text-emerald-700 dark:text-emerald-400 block uppercase tracking-wider text-[9px] mb-0.5">BMC Field Notes:</span>
               <p className="italic">"{complaint.resolution_proof}"</p>
             </div>
           )}
 
           {complaint.resolution_photo_url && (
             <div className="space-y-1">
-              <span className="font-bold text-emerald-700 block uppercase tracking-wider text-[9px]">BMC Repair Proof Photo:</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400 block uppercase tracking-wider text-[9px]">BMC Repair Proof Photo:</span>
               <div 
                 onClick={() => onPreviewPhoto(complaint.resolution_photo_url!)}
                 className="rounded-xl overflow-hidden border border-emerald-500/20 max-h-48 flex items-center justify-center bg-black/10 relative group cursor-zoom-in"
@@ -424,8 +424,8 @@ function ComplaintDetail({ complaint, onPreviewPhoto }: { complaint: Complaint; 
       )}
 
       {/* Progress tracker */}
-      <div className="bg-ink-50 rounded-2xl p-4">
-        <p className="text-xs font-bold text-ink-500 mb-4">TRACKING TIMELINE</p>
+      <div className="bg-ink-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
+        <p className="text-xs font-bold text-ink-500 dark:text-slate-400 mb-4 tracking-wider">TRACKING TIMELINE</p>
         <div className="space-y-0">
           {statusFlow.map((status, i) => {
             const done = i <= currentStep;
@@ -434,17 +434,17 @@ function ComplaintDetail({ complaint, onPreviewPhoto }: { complaint: Complaint; 
               <div key={status} className="flex gap-3">
                 <div className="flex flex-col items-center">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                    done ? 'bg-primary-500 text-white' : 'bg-ink-200 text-ink-400'
+                    done ? 'bg-primary-500 text-white' : 'bg-ink-200 dark:bg-slate-700 text-ink-400 dark:text-slate-400'
                   }`}>
                     {done ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs font-bold">{i + 1}</span>}
                   </div>
-                  {!isLast && <div className={`w-0.5 h-8 ${done ? 'bg-primary-300' : 'bg-ink-200'}`} />}
+                  {!isLast && <div className={`w-0.5 h-8 ${done ? 'bg-primary-300 dark:bg-primary-600' : 'bg-ink-200 dark:bg-slate-700'}`} />}
                 </div>
                 <div className="pt-1">
-                  <p className={`text-sm font-semibold capitalize ${done ? 'text-ink-800' : 'text-ink-400'}`}>
+                  <p className={`text-sm font-semibold capitalize ${done ? 'text-ink-800 dark:text-white' : 'text-ink-400 dark:text-slate-400'}`}>
                     {status.replace('_', ' ')}
                   </p>
-                  <p className="text-xs text-ink-400">
+                  <p className="text-xs text-ink-400 dark:text-slate-400">
                     {i === 0 && formatDate(complaint.created_at)}
                     {i === 3 && complaint.resolved_at && formatDate(complaint.resolved_at)}
                   </p>
@@ -742,14 +742,16 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
       <div className="space-y-4">
         {/* Category selector */}
         <div>
-          <label className="text-xs font-semibold text-ink-500 mb-1.5 block">Category</label>
+          <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 mb-1.5 block">Category</label>
           <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
               <button
                 key={c.value}
                 onClick={() => setCategory(c.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  category === c.value ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-500'
+                  category === c.value 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-ink-100 dark:bg-slate-800 text-ink-500 dark:text-slate-300 hover:bg-ink-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {c.label}
@@ -764,12 +766,12 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
         {/* Location input with GPS detector */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-ink-500 block">Incident Location</label>
+            <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 block">Incident Location</label>
             <button
               type="button"
               onClick={fetchCurrentLocation}
               disabled={locatingGps}
-              className="text-[11px] font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 cursor-pointer"
+              className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1 cursor-pointer"
             >
               <LocateFixed className={`w-3.5 h-3.5 ${locatingGps ? 'animate-spin' : ''}`} />
               {locatingGps ? 'Locating...' : gpsDetected ? 'GPS Attached ✓' : 'Detect Real Location'}
@@ -780,10 +782,10 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
             placeholder="e.g. Patrapada, Bhubaneswar"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-all"
+            className="w-full px-4 py-3 bg-ink-50 dark:bg-slate-800 border border-ink-200 dark:border-slate-700 rounded-xl text-sm text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-400 focus:bg-white dark:focus:bg-slate-800 transition-all"
           />
           {userLat && userLng && (
-            <p className="text-[10px] text-emerald-600 font-mono mt-1 flex items-center gap-1">
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono mt-1 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Exact Coordinates Attached: {userLat.toFixed(5)}, {userLng.toFixed(5)}
             </p>
@@ -792,7 +794,7 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
 
         {/* Real Image Uploader with ML Authenticity Rating */}
         <div>
-          <label className="text-xs font-semibold text-ink-500 mb-1.5 block">Upload Incident Photo Evidence</label>
+          <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 mb-1.5 block">Upload Incident Photo Evidence</label>
           <input
             type="file"
             accept="image/*"
@@ -803,7 +805,7 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
 
           {selectedPhoto ? (
             <div className="space-y-2">
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 aspect-video bg-slate-50 flex items-center justify-center group">
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-50 dark:bg-slate-900 flex items-center justify-center group">
                 <img src={selectedPhoto} alt="Upload Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -816,9 +818,9 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="flex items-center justify-between text-[11px] px-2 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 font-semibold">
+              <div className="flex items-center justify-between text-[11px] px-2 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-500/20 font-semibold">
                 <span className="flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> ML Real-World Authenticity
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> ML Real-World Authenticity
                 </span>
                 <span className="font-bold">{photoAuthenticityScore}% Verified</span>
               </div>
@@ -826,10 +828,10 @@ function NewComplaintModal({ open, onClose, onCreated, userId, initialCategory }
           ) : (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-8 border-2 border-dashed border-ink-200 rounded-2xl flex flex-col items-center gap-1.5 text-ink-400 hover:border-primary-300 hover:bg-primary-50/30 transition-colors cursor-pointer"
+              className="w-full py-8 border-2 border-dashed border-ink-200 dark:border-slate-700 rounded-2xl flex flex-col items-center gap-1.5 text-ink-400 dark:text-slate-400 hover:border-primary-300 hover:bg-primary-50/30 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
             >
               <Camera className="w-6 h-6" />
-              <span className="text-xs font-semibold text-slate-500">Tap to upload a real incident photo</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tap to upload a real incident photo</span>
             </button>
           )}
         </div>
@@ -881,13 +883,13 @@ function Input({ label, placeholder, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-ink-500 mb-1.5 block">{label}</label>
+      <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 mb-1.5 block">{label}</label>
       <input
         type="text"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all"
+        className="w-full px-4 py-3 bg-ink-50 dark:bg-slate-800 border border-ink-200 dark:border-slate-700 rounded-xl text-sm text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-primary-500/10 transition-all"
       />
     </div>
   );
@@ -898,13 +900,13 @@ function TextArea({ label, placeholder, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-ink-500 mb-1.5 block">{label}</label>
+      <label className="text-xs font-semibold text-ink-500 dark:text-slate-400 mb-1.5 block">{label}</label>
       <textarea
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={3}
-        className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all resize-none"
+        className="w-full px-4 py-3 bg-ink-50 dark:bg-slate-800 border border-ink-200 dark:border-slate-700 rounded-xl text-sm text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-primary-500/10 transition-all resize-none"
       />
     </div>
   );

@@ -1,7 +1,7 @@
-import { Home, Map, LayoutGrid, Siren, Bell } from 'lucide-react';
+import { Home, Map, LayoutGrid, Siren, Bell, AlertCircle, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type Tab = 'home' | 'map' | 'explore' | 'emergency' | 'notifications';
+export type Tab = 'home' | 'explore' | 'emergency' | 'complaints' | 'bills' | 'map' | 'notifications';
 
 interface BottomNavProps {
   active: Tab;
@@ -9,12 +9,12 @@ interface BottomNavProps {
   unreadCount?: number;
 }
 
-const tabs: { id: Tab; label: string; icon: typeof Home }[] = [
+const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'map', label: 'Map', icon: Map },
-  { id: 'explore', label: 'Explore', icon: LayoutGrid },
+  { id: 'explore', label: 'Services', icon: LayoutGrid },
   { id: 'emergency', label: 'SOS', icon: Siren },
-  { id: 'notifications', label: 'Alerts', icon: Bell },
+  { id: 'complaints', label: 'Complaints', icon: AlertCircle },
+  { id: 'bills', label: 'Bills', icon: CreditCard },
 ];
 
 export function BottomNav({ active, onChange, unreadCount = 0 }: BottomNavProps) {
