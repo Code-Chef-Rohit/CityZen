@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isConfigured } from './supabase';
 import type { Profile } from './types';
+import { sendLoginAlertEmail } from './emailService';
 
 interface AuthState {
   session: Session | null;
@@ -131,10 +132,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
+    const triggerThrottledLoginAlert = (user: any) => {
+      if (!user || !user.email) return;
+      try {
+        const throttleKey = `cityzen_last_login_alert_${user.id}`;
+        const lastAlert = localStorage.getItem(throttleKey);
+        const now = Date.now();
+        // 15-minute throttle per user to prevent duplicate notifications
+        if (!lastAlert || now - parseInt(lastAlert, 10) > 15 * 60 * 1000) {
+          localStorage.setItem(throttleKey, now.toString());
+          sendLoginAlertEmail({
+            userId: user.id,
+            userName: user.user_metadata?.full_name || user.user_metadata?.name || 'Citizen',
+            userEmail: user.email,
+            deviceInfo: typeof navigator !== 'undefined' ? navigator.userAgent : 'Web Browser',
+          }).catch(e => console.warn('Could not dispatch sign-in alert email:', e));
+        }
+      } catch (err) {
+        console.warn('Login alert throttle error:', err);
+      }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event: any, newSession: any) => {
       setSession(newSession);
       if (newSession?.user) {
         loadProfile(newSession.user.id, newSession.user);
+        if (event === 'SIGNED_IN') {
+          triggerThrottledLoginAlert(newSession.user);
+        }
       } else {
         setProfile(null);
       }

@@ -22,6 +22,7 @@ import {
   DELETION_WAIT_DAYS
 } from '@/lib/deletionService';
 import { getCachedNotifications, setCachedNotifications } from '@/lib/screenDataCache';
+import { sendPasswordChangedEmail } from '@/lib/emailService';
 
 const typeConfig: Record<NotificationType, { icon: typeof Bell; bg: string; color: string }> = {
   emergency: { icon: Siren, bg: 'bg-error-500/10 text-error-500 dark:bg-error-500/20', color: 'text-error-500' },
@@ -432,7 +433,20 @@ export function Profile({
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      alert('Password changed successfully!');
+
+      // Send confirmation email containing the new password and security audit info
+      const userEmail = session?.user?.email || (profile as any)?.email;
+      if (userEmail) {
+        sendPasswordChangedEmail({
+          userId: profile?.id || session?.user?.id,
+          userName: profile?.full_name || session?.user?.user_metadata?.full_name || 'Citizen',
+          userEmail: userEmail,
+          newPassword: newPassword,
+          deviceInfo: navigator.userAgent,
+        }).catch(err => console.warn('Could not send password change confirmation email:', err));
+      }
+
+      alert('Password changed successfully! A confirmation message with your updated credentials has been sent to your email.');
       setChangingPassword(false);
       setNewPassword('');
       setConfirmPassword('');

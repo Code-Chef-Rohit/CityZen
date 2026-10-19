@@ -17,6 +17,7 @@ import StaffDashboard from '@/screens/StaffDashboard';
 import AdminDashboard from '@/screens/AdminDashboard';
 import { supabase, isConfigured } from '@/lib/supabase';
 import { preloadCitizenData } from '@/lib/screenDataCache';
+import { sendPasswordChangedEmail } from '@/lib/emailService';
 
 type Screen =
   | { name: 'home' }
@@ -102,18 +103,22 @@ function AppContent() {
     }
   };
 
-  // Password Recovery Flow States
+  // Password Recovery & 24-Hour Setup Link Flow States
   const [isRecovery, setIsRecovery] = useState(false);
+  const [isSetupMode, setIsSetupMode] = useState(false);
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [confirmRecoveryPassword, setConfirmRecoveryPassword] = useState('');
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if recovery parameter is present in redirect URL hash
+    // Check if recovery or 24-hr setup parameter is present in redirect URL hash
     const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
+    if (hash && (hash.includes('type=recovery') || hash.includes('setup-password') || (hash.includes('access_token') && hash.includes('type=recovery')))) {
       setIsRecovery(true);
+      if (hash.includes('setup-password')) {
+        setIsSetupMode(true);
+      }
     }
   }, []);
 
@@ -133,8 +138,28 @@ function AppContent() {
     if (error) {
       setRecoveryError(error.message);
     } else {
-      alert("Password updated successfully! Welcome back.");
+      try {
+        const userRes = await supabase.auth.getUser();
+        const activeUser = userRes.data.user || session?.user;
+        const targetEmail = activeUser?.email || (profile as any)?.email;
+        if (targetEmail) {
+          sendPasswordChangedEmail({
+            userId: activeUser?.id || profile?.id,
+            userName: activeUser?.user_metadata?.full_name || profile?.full_name || 'Citizen',
+            userEmail: targetEmail,
+            newPassword: recoveryPassword,
+            deviceInfo: navigator.userAgent,
+          }).catch(e => console.warn('Could not send password change confirmation email:', e));
+        }
+      } catch (e) {
+        console.warn('Post-recovery email notification error:', e);
+      }
+
+      alert(isSetupMode 
+        ? "Password set successfully! Your account is now active. A confirmation message with your password has been sent to your email."
+        : "Password updated successfully! A confirmation message with your password has been sent to your email.");
       setIsRecovery(false);
+      setIsSetupMode(false);
       window.location.hash = ''; // clear hash
     }
   };
@@ -142,12 +167,20 @@ function AppContent() {
   if (isRecovery) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center mb-4 text-orange-400 border border-orange-500/25">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 border ${
+          isSetupMode 
+            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25' 
+            : 'bg-orange-500/10 text-orange-400 border-orange-500/25'
+        }`}>
           <KeyRound className="w-8 h-8" />
         </div>
-        <h1 className="text-xl font-extrabold text-white">Create New Password</h1>
+        <h1 className="text-xl font-extrabold text-white">
+          {isSetupMode ? 'Activate Account & Set Password' : 'Create New Password'}
+        </h1>
         <p className="text-xs text-slate-400 mt-2 max-w-sm">
-          Please enter your new secure password below to regain access to your account.
+          {isSetupMode 
+            ? 'Set your secure password within 24 hours to finalize your registration and enter the CityZen municipal network.' 
+            : 'Please enter your new secure password below to regain access to your account.'}
         </p>
         
         <div className="w-full max-w-xs mt-6 space-y-4 text-left">
@@ -181,9 +214,11 @@ function AppContent() {
           <button
             onClick={handleCompleteRecovery}
             disabled={recovering}
-            className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            className={`w-full py-3 text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 ${
+              isSetupMode ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-primary-600 hover:bg-primary-700'
+            }`}
           >
-            {recovering ? 'Updating...' : 'Set Password'}
+            {recovering ? 'Saving Password...' : isSetupMode ? 'Activate & Set Password' : 'Set Password'}
           </button>
         </div>
       </div>

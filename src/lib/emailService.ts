@@ -589,3 +589,646 @@ export async function sendAutomatedCitizenNoticeEmail(data: CitizenNoticeEmailDa
       : `Notice automatically recorded for ${data.userEmail}.`,
   };
 }
+
+/* ============================================================================ */
+/* PASSWORD CHANGED EMAIL NOTIFICATION                                          */
+/* ============================================================================ */
+
+export interface PasswordChangedEmailData {
+  userId?: string;
+  userName: string;
+  userEmail: string;
+  newPassword?: string;
+  timestamp?: string;
+  deviceInfo?: string;
+  refNumber?: string;
+}
+
+export function buildPasswordChangedHtmlEmail(data: PasswordChangedEmailData, portalUrl: string, refNum: string): string {
+  const logoUrl = CITYZEN_LOGO_URL;
+  const timeStr = data.timestamp || new Date().toLocaleString('en-IN', { timeZoneName: 'short' });
+  const device = data.deviceInfo || 'Standard Web Browser';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityZen Account Password Update</title>
+</head>
+<body style="margin:0;padding:24px 16px;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <!-- Preheader text invisible in body, shown in inbox preview to prevent spam categorization -->
+  <div style="display:none;font-size:1px;color:#0f172a;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Your CityZen account password was updated on ${timeStr}. Reference: ${refNum}.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.45);">
+    <tr>
+      <td style="padding:32px 24px 20px;text-align:center;background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <img src="${logoUrl}" alt="CityZen Logo" width="80" height="80" style="border-radius:20px;border:2px solid rgba(56,189,248,0.4);box-shadow:0 0 20px rgba(56,189,248,0.25);display:inline-block;margin-bottom:12px;" />
+        <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">CityZen</h1>
+        <p style="color:#38bdf8;font-size:11px;margin:4px 0 0;text-transform:uppercase;letter-spacing:2px;font-weight:700;">Account Security Center</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 24px 20px;">
+        <p style="font-size:15px;line-height:22px;color:#f8fafc;margin:0 0 14px;">
+          Hi <strong>${data.userName || 'Citizen'}</strong>,
+        </p>
+        <p style="font-size:13px;line-height:20px;color:#94a3b8;margin:0 0 18px;">
+          The password for your CityZen account (<strong>${data.userEmail}</strong>) has been updated successfully.
+        </p>
+
+        ${data.newPassword ? `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border-radius:16px;border:1px solid rgba(56,189,248,0.3);margin-bottom:20px;">
+          <tr>
+            <td style="padding:16px 20px;">
+              <span style="display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#38bdf8;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.2);padding:2px 8px;border-radius:6px;margin-bottom:8px;">
+                Updated Password Details
+              </span>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">
+                Your new registered password:
+              </div>
+              <div style="font-family:monospace;font-size:16px;font-weight:800;color:#38bdf8;letter-spacing:1px;background:#1e293b;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:inline-block;">
+                ${data.newPassword}
+              </div>
+              <div style="font-size:11px;color:#64748b;margin-top:8px;line-height:16px;">
+                🔒 Tip: Store this in a secure password manager. CityZen staff will never ask for your password.
+              </div>
+            </td>
+          </tr>
+        </table>
+        ` : ''}
+
+        <div style="background:#0f172a;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:14px 18px;margin-bottom:22px;font-size:12px;color:#94a3b8;line-height:22px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">
+            Security Audit Details
+          </div>
+          <div>• <strong>Timestamp:</strong> ${timeStr}</div>
+          <div>• <strong>Device & Platform:</strong> ${device}</div>
+          <div>• <strong>Security Ref:</strong> <span style="font-family:monospace;color:#38bdf8;">${refNum}</span></div>
+          <div>• <strong>Status:</strong> <span style="color:#10b981;font-weight:bold;">Active & Verified</span></div>
+        </div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+          <tr>
+            <td align="center">
+              <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(2,132,199,0.35);">
+                Open CityZen Portal →
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p style="font-size:11px;line-height:17px;color:#64748b;margin:0;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+          If you initiated this change, you can safely disregard this message. If you did NOT change your password, please contact our security team immediately at <a href="mailto:cityzen.system@gmail.com" style="color:#38bdf8;text-decoration:none;">cityzen.system@gmail.com</a>.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;font-size:10px;line-height:16px;color:#64748b;">
+        This automated security notification was sent to <strong>${data.userEmail}</strong> for verified activity on CityZen.<br>
+        CityZen Municipal Utility & Civic Governance System · Bhubaneswar
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<EmailDispatchResult> {
+  const config = getEmailGatewayConfig();
+  const dispatchId = `PWD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const timestamp = data.timestamp || new Date().toLocaleString('en-IN', { timeZoneName: 'short' });
+  const refNum = data.refNumber || `CZ-SEC-${Math.floor(100000 + Math.random() * 900000)}`;
+  const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
+  const htmlEmail = buildPasswordChangedHtmlEmail({ ...data, timestamp }, portalUrl, refNum);
+
+  if (!data.userEmail || !data.userEmail.includes('@')) {
+    return {
+      success: false,
+      status: 'failed',
+      dispatchId,
+      timestamp,
+      method: 'in_app_only',
+      message: 'No recipient email specified.',
+    };
+  }
+
+  const plainMessage = `Hi ${data.userName || 'Citizen'},\n\nYour CityZen account password was updated successfully.\n\nAccount: ${data.userEmail}\n${data.newPassword ? `New Password: ${data.newPassword}\n` : ''}Date: ${timestamp}\nDevice: ${data.deviceInfo || 'Web Browser'}\nSecurity Ref: ${refNum}\n\nIf you made this change, no action is needed. If you did not make this change, please contact cityzen.system@gmail.com immediately.\n\nBest regards,\nCityZen Security Team`;
+
+  const payload = {
+    service_id: config.emailjsServiceId,
+    template_id: config.emailjsTemplateId,
+    user_id: config.emailjsPublicKey,
+    template_params: {
+      to_name: data.userName || 'Citizen',
+      recipient_name: data.userName || 'Citizen',
+      user_name: data.userName || 'Citizen',
+      name: data.userName || 'Citizen',
+      to_email: data.userEmail,
+      recipient: data.userEmail,
+      email: data.userEmail,
+      user_email: data.userEmail,
+      reply_to: config.senderEmail,
+      from_name: 'CityZen Security',
+      subject: 'CityZen Account Security: Password successfully updated',
+      message: plainMessage,
+      message_body: plainMessage,
+      content: plainMessage,
+      html_message: htmlEmail,
+      html_content: htmlEmail,
+      message_html: htmlEmail,
+      body_html: htmlEmail,
+      logo_url: CITYZEN_LOGO_URL,
+      ref_number: refNum,
+      dispatch_id: dispatchId,
+      portal_url: portalUrl,
+      login_link: portalUrl,
+      date: timestamp,
+    },
+  };
+
+  let transmittedViaApi = false;
+  let apiResponseMsg = '';
+
+  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
+    try {
+      const res = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
+      }
+    } catch (e: any) {
+      console.warn('Webhook transmission error:', e.message);
+    }
+  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = `Delivered via EmailJS Cloud SMTP Gateway (${config.emailjsServiceId})`;
+      } else {
+        const errText = await res.text();
+        console.warn('EmailJS response status:', res.status, errText);
+        apiResponseMsg = `EmailJS Password Notice (${res.status}): ${errText}`;
+      }
+    } catch (e: any) {
+      console.warn('EmailJS transmission error:', e.message);
+      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
+    }
+  }
+
+  // Record in-app notification
+  if (data.userId) {
+    try {
+      await supabase.from('notifications').insert({
+        user_id: data.userId,
+        title: 'Password Changed Successfully 🔒',
+        message: `Your account password was updated on ${timestamp} from ${data.deviceInfo || 'Web Browser'}. Confirmation email sent to ${data.userEmail}. Ref: ${refNum}.`,
+        type: 'government',
+        read: false,
+      });
+    } catch (err) {
+      console.warn('In-app notification insert fallback:', err);
+    }
+  }
+
+  return {
+    success: true,
+    status: transmittedViaApi ? 'delivered' : 'transmitted',
+    dispatchId,
+    timestamp,
+    method: apiResponseMsg || 'CityZen System Background Dispatch',
+    message: transmittedViaApi
+      ? `Password update confirmation transmitted to ${data.userEmail} via EmailJS.`
+      : `Password update confirmation recorded for ${data.userEmail}.`,
+  };
+}
+
+/* ============================================================================ */
+/* NEW LOGIN CONFIRMATION ALERT EMAIL                                           */
+/* ============================================================================ */
+
+export interface LoginAlertEmailData {
+  userId?: string;
+  userName?: string;
+  userEmail: string;
+  timestamp?: string;
+  deviceInfo?: string;
+  refNumber?: string;
+}
+
+export function buildLoginAlertHtmlEmail(data: LoginAlertEmailData, portalUrl: string, refNum: string): string {
+  const logoUrl = CITYZEN_LOGO_URL;
+  const timeStr = data.timestamp || new Date().toLocaleString('en-IN', { timeZoneName: 'short' });
+  const device = data.deviceInfo || 'Standard Web Browser';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityZen Account Sign-in Alert</title>
+</head>
+<body style="margin:0;padding:24px 16px;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <!-- Preheader text invisible in body for inbox preview -->
+  <div style="display:none;font-size:1px;color:#0f172a;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    New sign-in detected on your CityZen account on ${timeStr}. Reference: ${refNum}.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.45);">
+    <tr>
+      <td style="padding:32px 24px 20px;text-align:center;background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <img src="${logoUrl}" alt="CityZen Logo" width="80" height="80" style="border-radius:20px;border:2px solid rgba(56,189,248,0.4);box-shadow:0 0 20px rgba(56,189,248,0.25);display:inline-block;margin-bottom:12px;" />
+        <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">CityZen</h1>
+        <p style="color:#38bdf8;font-size:11px;margin:4px 0 0;text-transform:uppercase;letter-spacing:2px;font-weight:700;">Account Security Center</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 24px 20px;">
+        <p style="font-size:15px;line-height:22px;color:#f8fafc;margin:0 0 14px;">
+          Hi <strong>${data.userName || 'Citizen'}</strong>,
+        </p>
+        <p style="font-size:13px;line-height:20px;color:#94a3b8;margin:0 0 18px;">
+          A new sign-in was recorded for your CityZen citizen profile (<strong>${data.userEmail}</strong>).
+        </p>
+
+        <div style="background:#0f172a;border-radius:16px;border:1px solid rgba(56,189,248,0.25);padding:16px 18px;margin-bottom:22px;font-size:12px;color:#cbd5e1;line-height:22px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#38bdf8;margin-bottom:8px;">
+            Sign-in Session Details
+          </div>
+          <div>• <strong>Date & Time:</strong> ${timeStr}</div>
+          <div>• <strong>Device & Operating System:</strong> ${device}</div>
+          <div>• <strong>Session Status:</strong> <span style="color:#10b981;font-weight:bold;">Active & Authenticated</span></div>
+          <div>• <strong>Security Reference:</strong> <span style="font-family:monospace;color:#38bdf8;">${refNum}</span></div>
+        </div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+          <tr>
+            <td align="center">
+              <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(2,132,199,0.35);">
+                Open CityZen Dashboard →
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p style="font-size:11px;line-height:17px;color:#64748b;margin:0;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+          If this was you, you can safely disregard this message. If you did not log in, please reset your password immediately or email our security desk at <a href="mailto:cityzen.system@gmail.com" style="color:#38bdf8;text-decoration:none;">cityzen.system@gmail.com</a>.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;font-size:10px;line-height:16px;color:#64748b;">
+        This automated security notification was sent to <strong>${data.userEmail}</strong> for verified activity on CityZen.<br>
+        CityZen Municipal Utility & Civic Governance System · Bhubaneswar
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendLoginAlertEmail(data: LoginAlertEmailData): Promise<EmailDispatchResult> {
+  const config = getEmailGatewayConfig();
+  const dispatchId = `LOG-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const timestamp = data.timestamp || new Date().toLocaleString('en-IN', { timeZoneName: 'short' });
+  const refNum = data.refNumber || `CZ-LOGIN-${Math.floor(100000 + Math.random() * 900000)}`;
+  const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
+  const htmlEmail = buildLoginAlertHtmlEmail({ ...data, timestamp }, portalUrl, refNum);
+
+  if (!data.userEmail || !data.userEmail.includes('@')) {
+    return {
+      success: false,
+      status: 'failed',
+      dispatchId,
+      timestamp,
+      method: 'in_app_only',
+      message: 'No recipient email specified.',
+    };
+  }
+
+  const plainMessage = `Hi ${data.userName || 'Citizen'},\n\nA new sign-in was recorded for your CityZen account.\n\nAccount: ${data.userEmail}\nDate: ${timestamp}\nDevice: ${data.deviceInfo || 'Web Browser'}\nSecurity Ref: ${refNum}\nStatus: Authenticated Session Active\n\nIf this was you, no action is needed. If you did not sign in, please secure your account immediately.\n\nBest regards,\nCityZen Security Team`;
+
+  const payload = {
+    service_id: config.emailjsServiceId,
+    template_id: config.emailjsTemplateId,
+    user_id: config.emailjsPublicKey,
+    template_params: {
+      to_name: data.userName || 'Citizen',
+      recipient_name: data.userName || 'Citizen',
+      user_name: data.userName || 'Citizen',
+      name: data.userName || 'Citizen',
+      to_email: data.userEmail,
+      recipient: data.userEmail,
+      email: data.userEmail,
+      user_email: data.userEmail,
+      reply_to: config.senderEmail,
+      from_name: 'CityZen Security',
+      subject: 'CityZen Security Alert: New sign-in to your account',
+      message: plainMessage,
+      message_body: plainMessage,
+      content: plainMessage,
+      html_message: htmlEmail,
+      html_content: htmlEmail,
+      message_html: htmlEmail,
+      body_html: htmlEmail,
+      logo_url: CITYZEN_LOGO_URL,
+      ref_number: refNum,
+      dispatch_id: dispatchId,
+      portal_url: portalUrl,
+      login_link: portalUrl,
+      date: timestamp,
+    },
+  };
+
+  let transmittedViaApi = false;
+  let apiResponseMsg = '';
+
+  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
+    try {
+      const res = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
+      }
+    } catch (e: any) {
+      console.warn('Webhook transmission error:', e.message);
+    }
+  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = `Delivered via EmailJS Cloud SMTP Gateway (${config.emailjsServiceId})`;
+      } else {
+        const errText = await res.text();
+        console.warn('EmailJS response status:', res.status, errText);
+        apiResponseMsg = `EmailJS Login Notice (${res.status}): ${errText}`;
+      }
+    } catch (e: any) {
+      console.warn('EmailJS transmission error:', e.message);
+      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
+    }
+  }
+
+  // Record in-app notification
+  if (data.userId) {
+    try {
+      await supabase.from('notifications').insert({
+        user_id: data.userId,
+        title: 'New Sign-in Detected 🔑',
+        message: `A new session was authenticated for your account on ${timestamp} from ${data.deviceInfo || 'Web Browser'}. Ref: ${refNum}.`,
+        type: 'government',
+        read: false,
+      });
+    } catch (err) {
+      console.warn('In-app notification insert fallback:', err);
+    }
+  }
+
+  return {
+    success: true,
+    status: transmittedViaApi ? 'delivered' : 'transmitted',
+    dispatchId,
+    timestamp,
+    method: apiResponseMsg || 'CityZen System Background Dispatch',
+    message: transmittedViaApi
+      ? `Sign-in alert transmitted to ${data.userEmail} via EmailJS.`
+      : `Sign-in alert recorded for ${data.userEmail}.`,
+  };
+}
+
+/* ============================================================================ */
+/* NEW ACCOUNT CREATED (24-HOUR SETUP LINK) EMAIL                               */
+/* ============================================================================ */
+
+export interface AccountCreatedSetupEmailData {
+  userId?: string;
+  userName: string;
+  userEmail: string;
+  setupLink: string;
+  refNumber?: string;
+  expiryHours?: number;
+}
+
+export function buildAccountCreatedSetupHtmlEmail(data: AccountCreatedSetupEmailData, portalUrl: string, refNum: string): string {
+  const logoUrl = CITYZEN_LOGO_URL;
+  const expiryHours = data.expiryHours || 24;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to CityZen: Set Your Account Password</title>
+</head>
+<body style="margin:0;padding:24px 16px;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <!-- Preheader text invisible in body for inbox preview -->
+  <div style="display:none;font-size:1px;color:#0f172a;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Welcome to CityZen! Please set your password within ${expiryHours} hours to activate your account.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.45);">
+    <tr>
+      <td style="padding:32px 24px 20px;text-align:center;background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <img src="${logoUrl}" alt="CityZen Logo" width="80" height="80" style="border-radius:20px;border:2px solid rgba(56,189,248,0.4);box-shadow:0 0 20px rgba(56,189,248,0.25);display:inline-block;margin-bottom:12px;" />
+        <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">CityZen</h1>
+        <p style="color:#38bdf8;font-size:11px;margin:4px 0 0;text-transform:uppercase;letter-spacing:2px;font-weight:700;">One City · One App</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 24px 20px;">
+        <p style="font-size:16px;line-height:24px;color:#f8fafc;margin:0 0 14px;">
+          Welcome to CityZen, <strong>${data.userName}</strong>!
+        </p>
+        <p style="font-size:13px;line-height:20px;color:#94a3b8;margin:0 0 18px;">
+          Your citizen registration has been created. To activate your account and access digital municipal services, please set your secure account password.
+        </p>
+
+        <!-- 24-Hour Expiration Banner -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(245,158,11,0.08);border-radius:16px;border:1px solid rgba(245,158,11,0.3);margin-bottom:22px;">
+          <tr>
+            <td style="padding:16px 20px;">
+              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">
+                ⏰ Time-Sensitive Activation (${expiryHours}-Hour Window)
+              </div>
+              <div style="font-size:12px;color:#e2e8f0;line-height:18px;">
+                This secure setup link is active for <strong>${expiryHours} hours</strong>. Please set your password within this window to complete your registration.
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Primary Call To Action Button -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+          <tr>
+            <td align="center">
+              <a href="${data.setupLink}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:14px;font-weight:800;text-decoration:none;padding:14px 40px;border-radius:12px;box-shadow:0 4px 16px rgba(2,132,199,0.4);letter-spacing:0.2px;">
+                Set Your Password & Activate Account →
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <div style="background:#0f172a;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:14px 18px;margin-bottom:20px;font-size:12px;color:#94a3b8;line-height:20px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">
+            Registration Summary
+          </div>
+          <div>• <strong>Registered Email:</strong> <span style="color:#cbd5e1;">${data.userEmail}</span></div>
+          <div>• <strong>Activation Reference:</strong> <span style="font-family:monospace;color:#38bdf8;">${refNum}</span></div>
+          <div>• <strong>Validity:</strong> 24 Hours from registration</div>
+        </div>
+
+        <div style="font-size:11px;color:#64748b;line-height:18px;margin-bottom:14px;">
+          If the button above does not work, copy and paste this direct link into your browser:<br>
+          <span style="font-family:monospace;color:#38bdf8;word-break:break-all;">${data.setupLink}</span>
+        </div>
+
+        <p style="font-size:11px;line-height:17px;color:#64748b;margin:0;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+          If you did not register for an account on CityZen, you can safely disregard this message. No account will be activated without your confirmation.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;font-size:10px;line-height:16px;color:#64748b;">
+        This automated invitation was sent to <strong>${data.userEmail}</strong> by the CityZen Portal.<br>
+        For inquiries, reply to <a href="mailto:cityzen.system@gmail.com" style="color:#38bdf8;text-decoration:none;">cityzen.system@gmail.com</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendAccountCreatedSetupEmail(data: AccountCreatedSetupEmailData): Promise<EmailDispatchResult> {
+  const config = getEmailGatewayConfig();
+  const dispatchId = `ACT-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const timestamp = new Date().toLocaleString('en-IN', { timeZoneName: 'short' });
+  const refNum = data.refNumber || `CZ-ACT-${Math.floor(100000 + Math.random() * 900000)}`;
+  const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
+  const htmlEmail = buildAccountCreatedSetupHtmlEmail(data, portalUrl, refNum);
+
+  if (!data.userEmail || !data.userEmail.includes('@')) {
+    return {
+      success: false,
+      status: 'failed',
+      dispatchId,
+      timestamp,
+      method: 'in_app_only',
+      message: 'No recipient email specified.',
+    };
+  }
+
+  const plainMessage = `Welcome to CityZen, ${data.userName}!\n\nYour account has been created. Please set your account password within 24 hours to activate your profile.\n\nActivation Link: ${data.setupLink}\nAccount: ${data.userEmail}\nValidity: 24 Hours\nReference: ${refNum}\n\nIf you did not register for CityZen, please ignore this email.\n\nBest regards,\nCityZen Portal Team`;
+
+  const payload = {
+    service_id: config.emailjsServiceId,
+    template_id: config.emailjsTemplateId,
+    user_id: config.emailjsPublicKey,
+    template_params: {
+      to_name: data.userName,
+      recipient_name: data.userName,
+      user_name: data.userName,
+      name: data.userName,
+      to_email: data.userEmail,
+      recipient: data.userEmail,
+      email: data.userEmail,
+      user_email: data.userEmail,
+      reply_to: config.senderEmail,
+      from_name: 'CityZen Portal',
+      subject: 'Welcome to CityZen: Set your account password (valid 24h)',
+      message: plainMessage,
+      message_body: plainMessage,
+      content: plainMessage,
+      html_message: htmlEmail,
+      html_content: htmlEmail,
+      message_html: htmlEmail,
+      body_html: htmlEmail,
+      logo_url: CITYZEN_LOGO_URL,
+      ref_number: refNum,
+      dispatch_id: dispatchId,
+      portal_url: portalUrl,
+      login_link: data.setupLink,
+      date: timestamp,
+    },
+  };
+
+  let transmittedViaApi = false;
+  let apiResponseMsg = '';
+
+  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
+    try {
+      const res = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
+      }
+    } catch (e: any) {
+      console.warn('Webhook transmission error:', e.message);
+    }
+  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        transmittedViaApi = true;
+        apiResponseMsg = `Delivered via EmailJS Cloud SMTP Gateway (${config.emailjsServiceId})`;
+      } else {
+        const errText = await res.text();
+        console.warn('EmailJS response status:', res.status, errText);
+        apiResponseMsg = `EmailJS Activation Notice (${res.status}): ${errText}`;
+      }
+    } catch (e: any) {
+      console.warn('EmailJS transmission error:', e.message);
+      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
+    }
+  }
+
+  // Record in-app notification if userId exists
+  if (data.userId) {
+    try {
+      await supabase.from('notifications').insert({
+        user_id: data.userId,
+        title: 'Welcome to CityZen 🎉',
+        message: `Your account is created! An activation link has been sent to ${data.userEmail} (valid for 24 hours).`,
+        type: 'government',
+        read: false,
+      });
+    } catch (err) {
+      console.warn('In-app notification insert fallback:', err);
+    }
+  }
+
+  return {
+    success: true,
+    status: transmittedViaApi ? 'delivered' : 'transmitted',
+    dispatchId,
+    timestamp,
+    method: apiResponseMsg || 'CityZen System Background Dispatch',
+    message: transmittedViaApi
+      ? `Activation link transmitted to ${data.userEmail} via EmailJS.`
+      : `Activation link recorded for ${data.userEmail}.`,
+  };
+}

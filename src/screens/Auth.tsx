@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Building2, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, ShieldCheck, KeyRound, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  Building2, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, ShieldCheck,
+  KeyRound, Sparkles, CheckCircle2, Clock, CheckCheck, ExternalLink, RefreshCw
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { sendLoginAlertEmail, sendAccountCreatedSetupEmail } from '@/lib/emailService';
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -22,6 +26,14 @@ interface GoogleLinkedAccountInfo {
   linkSent?: boolean;
 }
 
+interface SignupSuccessState {
+  email: string;
+  fullName: string;
+  refNumber: string;
+  resending?: boolean;
+  resentSuccess?: boolean;
+}
+
 export function Auth() {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
@@ -37,6 +49,9 @@ export function Auth() {
   // Google Account Linking Flow States
   const [googleAccountDetected, setGoogleAccountDetected] = useState<GoogleLinkedAccountInfo | null>(null);
   const [sendingSetupLink, setSendingSetupLink] = useState(false);
+
+  // 24-Hour Account Activation State
+  const [signupSuccessInfo, setSignupSuccessInfo] = useState<SignupSuccessState | null>(null);
 
   const detectGoogleAccount = async (targetEmail: string): Promise<{ isGoogle: boolean; fullName?: string }> => {
     const cleanEmail = targetEmail.trim().toLowerCase();
@@ -75,15 +90,47 @@ export function Auth() {
     if (!googleAccountDetected?.email) return;
     setSendingSetupLink(true);
     try {
+      const setupLink = `${window.location.origin}#setup-password`;
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(googleAccountDetected.email, {
-        redirectTo: window.location.origin
+        redirectTo: setupLink
       });
       if (resetErr) throw resetErr;
+
+      // Dispatched high-deliverability anti-spam email
+      await sendAccountCreatedSetupEmail({
+        userName: googleAccountDetected.fullName || 'Citizen',
+        userEmail: googleAccountDetected.email,
+        setupLink: setupLink,
+        expiryHours: 24,
+      });
+
       setGoogleAccountDetected(prev => prev ? { ...prev, linkSent: true } : null);
     } catch (e: any) {
       alert("Could not send setup link: " + (e.message || "Please try again later."));
     } finally {
       setSendingSetupLink(false);
+    }
+  };
+
+  const handleResendSignupLink = async () => {
+    if (!signupSuccessInfo?.email) return;
+    setSignupSuccessInfo(prev => prev ? { ...prev, resending: true, resentSuccess: false } : null);
+    try {
+      const setupLink = `${window.location.origin}#setup-password`;
+      await supabase.auth.resetPasswordForEmail(signupSuccessInfo.email, {
+        redirectTo: setupLink,
+      });
+      await sendAccountCreatedSetupEmail({
+        userName: signupSuccessInfo.fullName,
+        userEmail: signupSuccessInfo.email,
+        setupLink: setupLink,
+        refNumber: signupSuccessInfo.refNumber,
+        expiryHours: 24,
+      });
+      setSignupSuccessInfo(prev => prev ? { ...prev, resending: false, resentSuccess: true } : null);
+    } catch (err: any) {
+      alert("Could not resend setup link: " + (err.message || "Please try again later."));
+      setSignupSuccessInfo(prev => prev ? { ...prev, resending: false } : null);
     }
   };
 
@@ -96,6 +143,17 @@ export function Auth() {
         setGoogleAccountDetected(null);
         try {
           await signIn(email.trim(), password);
+          
+          // Send sign-in security confirmation alert email
+          const currentSession = (await supabase.auth.getSession()).data.session;
+          const sessionUser = currentSession?.user;
+          sendLoginAlertEmail({
+            userId: sessionUser?.id,
+            userName: sessionUser?.user_metadata?.full_name || sessionUser?.user_metadata?.name || 'Citizen',
+            userEmail: email.trim(),
+            deviceInfo: navigator.userAgent,
+          }).catch(alertErr => console.warn('Could not dispatch sign-in alert email:', alertErr));
+
         } catch (authErr: any) {
           const errMsg = authErr instanceof Error ? authErr.message : String(authErr);
           // If login fails (e.g. invalid credentials), check if this account was created via Google OAuth!
@@ -131,17 +189,56 @@ export function Auth() {
         }
 
         const signUpData = await signUp(email.trim(), password, fullName.trim(), cleanPhone, signupRole);
-        if (signUpData && !signUpData.session) {
-          alert("Account created successfully! Please check your email to verify your account before logging in.");
-          setMode('signin');
-          setPassword('');
+        
+        // 24-Hour password setup link flow
+        const setupLink = `${window.location.origin}#setup-password`;
+        const refNum = `CZ-ACT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        // Trigger password setup token via Supabase Auth
+        try {
+          await supabase.auth.resetPasswordForEmail(email.trim(), {
+            redirectTo: setupLink
+          });
+        } catch (supaErr) {
+          console.warn('Supabase resetPasswordForEmail setup dispatch note:', supaErr);
         }
+
+        // Send high-deliverability anti-spam HTML email via EmailJS Gateway
+        try {
+          await sendAccountCreatedSetupEmail({
+            userId: signUpData?.user?.id,
+            userName: fullName.trim(),
+            userEmail: email.trim(),
+            setupLink: setupLink,
+            refNumber: refNum,
+            expiryHours: 24,
+          });
+        } catch (emailErr) {
+          console.warn('sendAccountCreatedSetupEmail notice:', emailErr);
+        }
+
+        // Display professional 24-hour setup confirmation card
+        setSignupSuccessInfo({
+          email: email.trim(),
+          fullName: fullName.trim(),
+          refNumber: refNum,
+        });
+        setPassword('');
       } else {
+        const setupLink = `${window.location.origin}#type=recovery`;
         const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: window.location.origin
+          redirectTo: setupLink
         });
         if (resetErr) throw resetErr;
-        alert("Password reset link has been sent to your email. Please check your inbox!");
+
+        await sendAccountCreatedSetupEmail({
+          userName: 'Citizen',
+          userEmail: email.trim(),
+          setupLink: setupLink,
+          expiryHours: 24,
+        });
+
+        alert("Password reset link has been dispatched to your email! Please check your inbox within 24 hours.");
         setMode('signin');
       }
     } catch (err: any) {
@@ -197,295 +294,383 @@ export function Auth() {
             CityZen <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold uppercase">Portal</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs leading-relaxed">
-            {mode === 'signin' ? 'Sign in to manage your city services, bills & reports' : 
+            {signupSuccessInfo ? 'Verification & activation dispatch' :
+             mode === 'signin' ? 'Sign in to manage your city services, bills & reports' : 
              mode === 'signup' ? 'Create your unified citizen identity account' : 
              'Reset your account credentials securely'}
           </p>
         </div>
 
-        {/* Navigation Mode Segment Switcher */}
-        {mode !== 'forgot' && (
-          <div className="grid grid-cols-2 p-1.5 bg-slate-950/80 border border-white/10 rounded-2xl mb-6 shadow-inner">
-            <button
-              type="button"
-              onClick={() => { setMode('signin'); setError(null); }}
-              className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                mode === 'signin' 
-                  ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('signup'); setError(null); }}
-              className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                mode === 'signup' 
-                  ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Create Account
-            </button>
+        {signupSuccessInfo ? (
+          <div className="space-y-4 animate-fade-in">
+            <div className="p-5 rounded-3xl bg-gradient-to-b from-cyan-950/70 via-slate-900 to-slate-950 border border-cyan-500/30 text-center relative overflow-hidden">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+                <Mail className="w-7 h-7" />
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-[10px] font-extrabold uppercase tracking-wider mb-2">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                24-Hour Password Setup Link Sent
+              </span>
+              <h2 className="text-xl font-black text-white">Check Your Gmail</h2>
+              <p className="text-xs text-slate-300 mt-1 max-w-xs mx-auto leading-relaxed">
+                Welcome, <strong>{signupSuccessInfo.fullName}</strong>! A secure 24-hour activation link has been sent to your Gmail inbox:
+              </p>
+              <div className="mt-3 px-3.5 py-2.5 bg-slate-950 border border-cyan-500/30 rounded-xl font-mono text-xs text-cyan-300 font-bold break-all shadow-inner">
+                {signupSuccessInfo.email}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 font-mono">
+                Security Reference: <span className="text-cyan-400">{signupSuccessInfo.refNumber}</span>
+              </p>
+            </div>
+
+            <div className="space-y-2.5 bg-slate-950/70 border border-white/5 rounded-2xl p-4 text-xs text-slate-300">
+              <div className="flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-white">Active for 24 Hours:</strong> Click the activation link within 24 hours to set your secure password and access your digital citizen profile.
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-white">Anti-Spam Verification:</strong> Transmitted via verified CityZen Gateway (<span className="text-cyan-300 font-mono">cityzen.system@gmail.com</span>). If not in Primary, check your Updates or Promotions tab.
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              <a
+                href="https://mail.google.com/mail/u/0/#search/from%3Acityzen.system%40gmail.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Open Gmail Inbox</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </a>
+
+              <button
+                type="button"
+                disabled={signupSuccessInfo.resending}
+                onClick={handleResendSignupLink}
+                className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-xs font-bold text-slate-200 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {signupSuccessInfo.resending ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : signupSuccessInfo.resentSuccess ? (
+                  <>
+                    <CheckCheck className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400 font-semibold">New 24-hr link sent to your email!</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Resend Setup Link</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSignupSuccessInfo(null);
+                  setMode('signin');
+                  setError(null);
+                }}
+                className="w-full text-center py-2 text-xs text-slate-400 hover:text-white cursor-pointer font-medium"
+              >
+                Done · Return to Sign In
+              </button>
+            </div>
           </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Sign Up Role Toggle Card */}
-          {mode === 'signup' && (
-            <div className="space-y-2 mb-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Account Type</label>
-              <div className="grid grid-cols-2 gap-2">
+        ) : (
+          <>
+            {/* Navigation Mode Segment Switcher */}
+            {mode !== 'forgot' && (
+              <div className="grid grid-cols-2 p-1.5 bg-slate-950/80 border border-white/10 rounded-2xl mb-6 shadow-inner">
                 <button
                   type="button"
-                  onClick={() => setSignupRole('citizen')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                    signupRole === 'citizen'
-                      ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
-                      : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                  onClick={() => { setMode('signin'); setError(null); }}
+                  className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    mode === 'signin' 
+                      ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <User className={`w-4 h-4 ${signupRole === 'citizen' ? 'text-primary-400' : 'text-slate-500'}`} />
-                  <div>
-                    <p className="text-xs font-extrabold">Citizen</p>
-                    <p className="text-[9px] opacity-75">Public User</p>
-                  </div>
+                  Sign In
                 </button>
-
                 <button
                   type="button"
-                  onClick={() => setSignupRole('business')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                    signupRole === 'business'
-                      ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
-                      : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                  onClick={() => { setMode('signup'); setError(null); }}
+                  className={`py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    mode === 'signup' 
+                      ? 'bg-gradient-to-r from-primary-600 to-teal-600 text-white shadow-md' 
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Building2 className={`w-4 h-4 ${signupRole === 'business' ? 'text-primary-400' : 'text-slate-500'}`} />
-                  <div>
-                    <p className="text-xs font-extrabold">Merchant</p>
-                    <p className="text-[9px] opacity-75">Hospital/Biz</p>
-                  </div>
+                  Create Account
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Full Name (Sign up only) */}
-          {mode === 'signup' && (
-            <Field
-              icon={<User className="w-4 h-4" />}
-              type="text"
-              placeholder="Full Name"
-              value={fullName}
-              onChange={setFullName}
-            />
-          )}
-          
-          {/* Email Address */}
-          <Field
-            icon={<Mail className="w-4 h-4" />}
-            type="email"
-            placeholder="Email Address"
-            value={email}
-            onChange={setEmail}
-          />
-          
-          {/* Phone Number (Sign up only) */}
-          {mode === 'signup' && (
-            <Field
-              icon={<Phone className="w-4 h-4" />}
-              type="tel"
-              placeholder="10-Digit Mobile Number"
-              value={phone}
-              onChange={(val) => setPhone(val.replace(/\D/g, '').slice(0, 10))}
-            />
-          )}
-          
-          {/* Password Input */}
-          {mode !== 'forgot' && (
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                <Lock className="w-4 h-4" />
-              </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-11 pr-11 py-3 bg-slate-950/80 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Sign Up Role Toggle Card */}
+              {mode === 'signup' && (
+                <div className="space-y-2 mb-4">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Account Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSignupRole('citizen')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                        signupRole === 'citizen'
+                          ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
+                          : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                      }`}
+                    >
+                      <User className={`w-4 h-4 ${signupRole === 'citizen' ? 'text-primary-400' : 'text-slate-500'}`} />
+                      <div>
+                        <p className="text-xs font-extrabold">Citizen</p>
+                        <p className="text-[9px] opacity-75">Public User</p>
+                      </div>
+                    </button>
 
-          {/* Forgot Password Link */}
-          {mode === 'signin' && (
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => { setMode('forgot'); setError(null); }}
-                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer transition-colors"
-              >
-                Forgot Password?
-              </button>
-            </div>
-          )}
-
-          {/* Google-Linked Account Alert Card */}
-          {googleAccountDetected && (
-            <div className="bg-gradient-to-b from-blue-950/95 via-slate-900 to-slate-950 border-2 border-blue-500/40 rounded-3xl p-5 shadow-2xl animate-fade-in relative overflow-hidden my-3 space-y-3.5">
-              {/* Glow backdrop */}
-              <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white p-2 flex items-center justify-center shrink-0 shadow-md">
-                  <GoogleIcon className="w-full h-full" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase tracking-wider text-blue-400">Google Account Detected</span>
-                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">OAuth</span>
+                    <button
+                      type="button"
+                      onClick={() => setSignupRole('business')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                        signupRole === 'business'
+                          ? 'bg-primary-500/15 border-primary-500 text-white shadow-lg shadow-primary-500/10'
+                          : 'bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15'
+                      }`}
+                    >
+                      <Building2 className={`w-4 h-4 ${signupRole === 'business' ? 'text-primary-400' : 'text-slate-500'}`} />
+                      <div>
+                        <p className="text-xs font-extrabold">Merchant</p>
+                        <p className="text-[9px] opacity-75">Hospital/Biz</p>
+                      </div>
+                    </button>
                   </div>
-                  <p className="text-xs text-white font-bold truncate mt-0.5">
-                    {googleAccountDetected.fullName ? `${googleAccountDetected.fullName} · ` : ''}{googleAccountDetected.email}
-                  </p>
                 </div>
-              </div>
-
-              <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3.5 text-xs text-slate-300 leading-relaxed space-y-2">
-                <p>
-                  This account was registered using <strong>Google Sign-In</strong>.
-                </p>
-                <p className="text-[11px] text-blue-300/90 bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
-                  💡 <strong>How to enable Email & Password login:</strong><br />
-                  To log in with your email and password as well, first verify your email and set a password. After that, you can log in using <strong>Google</strong> OR your <strong>email and password</strong> anytime.
-                </p>
-              </div>
-
-              {googleAccountDetected.linkSent ? (
-                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 text-center font-medium animate-fade-in flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                  <span>
-                    Verification link sent! Please check your inbox at <strong className="underline">{googleAccountDetected.email}</strong> to set your password.
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={sendingSetupLink}
-                  onClick={handleSendPasswordSetupLink}
-                  className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                >
-                  {sendingSetupLink ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Mail className="w-4 h-4" />
-                      <span>Send Verification & Password Setup Link</span>
-                    </>
-                  )}
-                </button>
               )}
 
-              <div className="pt-1 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setGoogleAccountDetected(null); signInWithGoogle(); }}
-                  className="w-full py-2.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-2xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <GoogleIcon className="w-4 h-4" />
-                  <span>Continue with Google Now</span>
-                </button>
+              {/* Full Name (Sign up only) */}
+              {mode === 'signup' && (
+                <Field
+                  icon={<User className="w-4 h-4" />}
+                  type="text"
+                  placeholder="Full Name"
+                  value={fullName}
+                  onChange={setFullName}
+                />
+              )}
+              
+              {/* Email Address */}
+              <Field
+                icon={<Mail className="w-4 h-4" />}
+                type="email"
+                placeholder="Email Address"
+                value={email}
+                onChange={setEmail}
+              />
+              
+              {/* Phone Number (Sign up only) */}
+              {mode === 'signup' && (
+                <Field
+                  icon={<Phone className="w-4 h-4" />}
+                  type="tel"
+                  placeholder="10-Digit Mobile Number"
+                  value={phone}
+                  onChange={(val) => setPhone(val.replace(/\D/g, '').slice(0, 10))}
+                />
+              )}
+              
+              {/* Password Input */}
+              {mode !== 'forgot' && (
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full pl-11 pr-11 py-3 bg-slate-950/80 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={() => setGoogleAccountDetected(null)}
-                  className="text-[11px] text-slate-400 hover:text-white text-center cursor-pointer py-1"
-                >
-                  Dismiss / Try another email
-                </button>
-              </div>
-            </div>
-          )}
+              {/* Forgot Password Link */}
+              {mode === 'signin' && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('forgot'); setError(null); }}
+                    className="text-xs font-bold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
 
-          {/* Error Banner */}
-          {error && !googleAccountDetected && (
-            <div className="text-xs text-red-400 bg-red-500/10 rounded-2xl p-3 border border-red-500/20 font-medium animate-shake">
-              ⚠️ {error}
-            </div>
-          )}
+              {/* Google-Linked Account Alert Card */}
+              {googleAccountDetected && (
+                <div className="bg-gradient-to-b from-blue-950/95 via-slate-900 to-slate-950 border-2 border-blue-500/40 rounded-3xl p-5 shadow-2xl animate-fade-in relative overflow-hidden my-3 space-y-3.5">
+                  {/* Glow backdrop */}
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
-          {/* Submit Action Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition-all transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white p-2 flex items-center justify-center shrink-0 shadow-md">
+                      <GoogleIcon className="w-full h-full" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-blue-400">Google Account Detected</span>
+                        <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">OAuth</span>
+                      </div>
+                      <p className="text-xs text-white font-bold truncate mt-0.5">
+                        {googleAccountDetected.fullName ? `${googleAccountDetected.fullName} · ` : ''}{googleAccountDetected.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3.5 text-xs text-slate-300 leading-relaxed space-y-2">
+                    <p>
+                      This account was registered using <strong>Google Sign-In</strong>.
+                    </p>
+                    <p className="text-[11px] text-blue-300/90 bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
+                      💡 <strong>How to enable Email & Password login:</strong><br />
+                      To log in with your email and password as well, first verify your email and set a password. After that, you can log in using <strong>Google</strong> OR your <strong>email and password</strong> anytime.
+                    </p>
+                  </div>
+
+                  {googleAccountDetected.linkSent ? (
+                    <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 text-center font-medium animate-fade-in flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>
+                        Verification link sent! Please check your inbox at <strong className="underline">{googleAccountDetected.email}</strong> to set your password.
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={sendingSetupLink}
+                      onClick={handleSendPasswordSetupLink}
+                      className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    >
+                      {sendingSetupLink ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" />
+                          <span>Send Verification & Password Setup Link</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="pt-1 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setGoogleAccountDetected(null); signInWithGoogle(); }}
+                      className="w-full py-2.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-2xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <GoogleIcon className="w-4 h-4" />
+                      <span>Continue with Google Now</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGoogleAccountDetected(null)}
+                      className="text-[11px] text-slate-400 hover:text-white text-center cursor-pointer py-1"
+                    >
+                      Dismiss / Try another email
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Banner */}
+              {error && !googleAccountDetected && (
+                <div className="text-xs text-red-400 bg-red-500/10 rounded-2xl p-3 border border-red-500/20 font-medium animate-shake">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {/* Submit Action Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition-all transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{mode === 'signin' ? 'Sign In to Portal' : mode === 'signup' ? 'Create Unified Account' : 'Send Recovery Link'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Google SSO Button */}
+            {mode !== 'forgot' && (
               <>
-                <span>{mode === 'signin' ? 'Sign In to Portal' : mode === 'signup' ? 'Create Unified Account' : 'Send Recovery Link'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <div className="flex items-center gap-3 my-5">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">or</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => { setError(null); signInWithGoogle(); }}
+                  className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <GoogleIcon className="w-5 h-5" />
+                  <span>Continue with Google</span>
+                </button>
               </>
             )}
-          </button>
-        </form>
 
-        {/* Google SSO Button */}
-        {mode !== 'forgot' && (
-          <>
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">or</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => { setError(null); signInWithGoogle(); }}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 cursor-pointer"
-            >
-              <GoogleIcon className="w-5 h-5" />
-              <span>Continue with Google</span>
-            </button>
+            {/* Footer Navigation */}
+            <p className="text-center text-xs text-slate-400 mt-6 font-medium">
+              {mode === 'forgot' ? (
+                <>
+                  Remember your credentials?{' '}
+                  <button
+                    onClick={() => { setMode('signin'); setError(null); }}
+                    className="text-cyan-400 font-bold hover:underline cursor-pointer"
+                  >
+                    Sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  {mode === 'signin' ? "Don't have a citizen account? " : 'Already registered? '}
+                  <button
+                    onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
+                    className="text-cyan-400 font-bold hover:underline cursor-pointer"
+                  >
+                    {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                  </button>
+                </>
+              )}
+            </p>
           </>
         )}
-
-        {/* Footer Navigation */}
-        <p className="text-center text-xs text-slate-400 mt-6 font-medium">
-          {mode === 'forgot' ? (
-            <>
-              Remember your credentials?{' '}
-              <button
-                onClick={() => { setMode('signin'); setError(null); }}
-                className="text-cyan-400 font-bold hover:underline cursor-pointer"
-              >
-                Sign in
-              </button>
-            </>
-          ) : (
-            <>
-              {mode === 'signin' ? "Don't have a citizen account? " : 'Already registered? '}
-              <button
-                onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
-                className="text-cyan-400 font-bold hover:underline cursor-pointer"
-              >
-                {mode === 'signin' ? 'Sign up' : 'Sign in'}
-              </button>
-            </>
-          )}
-        </p>
       </div>
 
       {/* Footer Tagline */}
