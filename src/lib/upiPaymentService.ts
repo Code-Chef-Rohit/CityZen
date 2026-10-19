@@ -30,12 +30,12 @@ export interface ParsedUpiResult {
 }
 
 /**
- * Official default municipal payment addresses
+ * Standard utility payment clearing addresses
  */
 export const DEFAULT_MUNICIPAL_VPAS = [
-  { id: 'bmc_sbi', vpa: 'bmc.odisha@sbi', name: 'Bhubaneswar Municipal Corporation', bank: 'State Bank of India' },
-  { id: 'bmc_icici', vpa: 'bmc.collectorate@icici', name: 'BMC Urban Utility Clearing', bank: 'ICICI Bank' },
-  { id: 'cityzen_gov', vpa: 'cityzen.municipal@okaxis', name: 'CityZen Smart Governance Portal', bank: 'Axis Bank' },
+  { id: 'utility_sbi', vpa: 'cityzen.utility@sbi', name: 'City Utility Services', bank: 'State Bank of India' },
+  { id: 'utility_icici', vpa: 'utility.payments@icici', name: 'Urban Electricity & Water Clearing', bank: 'ICICI Bank' },
+  { id: 'cityzen_pay', vpa: 'cityzen.pay@okaxis', name: 'CityZen Payment Portal', bank: 'Axis Bank' },
 ];
 
 /**
@@ -45,13 +45,13 @@ export const DEFAULT_MUNICIPAL_VPAS = [
  * - Strictly strips middle dots, hashtags, emojis, quotes, and brackets
  */
 export function sanitizeUpiNote(note: string): string {
-  if (!note) return 'Municipal Utility Bill';
+  if (!note) return 'Utility Bill Payment';
   const clean = note
     .replace(/[·•#]/g, ' ')
     .replace(/[^a-zA-Z0-9\s\-]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return clean.slice(0, 48) || 'Municipal Utility Bill';
+  return clean.slice(0, 48) || 'Utility Bill Payment';
 }
 
 /**
@@ -189,8 +189,8 @@ export function parseScannedQrPayload(payload: string): ParsedUpiResult {
     return {
       isValid: true,
       rawPayload: trimmed,
-      pa: 'bmc.odisha@sbi',
-      pn: 'BharatQR Municipal Terminal',
+      pa: 'cityzen.utility@sbi',
+      pn: 'City Utilities Terminal',
       tn: 'BharatQR Utility Settlement'
     };
   }
