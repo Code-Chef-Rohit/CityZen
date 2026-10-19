@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   Siren, Bell, Droplets, AlertCircle, Car, Sparkles, CheckCheck,
   Trash2, User, LogOut, Globe, MapPin, Shield, ChevronRight, Lock, Mail, Phone,
-  FileText, History, KeyRound, Check, Clock, AlertTriangle, ShieldAlert
+  FileText, History, KeyRound, Check, Clock, AlertTriangle, ShieldAlert,
+  ArrowUpRight, ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -278,7 +279,13 @@ export function Notifications({
   );
 }
 
-export function Profile({ onBack }: { onBack: () => void }) {
+export function Profile({ 
+  onBack, 
+  onNavigate 
+}: { 
+  onBack: () => void; 
+  onNavigate?: (screen: { name: string; [key: string]: any }) => void;
+}) {
   const { profile, session, signOut, refreshProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
@@ -614,10 +621,20 @@ export function Profile({ onBack }: { onBack: () => void }) {
       {/* Activity Stats Grid */}
       <div className="px-4 py-2 grid grid-cols-3 gap-2 sm:gap-3">
         <button
-          onClick={() => setActiveHistoryTab('bills')}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[72px] flex flex-col justify-between"
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate({ name: 'bills' });
+            } else {
+              setActiveHistoryTab('bills');
+            }
+          }}
+          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow-md hover:border-secondary-500/30 active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[76px] flex flex-col justify-between group touch-manipulation"
+          title="Go to Bills & Payments"
         >
-          <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">My Bills</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">My Bills</p>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-secondary-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </div>
           <div>
             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">{myBills.length}</p>
             <span className="text-[9px] sm:text-[10px] text-red-500 font-bold block truncate">
@@ -627,10 +644,20 @@ export function Profile({ onBack }: { onBack: () => void }) {
         </button>
 
         <button
-          onClick={() => setActiveHistoryTab('complaints')}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[72px] flex flex-col justify-between"
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate({ name: 'complaints' });
+            } else {
+              setActiveHistoryTab('complaints');
+            }
+          }}
+          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow-md hover:border-amber-500/30 active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[76px] flex flex-col justify-between group touch-manipulation"
+          title="Go to Complaints"
         >
-          <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Complaints</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Complaints</p>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </div>
           <div>
             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">{myComplaints.length}</p>
             <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block truncate">
@@ -640,10 +667,20 @@ export function Profile({ onBack }: { onBack: () => void }) {
         </button>
 
         <button
-          onClick={() => setActiveHistoryTab('sos')}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[72px] flex flex-col justify-between"
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate({ name: 'emergency' });
+            } else {
+              setActiveHistoryTab('sos');
+            }
+          }}
+          className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 shadow-sm hover:shadow-md hover:border-red-500/30 active:scale-95 transition-all text-left cursor-pointer border border-slate-100 dark:border-slate-800 min-h-[76px] flex flex-col justify-between group touch-manipulation"
+          title="Go to Emergency SOS"
         >
-          <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">SOS Calls</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">SOS Calls</p>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-red-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </div>
           <div>
             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">{mySOS.length}</p>
             <span className="text-[9px] sm:text-[10px] text-red-500 font-bold block truncate">
@@ -819,83 +856,137 @@ export function Profile({ onBack }: { onBack: () => void }) {
       >
         <div className="space-y-3">
           {activeHistoryTab === 'bills' && (
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-              {myBills.length === 0 ? (
-                <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No utility bills linked to your profile.</p>
-              ) : (
-                myBills.map(b => (
-                  <div key={b.id} className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 flex justify-between items-center text-xs">
-                    <div>
-                      <p className="font-bold text-ink-900 dark:text-white capitalize">{b.type} Utility</p>
-                      <p className="text-[10px] text-ink-400 dark:text-slate-400 mt-0.5">{b.period || 'Monthly Service'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-black text-sm text-ink-900 dark:text-white">₹{b.amount}</p>
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-1 ${
-                        b.status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
-                      }`}>
-                        {b.status}
-                      </span>
-                    </div>
-                  </div>
-                ))
+            <div className="space-y-2.5">
+              {onNavigate && (
+                <button
+                  onClick={() => { setActiveHistoryTab(null); onNavigate({ name: 'bills' }); }}
+                  className="w-full py-2 px-3 bg-secondary-50 hover:bg-secondary-100 dark:bg-secondary-950/40 dark:hover:bg-secondary-900/50 text-secondary-700 dark:text-secondary-300 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border border-secondary-200/60 dark:border-secondary-800/60 cursor-pointer"
+                >
+                  <span>Go to Full Bills & Taxes Section</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               )}
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {myBills.length === 0 ? (
+                  <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No utility bills linked to your profile.</p>
+                ) : (
+                  myBills.map(b => (
+                    <div 
+                      key={b.id} 
+                      onClick={() => { if (onNavigate) { setActiveHistoryTab(null); onNavigate({ name: 'bills', type: b.type }); } }}
+                      className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 flex justify-between items-center text-xs hover:border-secondary-500/40 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group"
+                    >
+                      <div>
+                        <p className="font-bold text-ink-900 dark:text-white capitalize flex items-center gap-1.5">
+                          {b.type} Utility
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[10px] text-ink-400 dark:text-slate-400 mt-0.5">{b.period || 'Monthly Service'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-sm text-ink-900 dark:text-white">₹{b.amount}</p>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-1 ${
+                          b.status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
           {activeHistoryTab === 'complaints' && (
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-              {myComplaints.length === 0 ? (
-                <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No civic complaints filed by your account.</p>
-              ) : (
-                myComplaints.map(c => (
-                  <div key={c.id} className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 text-xs space-y-1.5">
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-bold text-ink-900 dark:text-white truncate">{c.title}</p>
-                      <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${
-                        c.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 
-                        c.status === 'in_progress' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' : 
-                        'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
-                      }`}>
-                        {c.status}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-ink-400 dark:text-slate-400">{c.location_text || 'Ward Coordinates'} · Category: {c.category}</p>
-                    {c.description && <p className="text-[10px] text-ink-600 dark:text-slate-300 italic">"{c.description}"</p>}
-                    {c.status === 'resolved' && c.resolution_proof && (
-                      <div className="mt-1.5 p-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-500/20 text-[10px]">
-                        <span className="font-bold block uppercase tracking-wider text-[8px]">BMC Resolution Proof:</span>
-                        <p className="italic mt-0.5">"{c.resolution_proof}"</p>
-                      </div>
-                    )}
-                  </div>
-                ))
+            <div className="space-y-2.5">
+              {onNavigate && (
+                <button
+                  onClick={() => { setActiveHistoryTab(null); onNavigate({ name: 'complaints' }); }}
+                  className="w-full py-2 px-3 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border border-amber-200/60 dark:border-amber-800/60 cursor-pointer"
+                >
+                  <span>Go to Full Complaints Section</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               )}
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {myComplaints.length === 0 ? (
+                  <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No civic complaints filed by your account.</p>
+                ) : (
+                  myComplaints.map(c => (
+                    <div 
+                      key={c.id} 
+                      onClick={() => { if (onNavigate) { setActiveHistoryTab(null); onNavigate({ name: 'complaints', category: c.category }); } }}
+                      className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 text-xs space-y-1.5 hover:border-amber-500/40 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-bold text-ink-900 dark:text-white truncate flex items-center gap-1.5">
+                          {c.title}
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </p>
+                        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${
+                          c.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 
+                          c.status === 'in_progress' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' : 
+                          'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                        }`}>
+                          {c.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-ink-400 dark:text-slate-400">{c.location_text || 'Ward Coordinates'} · Category: {c.category}</p>
+                      {c.description && <p className="text-[10px] text-ink-600 dark:text-slate-300 italic">"{c.description}"</p>}
+                      {c.status === 'resolved' && c.resolution_proof && (
+                        <div className="mt-1.5 p-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-500/20 text-[10px]">
+                          <span className="font-bold block uppercase tracking-wider text-[8px]">BMC Resolution Proof:</span>
+                          <p className="italic mt-0.5">"{c.resolution_proof}"</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
           {activeHistoryTab === 'sos' && (
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-              {mySOS.length === 0 ? (
-                <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No emergency SOS signals recorded.</p>
-              ) : (
-                mySOS.map(s => (
-                  <div key={s.id} className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 text-xs space-y-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">{s.type} Dispatch</p>
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${
-                        s.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 
-                        'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 animate-pulse'
-                      }`}>
-                        {s.status}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-ink-400 dark:text-slate-400">{new Date(s.created_at).toLocaleString()}</p>
-                    <p className="text-[10px] text-ink-600 dark:text-slate-300 font-semibold">Location: {s.location_text || 'Ward Coordinates'}</p>
-                    {s.notes && <p className="text-[10px] text-ink-500 dark:text-slate-400 mt-1 italic">Notes: {s.notes}</p>}
-                  </div>
-                ))
+            <div className="space-y-2.5">
+              {onNavigate && (
+                <button
+                  onClick={() => { setActiveHistoryTab(null); onNavigate({ name: 'emergency' }); }}
+                  className="w-full py-2 px-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border border-red-200/60 dark:border-red-800/60 cursor-pointer"
+                >
+                  <span>Go to Live Emergency SOS Section</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               )}
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {mySOS.length === 0 ? (
+                  <p className="text-xs text-ink-400 dark:text-slate-500 py-6 text-center">No emergency SOS signals recorded.</p>
+                ) : (
+                  mySOS.map(s => (
+                    <div 
+                      key={s.id} 
+                      onClick={() => { if (onNavigate) { setActiveHistoryTab(null); onNavigate({ name: 'emergency' }); } }}
+                      className="bg-ink-50 dark:bg-slate-800/60 border border-ink-100 dark:border-slate-700/60 rounded-xl p-3 text-xs space-y-1 hover:border-red-500/40 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-bold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                          {s.type} Dispatch
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </p>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase shrink-0 ${
+                          s.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 
+                          'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 animate-pulse'
+                        }`}>
+                          {s.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-ink-400 dark:text-slate-400">{new Date(s.created_at).toLocaleString()}</p>
+                      <p className="text-[10px] text-ink-600 dark:text-slate-300 font-semibold">Location: {s.location_text || 'Ward Coordinates'}</p>
+                      {s.notes && <p className="text-[10px] text-ink-500 dark:text-slate-400 mt-1 italic">Notes: {s.notes}</p>}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

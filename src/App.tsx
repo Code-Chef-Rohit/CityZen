@@ -299,7 +299,7 @@ function AppContent() {
       )}
       {screen.name === 'complaints' && <Complaints onBack={back} initialCategory={screen.category} />}
       {screen.name === 'bills' && <Bills onBack={back} initialType={screen.type} />}
-      {screen.name === 'profile' && <Profile onBack={back} />}
+      {screen.name === 'profile' && <Profile onBack={back} onNavigate={(s) => navigateToScreen(s as Screen)} />}
 
       {/* Floating admin control center button for admin users in citizen mode */}
       {profile?.role === 'admin' && (
