@@ -31,18 +31,23 @@ const categorySvgs: Record<MapCategory, string> = {
   transit: `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M4 18v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3"/><path d="M17 18v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3"/><path d="M4 11h16"/><path d="M2 15h20"/><path d="M4 6h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg>`
 };
 
-const TILE_LAYERS = {
+export type MapTileMode = 'streets' | 'satellite' | 'roadmap';
+
+const TILE_LAYERS: Record<MapTileMode, { url: string; attribution: string; subdomains?: string[]; maxZoom: number }> = {
   streets: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: ['a', 'b', 'c', 'd'],
-    maxZoom: 20
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
   },
   satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-    subdomains: ['a', 'b', 'c', 'd'],
-    maxZoom: 19
+    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google Maps Satellite',
+    maxZoom: 20
+  },
+  roadmap: {
+    url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google Maps Roadmap',
+    maxZoom: 20
   }
 };
 
@@ -75,7 +80,7 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [searchRadius, setSearchRadius] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [mapMode, setMapMode] = useState<'streets' | 'satellite'>('streets');
+  const [mapMode, setMapMode] = useState<MapTileMode>('streets');
   const [geoError, setGeoError] = useState<string | null>(null);
   const geoTimeoutRef = useRef<any>(null);
 
@@ -260,6 +265,12 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
           attribution: tileCfg.attribution
         });
 
+        tileLayer.on('tileerror', function(error: any) {
+          if (error && error.tile) {
+            error.tile.style.display = 'none';
+          }
+        });
+
         tileLayer.addTo(map);
         tileLayerRef.current = tileLayer;
 
@@ -313,6 +324,12 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
       maxZoom: tileCfg.maxZoom,
       subdomains: tileCfg.subdomains,
       attribution: tileCfg.attribution
+    });
+
+    newTileLayer.on('tileerror', function(error: any) {
+      if (error && error.tile) {
+        error.tile.style.display = 'none';
+      }
     });
 
     newTileLayer.addTo(map);
@@ -551,13 +568,15 @@ export function SmartMap({ onBack, initialCategory }: MapProps) {
               </button>
 
               <button
-                onClick={() => setMapMode(m => m === 'streets' ? 'satellite' : 'streets')}
+                onClick={() => setMapMode(m => m === 'streets' ? 'satellite' : m === 'satellite' ? 'roadmap' : 'streets')}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all active:scale-90 text-xs ${
                   mapMode === 'satellite'
                     ? 'bg-amber-500 text-white shadow-xs'
+                    : mapMode === 'roadmap'
+                    ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
                 }`}
-                title={mapMode === 'streets' ? "Switch to Satellite Imagery" : "Switch to Streets View"}
+                title={`Current View: ${mapMode.toUpperCase()} (Click to toggle Streets / Satellite / Roadmap)`}
               >
                 <Layers className="w-3.5 h-3.5" />
               </button>

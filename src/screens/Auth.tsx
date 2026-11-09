@@ -117,9 +117,6 @@ export function Auth() {
     setSignupSuccessInfo(prev => prev ? { ...prev, resending: true, resentSuccess: false } : null);
     try {
       const setupLink = `${window.location.origin}#setup-password`;
-      await supabase.auth.resetPasswordForEmail(signupSuccessInfo.email, {
-        redirectTo: setupLink,
-      });
       await sendAccountCreatedSetupEmail({
         userName: signupSuccessInfo.fullName,
         userEmail: signupSuccessInfo.email,
@@ -193,15 +190,6 @@ export function Auth() {
         // 24-Hour password setup link flow
         const setupLink = `${window.location.origin}#setup-password`;
         const refNum = `CZ-ACT-${Math.floor(100000 + Math.random() * 900000)}`;
-
-        // Trigger password setup token via Supabase Auth
-        try {
-          await supabase.auth.resetPasswordForEmail(email.trim(), {
-            redirectTo: setupLink
-          });
-        } catch (supaErr) {
-          console.warn('Supabase resetPasswordForEmail setup dispatch note:', supaErr);
-        }
 
         // Send high-deliverability anti-spam HTML email via EmailJS Gateway
         try {
@@ -333,14 +321,14 @@ export function Auth() {
               <div className="flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-white">Anti-Spam Verification:</strong> Transmitted via verified CityZen Gateway (<span className="text-cyan-300 font-mono">cityzen.system@gmail.com</span>). If not in Primary, check your Updates or Promotions tab.
+                  <strong className="text-white">Inbox Delivery:</strong> Transmitted via verified CityZen Gateway. If not visible immediately in Primary, check your Updates tab.
                 </div>
               </div>
             </div>
 
             <div className="space-y-2.5 pt-1">
               <a
-                href="https://mail.google.com/mail/u/0/#search/from%3Acityzen.system%40gmail.com"
+                href="https://mail.google.com/mail/u/0/#search/CityZen"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"

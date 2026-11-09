@@ -635,12 +635,12 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         }
       }
 
-      // 3. Insert official notification into notifications table for target user
+      // 3. Insert notification into notifications table for target user
       try {
         await supabase.from('notifications').insert({
           user_id: userId,
-          title: `🏛️ Authority Granted: Designated as ${newRole.toUpperCase()}`,
-          message: `Your CityZen municipal security clearance and operational role have been formally updated to ${newRole.toUpperCase()} (${roleDetails.title}) by the Municipal Administration. You now have access to: ${roleDetails.responsibilities}. Please log in to your department dashboard.`,
+          title: `Role Updated: ${newRole.toUpperCase()}`,
+          message: `Your account role has been updated to ${newRole.toUpperCase()} (${roleDetails.title}). You can now access: ${roleDetails.responsibilities}.`,
           type: 'government',
           read: false
         });
@@ -648,8 +648,8 @@ export default function AdminDashboard({ onSwitchToCitizen }: { onSwitchToCitize
         console.warn("Could not insert notification into database:", notifErr);
       }
 
-      // 4. Prepare minimal, clean email text (tuned to prevent spam/phishing classification)
-      const emailSubject = `CityZen account update: ${roleDetails.title}`;
+      // 4. Prepare minimal, clean email text (anti-spam deliverability optimized)
+      const emailSubject = `CityZen: Role Updated`;
       const emailBody = `Hi ${recipientName},
 
 Your account role on CityZen has been updated to ${roleDetails.title}.
@@ -658,17 +658,12 @@ Account Details:
 • Role: ${roleDetails.title}
 • Clearance: ${roleDetails.clearance}
 • Account: ${recipientEmail || 'your email'}
-• Ref: ${refNumber}
 
-Included features:
+Access privileges:
 ${roleDetails.permissions.map(p => `• ${p}`).join('\n')}
 
-Log in to CityZen:
-${window.location.origin}
-
-Best regards,
-The CityZen Team
-cityzen.system@gmail.com`;
+Dashboard Link:
+${window.location.origin}`;
 
       loadMetricsAndData();
 
@@ -2790,11 +2785,11 @@ GRANT EXECUTE ON FUNCTION get_database_replication_status() TO authenticated, an
                 <div className="min-w-0">
                   <p className="font-extrabold text-white text-xs truncate">
                     {roleNoticeModal.dispatching 
-                      ? `Transmitting automated alert to ${roleNoticeModal.userEmail}...` 
-                      : `Automated System Communiqué Dispatched to ${roleNoticeModal.userEmail || roleNoticeModal.userName}`}
+                      ? `Transmitting update to ${roleNoticeModal.userEmail}...` 
+                      : `Notification dispatched to ${roleNoticeModal.userEmail || roleNoticeModal.userName}`}
                   </p>
                   <p className="text-[10px] opacity-80 truncate font-mono mt-0.5">
-                    Sender: no-reply@cityzen.odisha.gov.in · {roleNoticeModal.dispatchMethod || 'Municipal Background Relay'}
+                    Status: Delivered
                   </p>
                 </div>
               </div>
@@ -2907,7 +2902,7 @@ GRANT EXECUTE ON FUNCTION get_database_replication_status() TO authenticated, an
                 <div className="flex items-center gap-1.5">
                   <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded-xl text-[11px] font-bold flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5" />
-                    <span>Auto-Sent by System</span>
+                    <span>Dispatched</span>
                   </span>
                   <button
                     type="button"
