@@ -45,7 +45,8 @@ export const handler = async (event: any) => {
     const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
     const smtpUser = process.env.SMTP_USER || 'cityzen.system@gmail.com';
-    const smtpPass = process.env.SMTP_PASS || process.env.VITE_SMTP_PASS || '';
+    const rawPass = process.env.SMTP_PASS || process.env.VITE_SMTP_PASS || '';
+    const smtpPass = rawPass.replace(/\s+/g, '');
     const senderName = process.env.SMTP_SENDER_NAME || 'CityZen';
 
     if (!smtpPass) {
