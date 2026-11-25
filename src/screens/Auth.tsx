@@ -274,7 +274,7 @@ export function Auth() {
           <div className="relative mb-3 group">
             <div className="absolute inset-0 bg-cyan-500/30 rounded-2xl blur-lg group-hover:blur-xl transition-all" />
             <div className="relative w-20 h-20 rounded-2xl border border-white/20 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
-              <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              <img src="/logo.png" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo.jpg'; }} alt="CityZen Logo" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             </div>
           </div>
 

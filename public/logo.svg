@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient for Icon -->
+    <linearGradient id="hIconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#091424"/>
+      <stop offset="50%" stop-color="#0F243E"/>
+      <stop offset="100%" stop-color="#0A182A"/>
+    </linearGradient>
+
+    <linearGradient id="hCyanBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+
+    <linearGradient id="hOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDBA74"/>
+      <stop offset="40%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#C2410C"/>
+    </linearGradient>
+
+    <filter id="hGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- ================= LOGO MARK (Left: 140x140 at x=10, y=10) ================= -->
+  <g transform="translate(10, 10)">
+    <!-- Base Squircle -->
+    <rect x="4" y="4" width="132" height="132" rx="34" fill="url(#hIconBg)"/>
+    <rect x="4" y="4" width="132" height="132" rx="34" fill="none" stroke="url(#hCyanBlue)" stroke-width="2" stroke-opacity="0.5"/>
+    <rect x="7" y="7" width="126" height="126" rx="31" fill="none" stroke="#EA580C" stroke-width="1" stroke-opacity="0.3"/>
+
+    <!-- Connecting Arches -->
+    <circle cx="70" cy="70" r="50" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 4" stroke-opacity="0.4"/>
+
+    <!-- Left Building -->
+    <rect x="36" y="68" width="13" height="34" rx="2" fill="#0369A1" fill-opacity="0.8"/>
+    <rect x="39" y="72" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="44" y="72" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="39" y="80" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="44" y="80" width="3" height="4" rx="1" fill="#38BDF8"/>
+
+    <!-- Mid-Left Building -->
+    <rect x="52" y="56" width="15" height="46" rx="2" fill="#0284C7"/>
+    <rect x="55" y="62" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="61" y="62" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="55" y="72" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="61" y="72" width="3" height="4" rx="1" fill="#FFFFFF"/>
+
+    <!-- Mid-Right Building -->
+    <rect x="73" y="56" width="15" height="46" rx="2" fill="#0284C7"/>
+    <rect x="76" y="62" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="82" y="62" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="76" y="72" width="3" height="4" rx="1" fill="#FFFFFF"/>
+    <rect x="82" y="72" width="3" height="4" rx="1" fill="#FFFFFF"/>
+
+    <!-- Right Building -->
+    <rect x="91" y="68" width="13" height="34" rx="2" fill="#0369A1" fill-opacity="0.8"/>
+    <rect x="94" y="72" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="99" y="72" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="94" y="80" width="3" height="4" rx="1" fill="#38BDF8"/>
+    <rect x="99" y="80" width="3" height="4" rx="1" fill="#38BDF8"/>
+
+    <!-- Center Spire -->
+    <rect x="65" y="44" width="10" height="58" rx="2" fill="url(#hCyanBlue)" filter="url(#hGlow)"/>
+    <!-- Antenna Beacon -->
+    <line x1="70" y1="32" x2="70" y2="44" stroke="#38BDF8" stroke-width="2"/>
+    <circle cx="70" cy="30" r="3.5" fill="#FFFFFF" filter="url(#hGlow)"/>
+    <path d="M 64 26 A 7 7 0 0 1 76 26" fill="none" stroke="#FDBA74" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Dynamic Lotus Wings -->
+    <path d="M 24 102 C 30 80, 48 64, 68 67 C 56 77, 50 90, 47 106 Z" fill="url(#hOrange)" filter="url(#hGlow)"/>
+    <path d="M 116 102 C 110 80, 92 64, 72 67 C 84 77, 90 90, 93 106 Z" fill="url(#hOrange)" filter="url(#hGlow)"/>
+
+    <!-- Road / Civic Base -->
+    <line x1="28" y1="102" x2="112" y2="102" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="38" y1="107" x2="102" y2="107" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round"/>
+  </g>
+
+  <!-- ================= TYPOGRAPHY & BRANDING (Right: x=170) ================= -->
+  <!-- "City" in Deep Navy / Pure Slate -->
+  <text x="175" y="86" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="64" font-weight="900" letter-spacing="-1.5" fill="#0F2C59">
+    City<tspan fill="#EA580C">Zen</tspan>
+  </text>
+
+  <!-- Civic Innovation Tagline / City Hierarchy -->
+  <rect x="177" y="104" width="18" height="3" rx="1.5" fill="#EA580C"/>
+  <text x="202" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="4" fill="#0284C7">
+    BHUBANESWAR SMART CIVIC NETWORK
+  </text>
+  <text x="178" y="132" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="600" letter-spacing="1" fill="#64748B">
+    Municipal Governance &bull; Emergency Response &bull; Citizen Empowerment
+  </text>
+</svg>

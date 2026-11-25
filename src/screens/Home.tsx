@@ -168,8 +168,8 @@ export function Home({ onTab, onOpenZen, onOpenService, onOpenProfile }: HomePro
         <div className="relative z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl border border-white/20 overflow-hidden shadow-lg shrink-0">
-                <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl border border-white/20 overflow-hidden shadow-lg shrink-0 bg-slate-900">
+                <img src="/logo.png" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo.jpg'; }} alt="CityZen Logo" className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
                 <p className="text-primary-100 text-xs">{greeting},</p>

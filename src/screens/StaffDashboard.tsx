@@ -526,8 +526,8 @@ export default function StaffDashboard() {
       {/* Shared Header */}
       <header className="bg-slate-900/60 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
-            <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0 bg-slate-900">
+            <img src="/logo.png" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo.jpg'; }} alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-extrabold text-base tracking-tight capitalize">{role} Control Panel</h1>

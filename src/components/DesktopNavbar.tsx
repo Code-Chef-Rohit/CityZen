@@ -36,8 +36,8 @@ export function DesktopNavbar({ currentScreen, onNavigate, unreadCount = 0 }: De
           onClick={() => onNavigate({ name: 'home' })}
           className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer shrink-0"
         >
-          <div className="w-10 h-10 rounded-xl border border-white/20 overflow-hidden shadow-md shrink-0">
-            <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-xl border border-white/20 overflow-hidden shadow-md shrink-0 bg-slate-900">
+            <img src="/logo.png" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo.jpg'; }} alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           <div className="text-left">
             <h1 className="font-black text-lg text-slate-900 dark:text-white tracking-tight leading-none flex items-center gap-1.5">

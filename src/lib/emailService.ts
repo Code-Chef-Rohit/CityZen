@@ -152,7 +152,7 @@ export interface EmailDispatchResult {
   message: string;
 }
 
-export const CITYZEN_LOGO_URL = 'https://cityzen-one.netlify.app/logo.jpg';
+export const CITYZEN_LOGO_URL = 'https://cityzen-one.netlify.app/email-logo.png';
 
 /**
  * Unified dispatch helper:
@@ -240,7 +240,9 @@ export async function transmitEmailPayload(
   return { success: false, method: 'No active email relay available' };
 }
 
-export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: string): string {
+export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: string, refNum?: string): string {
+  const displayRefNum = data.refNumber || refNum || `CZ-RL-${Math.floor(100000 + Math.random() * 900000)}`;
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -257,13 +259,10 @@ export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: s
         <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
             <tr>
-              <td style="vertical-align: middle; padding-right: 10px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
-                  CZ
-                </div>
-              </td>
-              <td style="vertical-align: middle;">
-                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              <td style="text-align: center;">
+                <a href="${portalUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                  <img src="https://cityzen-one.netlify.app/email-logo.png" alt="CityZen" width="180" height="63" style="display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none; max-width: 190px; height: auto;" />
+                </a>
               </td>
             </tr>
           </table>
@@ -272,13 +271,13 @@ export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: s
         <!-- Category Pill Badge -->
         <div style="margin-bottom: 14px;">
           <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
-            Bhubaneswar Smart City
+            ${(data.newRole ? `${data.newRole.toUpperCase()} CLEARANCE` : 'ROLE UPDATE')}
           </span>
         </div>
 
         <!-- Heading -->
         <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
-          Your role is ready
+          Your account is ready
         </h1>
 
         <!-- Greeting -->
@@ -308,8 +307,15 @@ export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: s
           <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
             AUTHORIZED PERMISSIONS
           </div>
-          <div style="font-size: 12px; line-height: 20px; color: #334155;">
+          <div style="font-size: 12px; line-height: 20px; color: #334155; margin-bottom: 16px;">
             ${data.permissions.map(p => `&bull; ${p}`).join('<br/>')}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            REFERENCE NUMBER
+          </div>
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; font-family: monospace;">
+            ${displayRefNum}
           </div>
         </div>
 
@@ -334,7 +340,7 @@ export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: s
             Let's make our city smarter.
           </p>
           <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
-            The link works once and expires in 24 hours, or when you sign in.
+            Your updated role permissions are now active across the CityZen portal.
           </p>
           <p style="font-size: 11px; color: #94a3b8; margin: 0;">
             CityZen Team &bull; Bhubaneswar
@@ -352,8 +358,9 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
   const config = getEmailGatewayConfig();
   const dispatchId = `DISP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const timestamp = new Date().toISOString();
+  const refNum = data.refNumber || `CZ-RL-${Math.floor(100000 + Math.random() * 900000)}`;
   const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cityzen-one.netlify.app';
-  const htmlEmail = buildRoleChangeHtmlEmail(data, portalUrl);
+  const htmlEmail = buildRoleChangeHtmlEmail(data, portalUrl, refNum);
 
   if (!data.userEmail || !data.userEmail.includes('@')) {
     return {
@@ -500,13 +507,10 @@ export function buildCitizenNoticeHtmlEmail(data: CitizenNoticeEmailData, portal
         <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
             <tr>
-              <td style="vertical-align: middle; padding-right: 10px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
-                  CZ
-                </div>
-              </td>
-              <td style="vertical-align: middle;">
-                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              <td style="text-align: center;">
+                <a href="${portalUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                  <img src="https://cityzen-one.netlify.app/email-logo.png" alt="CityZen" width="180" height="63" style="display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none; max-width: 190px; height: auto;" />
+                </a>
               </td>
             </tr>
           </table>
@@ -707,13 +711,10 @@ export function buildPasswordChangedHtmlEmail(data: PasswordChangedEmailData, po
         <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
             <tr>
-              <td style="vertical-align: middle; padding-right: 10px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
-                  CZ
-                </div>
-              </td>
-              <td style="vertical-align: middle;">
-                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              <td style="text-align: center;">
+                <a href="${portalUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                  <img src="https://cityzen-one.netlify.app/email-logo.png" alt="CityZen" width="180" height="63" style="display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none; max-width: 190px; height: auto;" />
+                </a>
               </td>
             </tr>
           </table>
@@ -915,13 +916,10 @@ export function buildLoginAlertHtmlEmail(data: LoginAlertEmailData, portalUrl: s
         <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
             <tr>
-              <td style="vertical-align: middle; padding-right: 10px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
-                  CZ
-                </div>
-              </td>
-              <td style="vertical-align: middle;">
-                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              <td style="text-align: center;">
+                <a href="${portalUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                  <img src="https://cityzen-one.netlify.app/email-logo.png" alt="CityZen" width="180" height="63" style="display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none; max-width: 190px; height: auto;" />
+                </a>
               </td>
             </tr>
           </table>
@@ -1123,13 +1121,10 @@ export function buildAccountCreatedSetupHtmlEmail(data: AccountCreatedSetupEmail
         <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
             <tr>
-              <td style="vertical-align: middle; padding-right: 10px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
-                  CZ
-                </div>
-              </td>
-              <td style="vertical-align: middle;">
-                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              <td style="text-align: center;">
+                <a href="${portalUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                  <img src="https://cityzen-one.netlify.app/email-logo.png" alt="CityZen" width="180" height="63" style="display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none; max-width: 190px; height: auto;" />
+                </a>
               </td>
             </tr>
           </table>

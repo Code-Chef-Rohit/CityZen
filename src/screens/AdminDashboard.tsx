@@ -750,8 +750,8 @@ ${window.location.origin}`;
       {/* Top Header */}
       <header className="bg-slate-900 border-b border-white/5 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
-            <img src="/logo.jpg" alt="CityZen Logo" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0 bg-slate-900">
+            <img src="/logo.png" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo.jpg'; }} alt="CityZen Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-extrabold text-base sm:text-lg text-orange-300">CityZen Admin Control Center</h1>
