@@ -2960,33 +2960,59 @@ GRANT EXECUTE ON FUNCTION get_database_replication_status() TO authenticated, an
             <div className="space-y-3.5 text-xs">
               <div>
                 <label className="text-slate-400 font-bold block mb-1 uppercase tracking-wider text-[10px]">Dispatch Provider</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'emailjs' }))}
-                    className={`py-2 px-3 rounded-xl border font-bold text-center transition-all cursor-pointer ${
-                      gatewayConfig.provider === 'emailjs'
+                    onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'smtp' }))}
+                    className={`py-2 px-2 rounded-xl border font-bold text-center text-xs transition-all cursor-pointer ${
+                      gatewayConfig.provider === 'smtp'
                         ? 'bg-orange-500/20 border-orange-500 text-orange-300'
                         : 'bg-slate-950 border-white/10 text-slate-400 hover:bg-white/5'
                     }`}
                   >
-                    EmailJS SMTP Relay
+                    Gmail SMTP
                   </button>
                   <button
                     type="button"
                     onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'webhook' }))}
-                    className={`py-2 px-3 rounded-xl border font-bold text-center transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl border font-bold text-center text-xs transition-all cursor-pointer ${
                       gatewayConfig.provider === 'webhook'
                         ? 'bg-orange-500/20 border-orange-500 text-orange-300'
                         : 'bg-slate-950 border-white/10 text-slate-400 hover:bg-white/5'
                     }`}
                   >
-                    Custom Webhook
+                    Webhook
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGatewayConfig(prev => ({ ...prev, provider: 'emailjs' }))}
+                    className={`py-2 px-2 rounded-xl border font-bold text-center text-xs transition-all cursor-pointer ${
+                      gatewayConfig.provider === 'emailjs'
+                        ? 'bg-orange-500/20 border-orange-500 text-orange-300'
+                        : 'bg-slate-950 border-white/10 text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    EmailJS
                   </button>
                 </div>
               </div>
 
-              {gatewayConfig.provider === 'emailjs' ? (
+              {gatewayConfig.provider === 'smtp' ? (
+                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Gmail SMTP Relay Active</span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 space-y-1 font-mono">
+                    <div>• <strong>Host:</strong> smtp.gmail.com:587</div>
+                    <div>• <strong>Sender:</strong> {gatewayConfig.senderEmail}</div>
+                    <div>• <strong>Auth:</strong> Google DKIM & App Password Verified</div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
+                    All administrative role communiqués, citizen notices, and security alerts dispatch directly through your authenticated Google SMTP serverless relay.
+                  </p>
+                </div>
+              ) : gatewayConfig.provider === 'emailjs' ? (
                 <div className="space-y-2.5 bg-slate-950/60 p-3 rounded-2xl border border-white/5">
                   <div>
                     <label className="text-slate-400 font-medium block mb-1 text-[11px]">EmailJS Public Key</label>

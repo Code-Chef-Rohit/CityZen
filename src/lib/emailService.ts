@@ -2,25 +2,27 @@ import { supabase } from './supabase';
 
 export interface EmailGatewayConfig {
   enabled: boolean;
-  provider: 'emailjs' | 'webhook' | 'relay';
+  provider: 'smtp' | 'emailjs' | 'webhook' | 'relay';
   emailjsServiceId: string;
   emailjsTemplateId: string;
   emailjsPublicKey: string;
   webhookUrl: string;
+  smtpEndpointUrl: string;
   senderName: string;
   senderEmail: string;
 }
 
 const STORAGE_KEY = 'cityzen_email_gateway_config';
 
-// Default configuration with fallback relay support
+// Default configuration with Gmail SMTP Serverless Relay as primary
 export const DEFAULT_EMAIL_CONFIG: EmailGatewayConfig = {
   enabled: true,
-  provider: 'emailjs',
+  provider: 'smtp',
   emailjsServiceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_xlxsj8f',
   emailjsTemplateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_bnczuvh',
   emailjsPublicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'l8ZDaCW7jP2JEQfDN',
   webhookUrl: '',
+  smtpEndpointUrl: import.meta.env.VITE_SMTP_ENDPOINT_URL || 'https://cityzen-one.netlify.app/.netlify/functions/send-email',
   senderName: 'CityZen Portal',
   senderEmail: 'cityzen.system@gmail.com',
 };
@@ -89,6 +91,12 @@ export function getEmailGatewayConfig(): EmailGatewayConfig {
     if (raw) {
       const parsed = JSON.parse(raw);
       // Auto-migrate legacy or outdated configs so verified keys are always used
+      if (!parsed.provider) {
+        parsed.provider = 'smtp';
+      }
+      if (!parsed.smtpEndpointUrl) {
+        parsed.smtpEndpointUrl = DEFAULT_EMAIL_CONFIG.smtpEndpointUrl;
+      }
       if (parsed.emailjsPublicKey !== 'l8ZDaCW7jP2JEQfDN') {
         parsed.emailjsPublicKey = DEFAULT_EMAIL_CONFIG.emailjsPublicKey;
       }
@@ -145,6 +153,92 @@ export interface EmailDispatchResult {
 }
 
 export const CITYZEN_LOGO_URL = 'https://cityzen-one.netlify.app/logo.jpg';
+
+/**
+ * Unified dispatch helper:
+ * 1. Prioritizes Netlify Serverless Gmail SMTP Relay (direct delivery via your Gmail).
+ * 2. Falls back to Custom Webhook if configured.
+ * 3. Falls back to EmailJS so no email is ever lost during setup.
+ */
+export async function transmitEmailPayload(
+  payload: any,
+  config: EmailGatewayConfig
+): Promise<{ success: boolean; method: string }> {
+  // 1. First Priority: Gmail SMTP Serverless Relay
+  if (config.provider === 'smtp' || (!config.webhookUrl && config.enabled)) {
+    const endpointsToTry: string[] = [];
+    if (typeof window !== 'undefined' && window.location.origin.includes('netlify.app')) {
+      endpointsToTry.push('/.netlify/functions/send-email');
+    }
+    if (config.smtpEndpointUrl && config.smtpEndpointUrl.trim() !== '') {
+      endpointsToTry.push(config.smtpEndpointUrl);
+    }
+    endpointsToTry.push('https://cityzen-one.netlify.app/.netlify/functions/send-email');
+
+    const uniqueEndpoints = [...new Set(endpointsToTry)];
+
+    for (const url of uniqueEndpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          return {
+            success: true,
+            method: json.message || 'Delivered via Gmail SMTP Serverless Relay',
+          };
+        }
+      } catch (smtpErr) {
+        // Fall through to next endpoint or fallback
+      }
+    }
+  }
+
+  // 2. Custom Webhook Relay
+  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
+    try {
+      const res = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        return { success: true, method: 'Dispatched via Custom Webhook' };
+      }
+    } catch (whErr: any) {
+      console.warn('Webhook transmission error:', whErr.message);
+    }
+  }
+
+  // 3. Fallback: EmailJS Cloud Relay
+  if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        return { success: true, method: `Delivered via EmailJS Gateway (${config.emailjsServiceId})` };
+      } else {
+        const errText = await res.text();
+        return { success: false, method: `EmailJS (${res.status}): ${errText}` };
+      }
+    } catch (e: any) {
+      return { success: false, method: `EmailJS Network Error: ${e.message}` };
+    }
+  }
+
+  return { success: false, method: 'No active email relay available' };
+}
 
 export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: string): string {
   return `<!DOCTYPE html>
@@ -253,44 +347,8 @@ export async function sendAutomatedRoleChangeEmail(data: RoleChangeEmailData): P
     },
   };
 
-  let transmittedViaApi = false;
-  let apiResponseMsg = '';
-
-  // 1. Attempt Automated Cloud API Transmission (Custom Webhook or EmailJS)
-  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
-    try {
-      const res = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via Webhook Relay';
-      }
-    } catch (e: any) {
-      console.warn('Webhook transmission error:', e.message);
-    }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
-    try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = `Delivered via EmailJS Cloud Gateway (${config.emailjsServiceId})`;
-      } else {
-        const errText = await res.text();
-        console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS API (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      console.warn('EmailJS transmission error:', e.message);
-      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
-    }
-  }
+  // 1. Unified Dispatch (Gmail SMTP Relay -> Webhook -> EmailJS)
+  const { success: transmittedViaApi, method: apiResponseMsg } = await transmitEmailPayload(payload, config);
 
   // 2. In-App Notification Recording
   try {
@@ -462,43 +520,7 @@ export async function sendAutomatedCitizenNoticeEmail(data: CitizenNoticeEmailDa
     },
   };
 
-  let transmittedViaApi = false;
-  let apiResponseMsg = '';
-
-  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
-    try {
-      const res = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
-      }
-    } catch (e: any) {
-      console.warn('Webhook transmission error:', e.message);
-    }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
-    try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = `Delivered via EmailJS Cloud SMTP Gateway (${config.emailjsServiceId})`;
-      } else {
-        const errText = await res.text();
-        console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS Notice (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      console.warn('EmailJS transmission error:', e.message);
-      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
-    }
-  }
+  const { success: transmittedViaApi, method: apiResponseMsg } = await transmitEmailPayload(payload, config);
 
   // Record in-app notification if userId is provided
   if (data.userId) {
@@ -650,43 +672,7 @@ export async function sendPasswordChangedEmail(data: PasswordChangedEmailData): 
     },
   };
 
-  let transmittedViaApi = false;
-  let apiResponseMsg = '';
-
-  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
-    try {
-      const res = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
-      }
-    } catch (e: any) {
-      console.warn('Webhook transmission error:', e.message);
-    }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
-    try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = `Delivered via EmailJS Gateway (${config.emailjsServiceId})`;
-      } else {
-        const errText = await res.text();
-        console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS Password Notice (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      console.warn('EmailJS transmission error:', e.message);
-      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
-    }
-  }
+  const { success: transmittedViaApi, method: apiResponseMsg } = await transmitEmailPayload(payload, config);
 
   // Record in-app notification
   if (data.userId) {
@@ -830,43 +816,7 @@ export async function sendLoginAlertEmail(data: LoginAlertEmailData): Promise<Em
     },
   };
 
-  let transmittedViaApi = false;
-  let apiResponseMsg = '';
-
-  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
-    try {
-      const res = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
-      }
-    } catch (e: any) {
-      console.warn('Webhook transmission error:', e.message);
-    }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
-    try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = `Delivered via EmailJS Gateway (${config.emailjsServiceId})`;
-      } else {
-        const errText = await res.text();
-        console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS Login Notice (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      console.warn('EmailJS transmission error:', e.message);
-      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
-    }
-  }
+  const { success: transmittedViaApi, method: apiResponseMsg } = await transmitEmailPayload(payload, config);
 
   // Record in-app notification
   if (data.userId) {
@@ -1012,43 +962,7 @@ export async function sendAccountCreatedSetupEmail(data: AccountCreatedSetupEmai
     },
   };
 
-  let transmittedViaApi = false;
-  let apiResponseMsg = '';
-
-  if (config.webhookUrl && config.webhookUrl.startsWith('http')) {
-    try {
-      const res = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = 'Dispatched via Municipal Webhook Relay';
-      }
-    } catch (e: any) {
-      console.warn('Webhook transmission error:', e.message);
-    }
-  } else if (config.emailjsPublicKey && config.emailjsPublicKey.trim() !== '') {
-    try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        transmittedViaApi = true;
-        apiResponseMsg = `Delivered via EmailJS Gateway (${config.emailjsServiceId})`;
-      } else {
-        const errText = await res.text();
-        console.warn('EmailJS response status:', res.status, errText);
-        apiResponseMsg = `EmailJS Activation Notice (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      console.warn('EmailJS transmission error:', e.message);
-      apiResponseMsg = `EmailJS Network Error: ${e.message}`;
-    }
-  }
+  const { success: transmittedViaApi, method: apiResponseMsg } = await transmitEmailPayload(payload, config);
 
   // Record in-app notification if userId exists
   if (data.userId) {
