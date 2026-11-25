@@ -77,9 +77,39 @@ execFileSync(edgePath, [
 ]);
 console.log('Generated public/email-logo.png (400x140)');
 
+// 3.5 Render 1200x630 OpenGraph / Social Share Card
+const ogSvgContent = fs.readFileSync(path.join(publicDir, 'og-image.svg'), 'utf8');
+const ogHtmlPath = path.join(publicDir, '_temp_og.html');
+const ogHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1200px; height: 630px; overflow: hidden; background: #060D17; }
+    svg { width: 1200px; height: 630px; display: block; }
+  </style>
+</head>
+<body>
+  ${ogSvgContent}
+</body>
+</html>`;
+fs.writeFileSync(ogHtmlPath, ogHtml);
+
+const ogPngPath = path.join(publicDir, 'og-image.png');
+execFileSync(edgePath, [
+  '--headless',
+  '--disable-gpu',
+  '--force-device-scale-factor=1',
+  '--window-size=1200,630',
+  `--screenshot=${ogPngPath}`,
+  `file:///${ogHtmlPath.replace(/\\/g, '/')}`
+]);
+console.log('Generated public/og-image.png (1200x630)');
+
 // Clean up temporary HTML files
 if (fs.existsSync(iconHtmlPath)) fs.unlinkSync(iconHtmlPath);
 if (fs.existsSync(emailHtmlPath)) fs.unlinkSync(emailHtmlPath);
+if (fs.existsSync(ogHtmlPath)) fs.unlinkSync(ogHtmlPath);
 
 // 4. Use Python PIL to resize icons and create clean JPEG & PNG sizes
 const pyScript = path.join(projectRoot, 'scripts', '_resize.py');

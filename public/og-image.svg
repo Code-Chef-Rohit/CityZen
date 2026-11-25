@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Deep Navy High-Tech Background -->
+    <linearGradient id="ogBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#060D17"/>
+      <stop offset="45%" stop-color="#0B1A2E"/>
+      <stop offset="100%" stop-color="#040911"/>
+    </linearGradient>
+
+    <!-- Cyan/Blue Energy -->
+    <linearGradient id="ogCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#0369A1"/>
+    </linearGradient>
+
+    <!-- Civic Orange Energy -->
+    <linearGradient id="ogOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDBA74"/>
+      <stop offset="40%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#C2410C"/>
+    </linearGradient>
+
+    <!-- Radial Glows -->
+    <radialGradient id="ogAuraBlue" cx="30%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#0284C7" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="ogAuraOrange" cx="80%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#EA580C" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#EA580C" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="ogGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="badgeGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1200" height="630" fill="url(#ogBg)"/>
+
+  <!-- Glowing Lighting Effects -->
+  <circle cx="340" cy="315" r="320" fill="url(#ogAuraBlue)"/>
+  <circle cx="950" cy="220" r="260" fill="url(#ogAuraOrange)"/>
+
+  <!-- Geometric Grid Accent Lines (Subtle) -->
+  <g opacity="0.08" stroke="#38BDF8" stroke-width="1">
+    <line x1="0" y1="105" x2="1200" y2="105"/>
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="525" x2="1200" y2="525"/>
+    <line x1="150" y1="0" x2="150" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="450" y1="0" x2="450" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="750" y1="0" x2="750" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1050" y1="0" x2="1050" y2="630"/>
+  </g>
+
+  <!-- Top Accent Border (Matches Email & App Theme) -->
+  <rect x="0" y="0" width="1200" height="6" fill="#EA580C"/>
+
+  <!-- ================= LEFT: 3D EMBLEM BADGE (x=100, y=140, size=350x350) ================= -->
+  <g transform="translate(100, 140)">
+    <!-- Base Squircle -->
+    <rect x="10" y="10" width="330" height="330" rx="76" fill="#09182B" stroke="url(#ogCyan)" stroke-width="3.5" filter="url(#badgeGlow)"/>
+    <rect x="18" y="18" width="314" height="314" rx="68" fill="none" stroke="#EA580C" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    <!-- Orbital Arches -->
+    <circle cx="175" cy="175" r="126" fill="none" stroke="#38BDF8" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.4"/>
+    <circle cx="175" cy="175" r="100" fill="none" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 6" stroke-opacity="0.45"/>
+
+    <!-- Auxiliary Left Tower -->
+    <rect x="92" y="170" width="30" height="80" rx="4" fill="#0369A1" fill-opacity="0.8"/>
+    <rect x="99" y="182" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="109" y="182" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="99" y="200" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="109" y="200" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+
+    <!-- Mid-Left Tower -->
+    <rect x="128" y="140" width="34" height="110" rx="5" fill="#0284C7"/>
+    <rect x="135" y="152" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="148" y="152" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="135" y="172" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="148" y="172" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="135" y="192" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="148" y="192" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+
+    <!-- Mid-Right Tower -->
+    <rect x="188" y="140" width="34" height="110" rx="5" fill="#0284C7"/>
+    <rect x="195" y="152" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="208" y="152" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="195" y="172" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="208" y="172" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="195" y="192" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+    <rect x="208" y="192" width="7" height="10" rx="1.5" fill="#FFFFFF"/>
+
+    <!-- Auxiliary Right Tower -->
+    <rect x="228" y="170" width="30" height="80" rx="4" fill="#0369A1" fill-opacity="0.8"/>
+    <rect x="235" y="182" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="245" y="182" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="235" y="200" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+    <rect x="245" y="200" width="6" height="8" rx="1.5" fill="#38BDF8"/>
+
+    <!-- Central Majestic Spire -->
+    <rect x="163" y="110" width="24" height="140" rx="4" fill="url(#ogCyan)" filter="url(#ogGlow)"/>
+    <!-- Antenna Beacon -->
+    <line x1="175" y1="78" x2="175" y2="110" stroke="#38BDF8" stroke-width="3.5"/>
+    <circle cx="175" cy="74" r="9" fill="#38BDF8" fill-opacity="0.4" filter="url(#ogGlow)"/>
+    <circle cx="175" cy="74" r="5" fill="#FFFFFF"/>
+    <path d="M 162 66 A 15 15 0 0 1 188 66" fill="none" stroke="#FDBA74" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Orange Lotus Wings ("Zen" Balance) -->
+    <path d="M 58 250 C 72 195, 110 155, 162 162 C 138 185, 120 220, 112 258 Z" fill="url(#ogOrange)" filter="url(#ogGlow)"/>
+    <path d="M 292 250 C 278 195, 240 155, 188 162 C 212 185, 230 220, 238 258 Z" fill="url(#ogOrange)" filter="url(#ogGlow)"/>
+
+    <!-- Base Highway Grid -->
+    <line x1="72" y1="250" x2="278" y2="250" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="94" y1="260" x2="256" y2="260" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="8 8" stroke-linecap="round" stroke-opacity="0.8"/>
+
+    <!-- Mini Bottom Label -->
+    <text x="175" y="302" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="900" letter-spacing="4" fill="#FFFFFF">
+      CITY<tspan fill="#EA580C">ZEN</tspan>
+    </text>
+  </g>
+
+  <!-- ================= RIGHT: BRAND CONTENT & COPY ================= -->
+  <!-- Category Pill Badge -->
+  <g transform="translate(490, 125)">
+    <rect width="365" height="34" rx="8" fill="#1E293B" stroke="#0284C7" stroke-width="1.5"/>
+    <circle cx="18" cy="17" r="5" fill="#EA580C"/>
+    <text x="32" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" letter-spacing="2" fill="#38BDF8">
+      BHUBANESWAR SMART CIVIC NETWORK
+    </text>
+  </g>
+
+  <!-- Main Brand Title -->
+  <text x="490" y="240" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="82" font-weight="900" letter-spacing="-2" fill="#FFFFFF">
+    City<tspan fill="#EA580C">Zen</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="492" y="295" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="-0.5" fill="#38BDF8">
+    One City. One App.
+  </text>
+
+  <!-- Subtitle Paragraph -->
+  <text x="492" y="345" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#94A3B8">
+    AI-Powered Municipal Operating System for Citizen Engagement,
+  </text>
+  <text x="492" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#94A3B8">
+    Emergency SOS Dispatch, BMC Grievances &amp; Healthcare Connectivity.
+  </text>
+
+  <!-- Pillar Feature Badges (Horizontal Row) -->
+  <g transform="translate(492, 420)">
+    <!-- Badge 1: Police SOS -->
+    <g transform="translate(0, 0)">
+      <rect width="138" height="42" rx="10" fill="#0F1F35" stroke="#0284C7" stroke-width="1.5"/>
+      <text x="14" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#E2E8F0">
+        🚨 Police SOS
+      </text>
+    </g>
+
+    <!-- Badge 2: BMC Grievance -->
+    <g transform="translate(150, 0)">
+      <rect width="160" height="42" rx="10" fill="#0F1F35" stroke="#EA580C" stroke-width="1.5"/>
+      <text x="14" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#E2E8F0">
+        🏛️ BMC Grievance
+      </text>
+    </g>
+
+    <!-- Badge 3: Hospital Bed Grid -->
+    <g transform="translate(322, 0)">
+      <rect width="168" height="42" rx="10" fill="#0F1F35" stroke="#10B981" stroke-width="1.5"/>
+      <text x="14" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#E2E8F0">
+        🏥 Hospital Grid
+      </text>
+    </g>
+
+    <!-- Badge 4: Smart Transit -->
+    <g transform="translate(502, 0)">
+      <rect width="138" height="42" rx="10" fill="#0F1F35" stroke="#8B5CF6" stroke-width="1.5"/>
+      <text x="14" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#E2E8F0">
+        🚌 Mo Bus Live
+      </text>
+    </g>
+  </g>
+
+  <!-- Bottom Bar with URL -->
+  <g transform="translate(492, 510)">
+    <rect width="640" height="44" rx="12" fill="#0A1626" stroke="#334155" stroke-width="1"/>
+    <circle cx="24" cy="22" r="5" fill="#10B981"/>
+    <text x="40" y="27" font-family="monospace" font-size="14" font-weight="700" fill="#38BDF8">
+      https://cityzen-one.netlify.app
+    </text>
+    <text x="490" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#94A3B8">
+      Official Portal &bull; Live 24/7
+    </text>
+  </g>
+</svg>
