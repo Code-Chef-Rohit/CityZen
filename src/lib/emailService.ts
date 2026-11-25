@@ -248,44 +248,99 @@ export function buildRoleChangeHtmlEmail(data: RoleChangeEmailData, portalUrl: s
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityZen: Role Updated</title>
 </head>
-<body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border-top: 5px solid #ea580c; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     <tr>
-      <td style="padding:24px 24px 16px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:20px;font-weight:800;color:#0284c7;letter-spacing:-0.5px;">CityZen</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px;">
-        <p style="font-size:15px;line-height:24px;color:#0f172a;margin:0 0 16px;">
-          Hi ${data.userName},
-        </p>
-        <p style="font-size:14px;line-height:22px;color:#334155;margin:0 0 20px;">
-          Your account role has been updated to <strong>${data.roleTitle}</strong>.
-        </p>
-
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px;">Role Details</div>
-          <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:4px;">${data.roleTitle}</div>
-          <div style="font-size:13px;color:#475569;">${data.clearance}</div>
+      <td style="padding: 32px 32px 24px;">
+        
+        <!-- Center Logo / Brand -->
+        <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                  CZ
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <div style="margin-bottom:24px;">
-          <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Included Features</div>
-          <ul style="margin:0;padding-left:20px;font-size:13px;line-height:22px;color:#334155;">
-            ${data.permissions.map(p => `<li>${p}</li>`).join('')}
-          </ul>
+        <!-- Category Pill Badge -->
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+            Bhubaneswar Smart City
+          </span>
         </div>
 
-        <div style="text-align:center;margin-bottom:20px;">
-          <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;">
-            Open Dashboard
+        <!-- Heading -->
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
+          Your role is ready
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 6px;">
+          Hello <strong>${data.userName}</strong>,
+        </p>
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 20px;">
+          Your CityZen account is ready to access as a <strong>${data.roleTitle}</strong>.
+        </p>
+
+        <!-- Rounded Details Box -->
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SIGN-IN EMAIL
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #0284c7; text-decoration: underline; margin-bottom: 16px;">
+            ${data.userEmail}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            ASSIGNED ROLE & CLEARANCE
+          </div>
+          <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 16px;">
+            ${data.roleTitle} &bull; <span style="color: #64748b; font-weight: 600;">${data.clearance}</span>
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+            AUTHORIZED PERMISSIONS
+          </div>
+          <div style="font-size: 12px; line-height: 20px; color: #334155;">
+            ${data.permissions.map(p => `&bull; ${p}`).join('<br/>')}
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div style="text-align: center; margin-bottom: 22px;">
+          <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 13px 38px; border-radius: 8px; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);">
+            Open Dashboard &rarr;
           </a>
         </div>
 
-        <div style="border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#64748b;">
-          Account: <strong style="color:#334155;">${data.userEmail}</strong>
+        <!-- Direct Link -->
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 6px;">
+          Or paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #0284c7; word-break: break-all; margin: 0 0 24px;">
+          <a href="${portalUrl}" style="color: #0284c7; text-decoration: underline;">${portalUrl}</a>
+        </p>
+
+        <!-- Divider & Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <p style="font-size: 13px; font-weight: 800; color: #0f3b70; margin: 0 0 4px;">
+            Let's make our city smarter.
+          </p>
+          <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
+            The link works once and expires in 24 hours, or when you sign in.
+          </p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            CityZen Team &bull; Bhubaneswar
+          </p>
         </div>
+
       </td>
     </tr>
   </table>
@@ -436,30 +491,99 @@ export function buildCitizenNoticeHtmlEmail(data: CitizenNoticeEmailData, portal
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${data.title}</title>
 </head>
-<body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border-top: 5px solid #ea580c; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     <tr>
-      <td style="padding:24px 24px 16px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:20px;font-weight:800;color:#0284c7;letter-spacing:-0.5px;">CityZen</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px;">
-        <p style="font-size:15px;line-height:24px;color:#0f172a;margin:0 0 16px;">
-          Hi ${data.userName || 'Citizen'},
-        </p>
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;">
-          <h2 style="font-size:15px;font-weight:700;color:#0284c7;margin:0 0 8px;">${data.title}</h2>
-          <p style="font-size:13px;line-height:22px;color:#334155;margin:0;white-space:pre-line;">${data.message}</p>
+      <td style="padding: 32px 32px 24px;">
+        
+        <!-- Center Logo / Brand -->
+        <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                  CZ
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              </td>
+            </tr>
+          </table>
         </div>
-        <div style="text-align:center;margin-bottom:20px;">
-          <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;">
-            Open CityZen
+
+        <!-- Category Pill Badge -->
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+            ${(data.category || 'MUNICIPAL UPDATE').toUpperCase()}
+          </span>
+        </div>
+
+        <!-- Heading -->
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
+          ${data.title}
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 6px;">
+          Hello <strong>${data.userName || 'Citizen'}</strong>,
+        </p>
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 20px;">
+          Here is an official update regarding your municipal request.
+        </p>
+
+        <!-- Rounded Details Box -->
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SIGN-IN EMAIL
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #0284c7; text-decoration: underline; margin-bottom: 16px;">
+            ${data.userEmail}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            NOTICE DETAILS
+          </div>
+          <div style="font-size: 14px; line-height: 22px; color: #0f172a; margin-bottom: 14px; white-space: pre-line;">
+            ${data.message}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            REFERENCE NUMBER
+          </div>
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; font-family: monospace;">
+            ${refNum}
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div style="text-align: center; margin-bottom: 22px;">
+          <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 13px 38px; border-radius: 8px; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);">
+            Open CityZen &rarr;
           </a>
         </div>
-        <div style="border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#64748b;">
-          Ref: <strong style="color:#334155;">${refNum}</strong>
+
+        <!-- Direct Link -->
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 6px;">
+          Or paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #0284c7; word-break: break-all; margin: 0 0 24px;">
+          <a href="${portalUrl}" style="color: #0284c7; text-decoration: underline;">${portalUrl}</a>
+        </p>
+
+        <!-- Divider & Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <p style="font-size: 13px; font-weight: 800; color: #0f3b70; margin: 0 0 4px;">
+            Let's make our city smarter.
+          </p>
+          <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
+            Official civic service record &bull; CityZen Portal
+          </p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            CityZen Team &bull; Bhubaneswar
+          </p>
         </div>
+
       </td>
     </tr>
   </table>
@@ -574,46 +698,103 @@ export function buildPasswordChangedHtmlEmail(data: PasswordChangedEmailData, po
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityZen: Password Updated</title>
 </head>
-<body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border-top: 5px solid #ea580c; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     <tr>
-      <td style="padding:24px 24px 16px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:20px;font-weight:800;color:#0284c7;letter-spacing:-0.5px;">CityZen</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px;">
-        <p style="font-size:15px;line-height:24px;color:#0f172a;margin:0 0 16px;">
-          Hi ${data.userName || 'Citizen'},
+      <td style="padding: 32px 32px 24px;">
+        
+        <!-- Center Logo / Brand -->
+        <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                  CZ
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Category Pill Badge -->
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+            Account Security
+          </span>
+        </div>
+
+        <!-- Heading -->
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
+          Your password was updated
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 6px;">
+          Hello <strong>${data.userName || 'Citizen'}</strong>,
         </p>
-        <p style="font-size:14px;line-height:22px;color:#334155;margin:0 0 20px;">
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 20px;">
           The password for your CityZen account has been updated successfully.
         </p>
 
-        ${data.newPassword ? `
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px;">Updated Password</div>
-          <div style="font-family:monospace;font-size:15px;font-weight:700;color:#0f172a;">${data.newPassword}</div>
-        </div>
-        ` : ''}
+        <!-- Rounded Details Box -->
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SIGN-IN EMAIL
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #0284c7; text-decoration: underline; margin-bottom: 16px;">
+            ${data.userEmail}
+          </div>
 
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;font-size:13px;color:#334155;line-height:22px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Details</div>
-          <div>• <strong>Account:</strong> ${data.userEmail}</div>
-          <div>• <strong>Time:</strong> ${timeStr}</div>
-          <div>• <strong>Device:</strong> ${device}</div>
-          <div>• <strong>Ref:</strong> ${refNum}</div>
+          ${data.newPassword ? `
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            UPDATED PASSWORD
+          </div>
+          <div style="font-size: 15px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; margin-bottom: 16px;">
+            ${data.newPassword}
+          </div>
+          ` : ''}
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SESSION DETAILS
+          </div>
+          <div style="font-size: 12px; line-height: 20px; color: #334155;">
+            &bull; Time: ${timeStr}<br/>
+            &bull; Device: ${device}<br/>
+            &bull; Security Ref: <span style="font-family: monospace; color: #0f172a; font-weight: 700;">${refNum}</span>
+          </div>
         </div>
 
-        <div style="text-align:center;margin-bottom:20px;">
-          <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;">
-            Open Dashboard
+        <!-- Action Button -->
+        <div style="text-align: center; margin-bottom: 22px;">
+          <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 13px 38px; border-radius: 8px; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);">
+            Open Dashboard &rarr;
           </a>
         </div>
 
-        <div style="border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#64748b;">
-          If you did not make this change, please log in and update your password immediately.
+        <!-- Direct Link -->
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 6px;">
+          Or paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #0284c7; word-break: break-all; margin: 0 0 24px;">
+          <a href="${portalUrl}" style="color: #0284c7; text-decoration: underline;">${portalUrl}</a>
+        </p>
+
+        <!-- Divider & Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <p style="font-size: 13px; font-weight: 800; color: #0f3b70; margin: 0 0 4px;">
+            Let's make our city smarter.
+          </p>
+          <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
+            If you did not make this change, please sign in and secure your account immediately.
+          </p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            CityZen Team &bull; Bhubaneswar
+          </p>
         </div>
+
       </td>
     </tr>
   </table>
@@ -725,39 +906,101 @@ export function buildLoginAlertHtmlEmail(data: LoginAlertEmailData, portalUrl: s
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityZen: New Sign-in Alert</title>
 </head>
-<body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border-top: 5px solid #ea580c; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     <tr>
-      <td style="padding:24px 24px 16px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:20px;font-weight:800;color:#0284c7;letter-spacing:-0.5px;">CityZen</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px;">
-        <p style="font-size:15px;line-height:24px;color:#0f172a;margin:0 0 16px;">
-          Hi ${data.userName || 'Citizen'},
-        </p>
-        <p style="font-size:14px;line-height:22px;color:#334155;margin:0 0 20px;">
-          A new sign-in was recorded for your CityZen account.
-        </p>
-
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;font-size:13px;color:#334155;line-height:22px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Sign-in Details</div>
-          <div>• <strong>Account:</strong> ${data.userEmail}</div>
-          <div>• <strong>Time:</strong> ${timeStr}</div>
-          <div>• <strong>Device:</strong> ${device}</div>
-          <div>• <strong>Ref:</strong> ${refNum}</div>
+      <td style="padding: 32px 32px 24px;">
+        
+        <!-- Center Logo / Brand -->
+        <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                  CZ
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <div style="text-align:center;margin-bottom:20px;">
-          <a href="${portalUrl}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;">
-            Open Dashboard
+        <!-- Category Pill Badge -->
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+            Security Alert
+          </span>
+        </div>
+
+        <!-- Heading -->
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
+          New sign-in detected
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 6px;">
+          Hello <strong>${data.userName || 'Citizen'}</strong>,
+        </p>
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 20px;">
+          A new authenticated session was recorded for your CityZen citizen profile.
+        </p>
+
+        <!-- Rounded Details Box -->
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SIGN-IN EMAIL
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #0284c7; text-decoration: underline; margin-bottom: 16px;">
+            ${data.userEmail}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SESSION DETAILS
+          </div>
+          <div style="font-size: 12px; line-height: 20px; color: #334155; margin-bottom: 14px;">
+            &bull; Date & Time: ${timeStr}<br/>
+            &bull; Device / OS: ${device}<br/>
+            &bull; Session Status: <strong style="color: #16a34a;">Active & Authenticated</strong>
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SECURITY REFERENCE
+          </div>
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; font-family: monospace;">
+            ${refNum}
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div style="text-align: center; margin-bottom: 22px;">
+          <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 13px 38px; border-radius: 8px; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);">
+            Open Dashboard &rarr;
           </a>
         </div>
 
-        <div style="border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#64748b;">
-          If this was not you, please log in and update your password immediately.
+        <!-- Direct Link -->
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 6px;">
+          Or paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #0284c7; word-break: break-all; margin: 0 0 24px;">
+          <a href="${portalUrl}" style="color: #0284c7; text-decoration: underline;">${portalUrl}</a>
+        </p>
+
+        <!-- Divider & Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <p style="font-size: 13px; font-weight: 800; color: #0f3b70; margin: 0 0 4px;">
+            Let's make our city smarter.
+          </p>
+          <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
+            If you did not sign in, please secure your password immediately.
+          </p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            CityZen Team &bull; Bhubaneswar
+          </p>
         </div>
+
       </td>
     </tr>
   </table>
@@ -856,54 +1099,114 @@ export interface AccountCreatedSetupEmailData {
   setupLink: string;
   refNumber?: string;
   expiryHours?: number;
+  roleTitle?: string;
+  temporaryPassword?: string;
 }
 
 export function buildAccountCreatedSetupHtmlEmail(data: AccountCreatedSetupEmailData, portalUrl: string, refNum: string): string {
   const expiryHours = data.expiryHours || 24;
+  const roleName = data.roleTitle || 'Citizen';
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CityZen: Set Your Password</title>
+  <title>CityZen: Your account is ready</title>
 </head>
-<body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border-top: 5px solid #ea580c; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     <tr>
-      <td style="padding:24px 24px 16px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:20px;font-weight:800;color:#0284c7;letter-spacing:-0.5px;">CityZen</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px;">
-        <p style="font-size:15px;line-height:24px;color:#0f172a;margin:0 0 16px;">
-          Welcome to CityZen, ${data.userName}!
+      <td style="padding: 32px 32px 24px;">
+        
+        <!-- Center Logo / Brand -->
+        <div style="text-align: center; margin-bottom: 24px; padding-top: 6px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); text-align: center; line-height: 44px; color: #ffffff; font-size: 20px; font-weight: 900; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                  CZ
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <span style="font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">City<span style="color: #ea580c;">Zen</span></span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Category Pill Badge -->
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+            Bhubaneswar Smart City
+          </span>
+        </div>
+
+        <!-- Heading -->
+        <h1 style="font-size: 24px; font-weight: 800; color: #0f2c59; margin: 0 0 16px; letter-spacing: -0.4px;">
+          Your account is ready
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 6px;">
+          Hello <strong>${data.userName}</strong>,
         </p>
-        <p style="font-size:14px;line-height:22px;color:#334155;margin:0 0 20px;">
-          Your account has been created. Please set your password within ${expiryHours} hours to activate your profile.
+        <p style="font-size: 14px; line-height: 22px; color: #334155; margin: 0 0 20px;">
+          Your CityZen account is ready to access as a <strong>${roleName}</strong>.
         </p>
 
-        <div style="text-align:center;margin-bottom:20px;">
-          <a href="${data.setupLink}" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;">
-            Set Your Password
+        <!-- Rounded Details Box -->
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            SIGN-IN EMAIL
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #0284c7; text-decoration: underline; margin-bottom: 16px;">
+            ${data.userEmail}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            ${data.temporaryPassword ? 'TEMPORARY PASSWORD' : 'ACCOUNT STATUS'}
+          </div>
+          <div style="font-size: 15px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; margin-bottom: 14px;">
+            ${data.temporaryPassword || 'Active & Ready for Setup'}
+          </div>
+
+          <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+            REFERENCE NUMBER
+          </div>
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; font-family: monospace;">
+            ${refNum}
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div style="text-align: center; margin-bottom: 22px;">
+          <a href="${data.setupLink}" target="_blank" style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 13px 38px; border-radius: 8px; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);">
+            Set your password &rarr;
           </a>
         </div>
 
-        <div style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:20px;font-size:13px;color:#334155;line-height:22px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Account Summary</div>
-          <div>• <strong>Account:</strong> ${data.userEmail}</div>
-          <div>• <strong>Validity:</strong> ${expiryHours} hours</div>
-          <div>• <strong>Ref:</strong> ${refNum}</div>
+        <!-- Direct Link -->
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 6px;">
+          Or paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #0284c7; word-break: break-all; margin: 0 0 24px;">
+          <a href="${data.setupLink}" style="color: #0284c7; text-decoration: underline;">${data.setupLink}</a>
+        </p>
+
+        <!-- Divider & Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <p style="font-size: 13px; font-weight: 800; color: #0f3b70; margin: 0 0 4px;">
+            Let's make our city smarter.
+          </p>
+          <p style="font-size: 12px; color: #64748b; margin: 0 0 4px;">
+            The link works once and expires in ${expiryHours} hours, or when you sign in.
+          </p>
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            CityZen Team &bull; Bhubaneswar
+          </p>
         </div>
 
-        <div style="font-size:12px;color:#64748b;line-height:18px;margin-bottom:14px;word-break:break-all;">
-          Direct link: <a href="${data.setupLink}" style="color:#0284c7;text-decoration:underline;">${data.setupLink}</a>
-        </div>
-
-        <div style="border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#64748b;">
-          If you did not register for an account on CityZen, you can safely disregard this message.
-        </div>
       </td>
     </tr>
   </table>
